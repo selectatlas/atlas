@@ -1,0 +1,11 @@
+=== linked ===
+Initialising login role...
+┌──────────┐
+│ ?column? │
+├──────────┤
+│ 1        │
+└──────────┘
+=== pooler ===
+Connecting to remote database...
+failed to connect to postgres: failed to connect to `host=aws-0-eu-west-1.pooler.supabase.com user=postgres.jddwysagftlqexoadrjb database=postgres`: failed SASL auth (FATAL: password authentication failed for user "postgres" (SQLSTATE 28P01))
+Connect to your database by setting the env var correctly: SUPABASE_DB_PASSWORD

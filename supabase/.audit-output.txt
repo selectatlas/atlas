@@ -1,0 +1,46 @@
+=== COLUMN-LEVEL AUDIT ===
+
+--- profiles ---
+  ERROR: Could not find the table 'public.profiles' in the schema cache
+--- talent_skills ---
+  ERROR: Could not find the table 'public.talent_skills' in the schema cache
+--- profile_embeddings ---
+  ERROR: Could not find the table 'public.profile_embeddings' in the schema cache
+--- jobs ---
+  ERROR: Could not find the table 'public.jobs' in the schema cache
+--- applications ---
+  ERROR: Could not find the table 'public.applications' in the schema cache
+--- outreach ---
+  ERROR: Could not find the table 'public.outreach' in the schema cache
+--- job_embeddings ---
+  ERROR: Could not find the table 'public.job_embeddings' in the schema cache
+--- shortlists ---
+  ERROR: Could not find the table 'public.shortlists' in the schema cache
+--- message_threads ---
+  ERROR: Could not find the table 'public.message_threads' in the schema cache
+--- thread_participants ---
+  ERROR: Could not find the table 'public.thread_participants' in the schema cache
+--- messages ---
+  ERROR: Could not find the table 'public.messages' in the schema cache
+--- credits ---
+  ERROR: Could not find the table 'public.credits' in the schema cache
+--- portfolio_items ---
+  ERROR: Could not find the table 'public.portfolio_items' in the schema cache
+--- profile_likes ---
+  ERROR: Could not find the table 'public.profile_likes' in the schema cache
+--- profile_views ---
+  ERROR: Could not find the table 'public.profile_views' in the schema cache
+=== STORAGE BUCKETS ===
+
+Buckets (0): 
+
+=== FUNCTIONS ===
+
+  match_talent: ERROR: Could not find the function public.match_talent without parameters in the schema cache
+  match_jobs: ERROR: Could not find the function public.match_jobs without parameters in the schema cache
+  handle_new_user: ERROR: Could not find the function public.handle_new_user without parameters in the schema cache
+
+=== RLS / ROW COUNTS ===
+
+
+  TOTAL rows across all tables: 0

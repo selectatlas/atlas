@@ -1,0 +1,44 @@
+=== 1. SCHEMA: Executing SQL via Management API ===
+
+✗ schema.sql: Management API failed (401): {"message":"JWT failed verification"}
+✗ migrations/001_profile_enhancements.sql: Management API failed (401): {"message":"JWT failed verification"}
+✗ migrations/002_likes_views.sql: Management API failed (401): {"message":"JWT failed verification"}
+
+=== 2. SEED DATA ===
+
+Seed data file found. Importing seed module...
+Seed module keys: SEED_PROFILES
+Seed run script found at: /Users/laithwallace/CursorProjectDev/castd-ai/src/lib/seed/run.ts
+
+=== 3. CURRENT DATA STATE ===
+
+  profiles: ? rows
+  talent_skills: ? rows
+  profile_embeddings: ? rows
+  jobs: ? rows
+  applications: ? rows
+  outreach: ? rows
+  job_embeddings: ? rows
+  shortlists: ? rows
+  message_threads: ? rows
+  thread_participants: ? rows
+  messages: ? rows
+  credits: ? rows
+  portfolio_items: ? rows
+  profile_likes: ? rows
+  profile_views: ? rows
+
+  TOTAL rows: 0
+
+=== 4. STORAGE BUCKETS ===
+
+Existing buckets: (none)
+  Creating avatars...
+  ✓ avatars: Created
+  Creating covers...
+  ✓ covers: Created
+
+=== 5. SEED EXECUTION ===
+
+To run seed data: npm run seed && npm run embed
+This requires OPENAI_API_KEY to be set in .env.local

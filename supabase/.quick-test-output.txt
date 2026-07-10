@@ -1,0 +1,17 @@
+1. HEAD profiles...
+  error: none
+  count: 
+
+2. SELECT profiles limit 0...
+  error: Could not find the table 'public.profiles' in the schema cache
+  data: null
+
+3. Raw fetch to REST API...
+  status: 404
+  body: {"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.profiles' in the schema cache"}
+
+4. Fetching openapi spec...
+  status: 200
+  body (first 800): {"swagger":"2.0","info":{"description":"","title":"standard public schema","version":"14.5"},"host":"jddwysagftlqexoadrjb.supabase.co:443","basePath":"/","schemes":["https"],"consumes":["application/json","application/vnd.pgrst.object+json;nulls=stripped","application/vnd.pgrst.object+json","text/csv"],"produces":["application/json","application/vnd.pgrst.object+json;nulls=stripped","application/vnd.pgrst.object+json","text/csv"],"paths":{"/":{"get":{"produces":["application/openapi+json","application/json"],"responses":{"200":{"description":"OK"}},"summary":"OpenAPI description (this document)","tags":["Introspection"]}},"/rpc/rls_auto_enable":{"post":{"parameters":[{"in":"body","name":"args","required":true,"schema":{"type":"object"}},{"$ref":"#/parameters/preferParams"}],"produces":["ap
+
+5. Profile-related openapi lines:

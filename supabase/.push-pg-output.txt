@@ -1,0 +1,12 @@
+✗ pooler-us-east-1 failed: (ENOTFOUND) tenant/user postgres.jddwysagftlqexoadrjb not found
+✗ pooler-us-west-1 failed: (ENOTFOUND) tenant/user postgres.jddwysagftlqexoadrjb not found
+✗ pooler-ap-southeast-1 failed: (ENOTFOUND) tenant/user postgres.jddwysagftlqexoadrjb not found
+✗ pooler-eu-west-1 failed: password authentication failed for user "postgres"
+✗ pooler-eu-central-1 failed: (ENOTFOUND) tenant/user postgres.jddwysagftlqexoadrjb not found
+✗ pooler-alternate-format failed: getaddrinfo ENOTFOUND jddwysagftlqexoadrjb.pooler.supabase.com
+✗ direct-db failed: getaddrinfo ENOTFOUND db.jddwysagftlqexoadrjb.supabase.co
+✗ direct-db-alternate failed: Connection terminated due to connection timeout
+
+❌ Could not connect via any method.
+   The service role key may not work as a PostgreSQL password.
+   You may need the database password from: Supabase Dashboard > Project Settings > Database > Connection string

@@ -1,0 +1,916 @@
+<title>The Density Discipline — A Design System Guide from Linear, Notion & Apollo.io</title>
+<style>
+  :root {
+    --paper: #f2f3f5;
+    --paper-raised: #ffffff;
+    --ink-900: #16191d;
+    --ink-700: #383e46;
+    --ink-500: #676f79;
+    --ink-300: #9aa1ab;
+    --line: rgba(20, 22, 26, 0.10);
+    --line-strong: rgba(20, 22, 26, 0.16);
+    --accent: #2b6c66;
+    --accent-ink: #ffffff;
+    --accent-soft: #e2eeec;
+    --accent-soft-line: rgba(43, 108, 102, 0.28);
+    --tag-linear: #6e56cf;
+    --tag-linear-soft: #efebfb;
+    --tag-notion: #57534e;
+    --tag-notion-soft: #ece9e5;
+    --tag-apollo: #9a6b17;
+    --tag-apollo-soft: #f5ecd8;
+    --shadow: 0 1px 2px rgba(20,22,26,0.04), 0 8px 24px rgba(20,22,26,0.06);
+    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-body: Charter, "Iowan Old Style", "Palatino Linotype", "Georgia", "Times New Roman", serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Menlo", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #15171b;
+      --paper-raised: #1b1e23;
+      --ink-900: #edece9;
+      --ink-700: #c7cad0;
+      --ink-500: #93989f;
+      --ink-300: #5c6169;
+      --line: rgba(255, 255, 255, 0.09);
+      --line-strong: rgba(255, 255, 255, 0.16);
+      --accent: #6fbfb6;
+      --accent-ink: #0d1615;
+      --accent-soft: #1c2b29;
+      --accent-soft-line: rgba(111, 191, 182, 0.30);
+      --tag-linear: #b3a1f0;
+      --tag-linear-soft: #2a2540;
+      --tag-notion: #cac6bf;
+      --tag-notion-soft: #2a2824;
+      --tag-apollo: #e0b767;
+      --tag-apollo-soft: #332a15;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15171b;
+    --paper-raised: #1b1e23;
+    --ink-900: #edece9;
+    --ink-700: #c7cad0;
+    --ink-500: #93989f;
+    --ink-300: #5c6169;
+    --line: rgba(255, 255, 255, 0.09);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --accent: #6fbfb6;
+    --accent-ink: #0d1615;
+    --accent-soft: #1c2b29;
+    --accent-soft-line: rgba(111, 191, 182, 0.30);
+    --tag-linear: #b3a1f0;
+    --tag-linear-soft: #2a2540;
+    --tag-notion: #cac6bf;
+    --tag-notion-soft: #2a2824;
+    --tag-apollo: #e0b767;
+    --tag-apollo-soft: #332a15;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"] {
+    --paper: #f2f3f5;
+    --paper-raised: #ffffff;
+    --ink-900: #16191d;
+    --ink-700: #383e46;
+    --ink-500: #676f79;
+    --ink-300: #9aa1ab;
+    --line: rgba(20, 22, 26, 0.10);
+    --line-strong: rgba(20, 22, 26, 0.16);
+    --accent: #2b6c66;
+    --accent-ink: #ffffff;
+    --accent-soft: #e2eeec;
+    --accent-soft-line: rgba(43, 108, 102, 0.28);
+    --tag-linear: #6e56cf;
+    --tag-linear-soft: #efebfb;
+    --tag-notion: #57534e;
+    --tag-notion-soft: #ece9e5;
+    --tag-apollo: #9a6b17;
+    --tag-apollo-soft: #f5ecd8;
+    --shadow: 0 1px 2px rgba(20,22,26,0.04), 0 8px 24px rgba(20,22,26,0.06);
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink-900);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 268px minmax(0, 1fr);
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  /* ---- Sidebar TOC ---- */
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 28px 20px 40px 28px;
+    border-right: 1px solid var(--line);
+    font-family: var(--font-display);
+  }
+  .toc-brand {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-500);
+    margin-bottom: 4px;
+  }
+  .toc-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 24px;
+    line-height: 1.35;
+  }
+  .toc-group { margin-bottom: 20px; }
+  .toc-group-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink-300);
+    margin-bottom: 8px;
+    padding-left: 10px;
+  }
+  .toc-group a {
+    display: block;
+    font-size: 13.5px;
+    color: var(--ink-700);
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    margin: 1px 0;
+  }
+  .toc-group a:hover { background: var(--paper-raised); color: var(--ink-900); }
+
+  @media (max-width: 880px) {
+    .shell { grid-template-columns: 1fr; }
+    nav.toc { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+  }
+
+  /* ---- Main content ---- */
+  main {
+    padding: 56px 48px 120px;
+    min-width: 0;
+  }
+  .content-col { max-width: 760px; }
+  .content-col.wide { max-width: 100%; }
+
+  header.hero {
+    max-width: 760px;
+    margin-bottom: 56px;
+  }
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 3.2vw, 2.55rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+  .dek {
+    font-size: 1.15rem;
+    color: var(--ink-700);
+    line-height: 1.6;
+    margin: 0 0 20px;
+    text-wrap: pretty;
+  }
+  .app-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; }
+  .app-tag {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 100px;
+  }
+  .app-tag.linear { background: var(--tag-linear-soft); color: var(--tag-linear); }
+  .app-tag.notion { background: var(--tag-notion-soft); color: var(--tag-notion); }
+  .app-tag.apollo { background: var(--tag-apollo-soft); color: var(--tag-apollo); }
+
+  section { margin-bottom: 64px; scroll-margin-top: 24px; }
+  section > .content-col { scroll-margin-top: 24px; }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0 0 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    padding-bottom: 0;
+  }
+  .section-number {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-300);
+    display: block;
+    margin-bottom: 10px;
+    padding-top: 20px;
+  }
+  h3 {
+    font-family: var(--font-display);
+    font-size: 1.12rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    margin: 34px 0 10px;
+  }
+  h4 {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 22px 0 8px;
+    color: var(--ink-700);
+  }
+  p { margin: 0 0 14px; max-width: 68ch; }
+  .section-intro { color: var(--ink-700); font-size: 1.02rem; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 8px; max-width: 66ch; }
+  li::marker { color: var(--ink-300); }
+  strong { font-weight: 700; color: var(--ink-900); }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.87em;
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  /* ---- Principle cards ---- */
+  .principle {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin: 18px 0;
+    box-shadow: var(--shadow);
+  }
+  .principle-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .principle-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft-line);
+    padding: 2px 8px;
+    border-radius: 5px;
+    flex-shrink: 0;
+  }
+  .principle-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.04rem;
+    letter-spacing: -0.01em;
+  }
+  .principle p:last-child { margin-bottom: 0; }
+  .why {
+    font-size: 0.92rem;
+    color: var(--ink-500);
+    border-left: 2px solid var(--line-strong);
+    padding-left: 12px;
+    margin-top: 12px;
+  }
+  .why b { color: var(--ink-700); font-weight: 600; }
+
+  /* ---- Evidence citations ---- */
+  .evidence {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    font-family: var(--font-display);
+  }
+  .evidence a {
+    font-size: 11.5px;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 3px 9px;
+    border-radius: 100px;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-500);
+  }
+  .evidence a:hover { color: var(--accent); border-color: var(--accent-soft-line); background: var(--accent-soft); }
+  .evidence a.linear:hover { color: var(--tag-linear); }
+  .evidence a.notion:hover { color: var(--tag-notion); }
+  .evidence a.apollo:hover { color: var(--tag-apollo); }
+
+  /* ---- Tables ---- */
+  .table-wrap { overflow-x: auto; margin: 18px 0 24px; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; font-family: var(--font-display); background: var(--paper-raised); }
+  caption { text-align: left; font-family: var(--font-display); font-size: 0.85rem; color: var(--ink-500); padding: 10px 16px 0; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 700; color: var(--ink-700); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; background: var(--paper); }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  /* ---- Shell map diagram ---- */
+  .shellmap { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 20px 0; }
+  .shellmap > div { background: var(--paper-raised); padding: 16px 18px; }
+  .shellmap .region-label { font-family: var(--font-mono); font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .shellmap .region-desc { font-size: 0.88rem; color: var(--ink-700); }
+  @media (max-width: 700px) { .shellmap { grid-template-columns: 1fr; } }
+
+  /* ---- Checklist ---- */
+  .checklist { list-style: none; padding-left: 0; }
+  .checklist li {
+    display: flex;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    max-width: none;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist .box {
+    flex-shrink: 0;
+    width: 16px; height: 16px;
+    margin-top: 3px;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 4px;
+  }
+
+  .dont-list li { color: var(--ink-700); }
+  .dont-list li::marker { content: "✕  "; color: #b3524a; font-family: var(--font-mono); font-size: 0.85em; }
+
+  blockquote.pull {
+    margin: 26px 0;
+    padding: 0 0 0 20px;
+    border-left: 3px solid var(--accent);
+    font-family: var(--font-display);
+    font-size: 1.14rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-900);
+    max-width: 60ch;
+  }
+
+  .callout {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft-line);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 24px 0;
+    font-size: 0.95rem;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label { font-family: var(--font-display); font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 8px; display: block; }
+
+  footer.end {
+    max-width: 760px;
+    margin-top: 80px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--ink-300);
+    font-family: var(--font-display);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    a, .app-tag, .evidence a { transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease; }
+  }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Table of contents">
+    <div class="toc-brand">Design System Guide</div>
+    <div class="toc-title">The Density Discipline</div>
+
+    <div class="toc-group">
+      <div class="toc-group-label">Foundations</div>
+      <a href="#overview">Overview</a>
+      <a href="#philosophy">Cross-cutting philosophy</a>
+    </div>
+
+    <div class="toc-group">
+      <div class="toc-group-label">Layout &amp; Navigation</div>
+      <a href="#shell">App shell anatomy</a>
+      <a href="#nav-models">Navigation taxonomy models</a>
+      <a href="#split-view">Split-view &amp; detail patterns</a>
+    </div>
+
+    <div class="toc-group">
+      <div class="toc-group-label">Data &amp; Interaction</div>
+      <a href="#data-display">Data display principles</a>
+      <a href="#customization">Views, filters, sort, group</a>
+      <a href="#command">Command palette &amp; keyboard model</a>
+      <a href="#bulk">Bulk actions</a>
+      <a href="#settings">Settings architecture</a>
+      <a href="#onboarding">Onboarding &amp; empty states</a>
+    </div>
+
+    <div class="toc-group">
+      <div class="toc-group-label">Visual System</div>
+      <a href="#visual-system">Type, colour, spacing, elevation</a>
+    </div>
+
+    <div class="toc-group">
+      <div class="toc-group-label">Practical Application</div>
+      <a href="#matrix">Borrow-from-whom matrix</a>
+      <a href="#checklist">Build checklist</a>
+    </div>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <p class="eyebrow">Design system guide · Mobbin-sourced pattern research</p>
+      <h1>The Density Discipline: building software with the structural rigour of Linear, Notion &amp; Apollo.io</h1>
+      <p class="dek">
+        These three products don't share a visual style — Linear is monochrome and terse, Notion is a blank canvas,
+        Apollo is a data-dense CRM. What they share is a set of <em>structural</em> decisions: how a shell is built,
+        how a table earns its density, how a filter differs from a view, how configuration stays in place instead
+        of sending you to a new screen. This guide extracts those decisions so a senior designer can apply the
+        underlying model to a new product, rather than copy the surface of any one of them.
+      </p>
+      <div class="app-tags">
+        <span class="app-tag linear">Linear — keyboard-first issue tracker</span>
+        <span class="app-tag notion">Notion — block-based workspace</span>
+        <span class="app-tag apollo">Apollo.io — dense sales CRM</span>
+      </div>
+    </header>
+
+    <section id="overview">
+      <span class="section-number">§1</span>
+      <div class="content-col">
+        <h2>Overview — what "quality" means here</h2>
+        <p class="section-intro">
+          It's tempting to read products like these and extract colour palettes and border-radii. That's the least
+          useful layer. The quality that separates them from an average internal tool is structural: they picked
+          a small number of primitives (a row, a view, a card, a filter) and reused the <em>same</em> primitive
+          everywhere it applied, instead of inventing a new pattern per screen. That reuse is what makes a
+          15-feature product still feel like one coherent thing.
+        </p>
+        <p>
+          This guide is organised in the order a designer actually needs it: philosophy first (so you can judge
+          your own decisions against something), then layout and navigation (the skeleton), then the interaction
+          layer — data display, customization, commands, bulk actions, settings — and finally the visual system
+          that dresses all of it. It closes with a practical matrix and a checklist.
+        </p>
+      </div>
+    </section>
+
+    <section id="philosophy">
+      <span class="section-number">§2</span>
+      <div class="content-col">
+        <h2>Cross-cutting philosophy</h2>
+        <p class="section-intro">
+          Eight decisions recur across all three products, made independently, in different domains. When the same
+          decision appears in a keyboard-first issue tracker, a freeform notes app, and a sales CRM, treat it as a
+          load-bearing principle rather than a stylistic preference.
+        </p>
+
+        <div class="principle">
+          <div class="principle-head"><span class="principle-num">01</span><span class="principle-title">Density by omission, not by shrinking</span></div>
+          <p>Rows get denser by removing chrome — no borders, no zebra striping, no persistent drag handles or
+          overflow icons — rather than by shrinking font size or padding. Affordances (drag handle, "+", "···")
+          appear only on hover or selection, so the resting state stays visually quiet even at 30px row heights.</p>
+          <div class="why"><b>Why it works:</b> shrinking type to fit more rows degrades legibility. Removing
+          unused chrome doesn't — it just defers it until the user's cursor signals intent.</div>
+          <div class="evidence">
+            <a class="linear" href="https://mobbin.com/screens/6d0577b3-4b12-44bb-a816-39997cc4a080">Linear issue list</a>
+            <a class="notion" href="https://mobbin.com/screens/8cbe99a8-57a4-40e6-85c8-5f55712b6cf3">Notion hover handles</a>
+            <a class="apollo" href="https://mobbin.com/screens/b9247208-1b1c-4619-98d9-3a141d433464">Apollo people table</a>
+          </div>
+        </div>
+
+        <div class="principle">
+          <div class="principle-head"><span class="principle-num">02</span><span class="principle-title">One grammar, reused across every view</span></div>
+          <p>A group header in a list, a column header on a board, and a section in a saved view use the identical
+          anatomy: icon/colour dot + name + count + quick-add + overflow. Table, board, gallery and calendar in
+          Notion aren't different features — they're the same schema rendered through one shared toolbar contract.</p>
+          <div class="why"><b>Why it works:</b> a user who learns one surface has already learned the others. Support
+          and QA cost drops too — one component, not five near-duplicates.</div>
+          <div class="evidence">
+            <a class="linear" href="https://mobbin.com/screens/514488cf-f8e2-4d96-b61a-2a03bc7c7629">Linear board view</a>
+            <a class="notion" href="https://mobbin.com/screens/9a1419db-2dab-4dee-ace3-fba66fe09c08">Notion view switcher</a>
+          </div>
+        </div>
+
+        <div class="principle">
+          <div class="principle-head"><span class="principle-num">03</span><span class="principle-title">The view is the product, not a filter on top of it</span></div>
+          <p>A saved view/segment gets a name, a description, a visibility scope (personal/workspace), and in
+          Apollo's case, subscription alerts. It's treated as a durable, shareable object a team refers to by name
+          ("open High Priority Tasks") — not a disposable query string.</p>
+          <div class="why"><b>Why it works:</b> teams communicate in view names, not filter syntax. Naming the
+          artefact turns a personal query into shared infrastructure.</div>
+          <div class="evidence">
+            <a class="linear" href="https://mobbin.com/screens/d30d5448-25a1-49c5-bd55-61a52f278cec">Linear saved view</a>
+          </div>
+        </div>
+
+        <div class="principle">
+          <div class="principle-head"><span class="principle-num">04</span><span class="principle-title">Filter, sort, and group are separate controls</span></div>
+          <p>"What subset of data" and "how it's arranged" are never merged into one mega-menu. Linear splits Filter
+          from Display; Notion gives Filter, Sort and Group three independent buttons, each collapsing to a
+          rule-count pill once active; Apollo separates an always-visible sidebar accordion from a "More Filters"
+          catalogue modal for the long tail.</p>
+          <div class="why"><b>Why it works:</b> combining them creates one intimidating panel. Separating them lets
+          each control stay simple enough to not need its own documentation.</div>
+          <div class="evidence">
+            <a class="notion" href="https://mobbin.com/screens/2ef31bd5-1e16-4d2b-80dc-b0b87974d979">Notion group-by panel</a>
+            <a class="apollo" href="https://mobbin.com/screens/095897bc-b33c-4948-a221-d3a42ca0b20d">Apollo filter accordion</a>
+          </div>
+        </div>
+
+        <div class="principle">
+          <div class="principle-head"><span class="principle-num">05</span><span class="principle-title">Configure in place, never navigate away</span></div>
+          <p>Adding a view, editing a formula, managing table columns, writing a note — all open as a panel anchored
+          to the trigger (slide-over or drawer), with the underlying content still visible and scrollable behind
+          it. None of these open a new route.</p>
+          <div class="why"><b>Why it works:</b> navigating away breaks the user's place in the data they were just
+          looking at. An anchored panel keeps the "where was I" context free.</div>
+          <div class="evidence">
+            <a class="notion" href="https://mobbin.com/screens/7c4bb26e-a30a-48e7-a8b2-15179d6e2809">Notion formula editor</a>
+            <a class="apollo" href="https://mobbin.com/screens/1bf2e864-a11e-46c8-b944-02d1dcb7b562">Apollo field manager drawer</a>
+          </div>
+        </div>
+
+        <div class="principle">
+          <div class="principle-head"><span class="principle-num">06</span><span class="principle-title">Show the ceiling, gate it visibly</span></div>
+          <p>Plan-gated or advanced features are rendered fully, then disabled with a small badge ("ENTERPRISE") or
+          a padlock icon in the nav label — never hidden entirely. A user always knows the feature exists and what
+          unlocks it.</p>
+          <div class="why"><b>Why it works:</b> hiding a feature makes the product look thinner than it is; showing
+          it locked converts curiosity into an upgrade path instead of a support ticket asking "does this exist?"</div>
+          <div class="evidence">
+            <a class="notion" href="https://mobbin.com/screens/7d8cfff6-efb5-4fb6-9c24-8dd3f1e9bdff">Notion enterprise-gated toggle</a>
+          </div>
+        </div>
+
+        <div class="principle">
+          <div class="principle-head"><span class="principle-num">07</span><span class="principle-title">One sparing accent, monochrome everywhere else</span></div>
+          <p>Each product has exactly one recurring brand accent used for primary buttons and active/selected
+          states (Linear's purple, Apollo's yellow). Everything else — text, borders, icons — stays grayscale.
+          Colour is reserved for user data: priority glyphs, status dots, labels, chart series.</p>
+          <div class="why"><b>Why it works:</b> if chrome and data both use colour freely, colour stops meaning
+          anything. Reserving it for data keeps a glance informative instead of decorative.</div>
+        </div>
+
+        <div class="principle">
+          <div class="principle-head"><span class="principle-num">08</span><span class="principle-title">Selection changes the toolbar, not the canvas</span></div>
+          <p>Selecting rows swaps the existing top toolbar in place for a contextual action bar (Apollo), or raises
+          a compact floating bar at the viewport edge (Linear) — the list itself doesn't move, resize, or gain a
+          sidebar. Selected rows keep a persistent tint so the "what's active" state survives scrolling.</p>
+          <div class="why"><b>Why it works:</b> one consistent location for bulk controls across every list-type
+          screen means the behaviour transfers instantly from Contacts to Tasks to Deals.</div>
+          <div class="evidence">
+            <a class="apollo" href="https://mobbin.com/screens/a9e82d07-16e2-48de-89f4-91d036a60dac">Apollo bulk toolbar</a>
+          </div>
+        </div>
+
+        <blockquote class="pull">None of these are visual decisions. They're all decisions about where information lives and how it's reached — that's why they transfer across completely different product domains.</blockquote>
+      </div>
+    </section>
+
+    <section id="shell">
+      <span class="section-number">§3</span>
+      <div class="content-col">
+        <h2>App shell anatomy</h2>
+        <p class="section-intro">
+          All three use a two-region shell — a fixed navigation rail and a canvas — but disagree on what the rail
+          is <em>for</em>. The choice depends entirely on your data model.
+        </p>
+
+        <div class="shellmap">
+          <div><div class="region-label">Sidebar tone</div><div class="region-desc">Linear &amp; Apollo tint the sidebar a faint grey against a white canvas — a two-tone shell that separates "structure" from "content" at a glance. Notion keeps both regions the same white, relying on width and indentation alone to separate them.</div></div>
+          <div><div class="region-label">Top of rail</div><div class="region-desc">Before any nav content: a workspace/account switcher (Linear, Notion) or a logo + collapse toggle (Apollo). This is always a single row, never competing with nav items for attention.</div></div>
+          <div><div class="region-label">Utility row</div><div class="region-desc">Search, Home, Inbox, quick-add sit as a compact icon row directly under the switcher, before any content nav — utility actions are visually separated from the content tree in every case.</div></div>
+          <div><div class="region-label">Bottom of rail</div><div class="region-desc">Reserved for account nudges: trial countdown, onboarding progress, invite-team card, settings, avatar — always de-emphasised (lighter weight) relative to working nav above it.</div></div>
+          <div><div class="region-label">Global top bar</div><div class="region-desc">Apollo is the outlier: a second persistent bar above the canvas holds global search (<code>⌘K</code>) and a docked AI entry point — useful when the rail is task-grouped rather than object-grouped and doesn't have room for global search itself.</div></div>
+          <div><div class="region-label">Canvas</div><div class="region-desc">Full white, no border against the page background beyond the sidebar's own edge. Content owns 100% of remaining width; nothing else competes with it structurally.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="nav-models">
+      <div class="content-col">
+        <h3>Three navigation taxonomy models</h3>
+        <p>Pick the model based on how your primary entities actually grow — not on visual preference.</p>
+
+        <div class="table-wrap">
+          <table>
+            <caption>Choosing a navigation taxonomy</caption>
+            <thead><tr><th>Model</th><th>Structure</th><th>Use when</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>Fixed-object, team-scoped nesting</strong><br><span style="color:var(--ink-500)">Linear</span></td>
+                <td>A short, stable list of global items (Inbox, My Issues), then a "Favourites" pin-list, then each team as its own collapsible group with an identical sub-nav (Issues, Cycles, Projects, Views).</td>
+                <td>Your entity types are few and fixed, but instances multiply by an organisational unit (team, department) that itself needs scoping.</td>
+              </tr>
+              <tr>
+                <td><strong>Infinite page-tree</strong><br><span style="color:var(--ink-500)">Notion</span></td>
+                <td>Arbitrary nesting depth communicated by indentation + disclosure chevron only — no connecting tree lines, no depth limit.</td>
+                <td>Content is user-created and hierarchy is arbitrary; you cannot predict how deep or wide it will grow.</td>
+              </tr>
+              <tr>
+                <td><strong>Task-stage grouped modules</strong><br><span style="color:var(--ink-500)">Apollo.io</span></td>
+                <td>Nav groups are labelled by workflow stage ("Prospect &amp; enrich", "Engage", "Win &amp; close") rather than by object type — the same entity (Deals) sits under whichever stage heading it's relevant to.</td>
+                <td>Users think in stages of a process, not in a flat inventory of object types; the module count is fixed and won't be user-extended.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="color:var(--ink-500); font-size:0.92rem;">A fourth model worth naming even though none of these three use it purely: a <strong>records vs. pages split</strong> (fixed product surfaces separated from an open-ended, data-driven list of record types, each expandable to recent items) — the right choice when your primary nav count is driven by a growing schema of object types rather than by teams or workflow stages.</p>
+      </div>
+    </section>
+
+    <section id="split-view">
+      <div class="content-col">
+        <h3>Split-view &amp; detail patterns</h3>
+        <p class="section-intro">Detail context uses three distinct shapes across the three products, escalating in complexity with how much needs to be surfaced at once.</p>
+
+        <h4>Two-pane split with position navigation — Linear</h4>
+        <p>List and detail coexist: ~70% main column (title, description, sub-issues, activity) plus a slim fixed
+        properties rail (~150–180px) on the right, each field independently editable inline with no page-level
+        "edit mode." A <code>2 / 5</code> position indicator with up/down chevrons lets you triage the next item
+        without returning to the list — a small detail with an outsized effect on keyboard-driven review speed.</p>
+
+        <h4>Anchored slide-over — Notion</h4>
+        <p>A "side peek" is a per-view setting, not a fixed behaviour: any database can be configured so opening a
+        row slides a panel in from the right rather than navigating to a full page — trading "more space for this
+        record" against "keep the list visible" as an explicit, saved choice rather than a hard-coded pattern.</p>
+
+        <h4>Three-column, reorderable cards — Apollo.io</h4>
+        <p>The heaviest of the three: left column stacks bordered, drag-handled cards (Contact information, Account,
+        Deals, Notes, Tasks) that a user can reorder to match their own workflow; the remaining space is tabbed
+        (Prospect / Activities / Sequences / Conversations / All Fields) to compartmentalise enrichment data that
+        would otherwise be one very long scroll.</p>
+
+        <div class="callout">
+          <span class="label">Rule of thumb</span>
+          <p>Use two-pane-with-position-nav when users triage a queue in sequence. Use an anchored slide-over when
+          detail is a secondary lookup from a primary list. Reach for the three-column reorderable layout only when
+          a record genuinely aggregates more sub-objects than tabs can compartmentalise cleanly — it's the most
+          expensive pattern to build and maintain.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="data-display">
+      <span class="section-number">§4</span>
+      <div class="content-col">
+        <h2>Data display principles</h2>
+
+        <h3>Tables and lists</h3>
+        <ul>
+          <li><strong>Row height 28–36px</strong>, no cell borders, no zebra striping. Separation comes from
+          whitespace and a hover state only.</li>
+          <li><strong>Status and priority render as icon glyphs</strong>, not coloured text badges — Linear's
+          circle-fill states and ascending-bar priority icon keep a dense row visually quiet; reserve colour for
+          user-generated labels.</li>
+          <li><strong>Grouping renders as collapsible sections</strong> using the same header anatomy as every other
+          grouped surface in the product (§2, principle 02) — a plain numeral count, no pill chrome around it.</li>
+          <li><strong>Enrichment/action can live inside a cell.</strong> Apollo renders "Access email" and "Request
+          Mobile Number" as literal buttons inside table cells — viewing and unlocking data are the same weight
+          of action, not a separate step.</li>
+          <li><strong>Column customization is always visible</strong>, not hidden in a settings menu — a bare
+          <code>+</code> at the end of the header row opens a reorderable field-manager drawer.</li>
+        </ul>
+
+        <h3>Board / Kanban</h3>
+        <ul>
+          <li>Board is a <strong>render mode of the same dataset</strong> as the list — a small icon toggle switches
+          between them, never a separate feature with its own data or permissions.</li>
+          <li>Rare/empty states (Canceled, Duplicate) collapse into a narrow hidden-columns strip rather than
+          padding the board with columns nobody works from.</li>
+          <li>Cards stay compact — ID + parent breadcrumb, title, then a bottom row of icon pills and a single
+          avatar. No cover images, no large surface area; optimised for scanning volume over any single card's
+          detail.</li>
+        </ul>
+
+        <h3>Dashboards &amp; reporting</h3>
+        <ul>
+          <li><strong>KPI row above, widget grid below.</strong> Each stat tile pairs a value with a trend arrow and
+          a dated delta caption; each chart widget uses identical card chrome (bold title + <code>···</code>
+          overflow) regardless of chart type, so a leaderboard table and a donut chart feel like peers in the
+          same grid.</li>
+          <li><strong>Chart type is chosen per question, not per habit</strong> — horizontal bar for ranked
+          dollar values, sideways step chart when category names are long, area/line combo with a below-chart
+          legend for multi-series trends over time.</li>
+          <li><strong>A library of named, opinionated report templates</strong> ships before any blank
+          chart-builder — "Quota attainment," "Sequence performance," "Low Performing Sequences" — so most users
+          never touch the builder at all.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="customization">
+      <span class="section-number">§5</span>
+      <div class="content-col">
+        <h2>Feature &amp; customization principles</h2>
+
+        <h3>Views as saveable objects</h3>
+        <p>A view is created as a byproduct of using filters — never a separate "new view" wizard. The save action
+        immediately asks for a name, an optional description, and a scope (personal vs. workspace/shared). Notion
+        goes further and makes the view type itself a first-class choice at creation (a 2×3 icon-tile picker:
+        Table, Board, Timeline, Calendar, List, Gallery), with per-view settings (grouping granularity, default
+        open behaviour) scoped to that one view rather than the whole database.</p>
+
+        <h3>Property / field customization</h3>
+        <p>Adding a field opens a flat, icon-led type list (Text, Number, Select, Status, Date, Person, Formula…)
+        with a "Suggested" section above it inferred from context — reducing the decision from "what are all 17
+        types" to "pick from these 3 likely ones, or browse the rest." Editing an existing field combines schema
+        actions (change type, formula) and view actions (filter, sort, hide) in one menu anchored to that column's
+        header — because from the user's point of view, both are just "things I can do with this column."</p>
+
+        <h3>Command palette</h3>
+        <ul>
+          <li><strong>Context-scoped, not global-only.</strong> Opening the palette inside an issue shows a
+          breadcrumb pill ("Issue · JOH-1") and a command list specific to that object — assign, change status,
+          add labels — before falling back to global commands.</li>
+          <li><strong>Single-letter shortcuts once scoped</strong> (<code>A</code> to assign, <code>S</code> to
+          change status) — a different, faster contract than the modifier-heavy shortcuts used to <em>open</em>
+          the palette itself.</li>
+          <li><strong>Commands are sectioned by entity</strong> (Issue / Project / Views / Help / Account), mirroring
+          the same "one grammar" discipline used in list grouping and board columns.</li>
+          <li><strong>Taught during onboarding, live</strong> — a product tour that has the user actually filter,
+          select, and act with the palette inside a simulated shell, rather than describing it in a help article.</li>
+        </ul>
+
+        <h3>Bulk actions</h3>
+        <ul>
+          <li>Selecting rows swaps the toolbar <strong>in place</strong> — same horizontal band, new contents,
+          leftmost item always the selection count doubling as a "clear" control.</li>
+          <li>Multi-step bulk actions (assign to a sequence, push to a CRM) are themselves dropdown triggers,
+          layering a secondary choice after the bulk action starts, rather than requiring a fully separate flow.</li>
+          <li><strong>Destructive bulk actions explain consequences</strong>, not just "are you sure?" — a warning
+          callout spells out side effects ("the contact will automatically advance to the next step") plus an
+          opt-in checkbox for a related side-action, before the confirm button.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="settings">
+      <div class="content-col">
+        <h3>Settings architecture</h3>
+        <p>Three different containers, chosen by how disruptive leaving the current context is:</p>
+        <div class="table-wrap">
+          <table>
+            <caption>Settings container by weight of the change</caption>
+            <thead><tr><th>Container</th><th>Used by</th><th>When to use it</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Full-screen takeover</strong></td><td>Linear</td><td>Settings is a destination with its own deep nav tree (Workspace / Account / Teams) — appropriate when there's genuinely a lot of it and users arrive expecting to spend time there.</td></tr>
+              <tr><td><strong>Large centered modal</strong></td><td>Notion</td><td>Dims the page but doesn't navigate away — good when settings still needs a two-pane nav+content layout but should feel dismissable in one click.</td></tr>
+              <tr><td><strong>Dedicated secondary sidebar</strong></td><td>Apollo.io</td><td>A distinct "← Settings" back-link swaps the whole rail — suits products where settings has admin-tier depth (billing, permission profiles, data management) that would overwhelm a modal.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Every settings row across all three follows one anatomy: bold label, one-line grey description directly
+        beneath it, control right-aligned on the same row. Consistency here matters more than which container you
+        pick — a user should never have to relearn how to read a settings row between sections.</p>
+      </div>
+    </section>
+
+    <section id="onboarding">
+      <div class="content-col">
+        <h3>Onboarding &amp; empty states</h3>
+        <ul>
+          <li><strong>Empty states are instructions, not apologies.</strong> Notion's placeholder text literally
+          spells out the next keystroke ("Press '/' for commands," "Press Enter to continue with an empty page");
+          Linear pairs one restrained icon with one sentence and exactly one CTA — no illustration budget spent
+          on emptiness itself.</li>
+          <li><strong>A filtered empty state looks different from a schema-empty state.</strong> Zero rows in a
+          brand-new table reads as a blank header; zero rows from an active filter gets its own icon and copy
+          ("No matching tasks") — the two are different situations and should look like it.</li>
+          <li><strong>Onboarding happens inside the real product surface</strong>, not a separate wizard bolted on
+          top — Notion's "Getting Started" page is an ordinary editable page with a checklist that teaches
+          mechanics in place; Linear's product tour runs inside a simulated version of the actual shell.</li>
+          <li><strong>One primary action per screen</strong>, progress shown as dots rather than a percentage or
+          numbered steps, with an explicit skip link on anything non-essential (inviting teammates, for instance).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="visual-system">
+      <span class="section-number">§6</span>
+      <div class="content-col">
+        <h2>Visual system, distilled</h2>
+        <p class="section-intro">The visible layer is deliberately the least differentiated part of these
+        products — which is exactly why it's easy to copy the wrong things from them. Here's what's actually
+        common underneath the surface differences.</p>
+
+        <div class="table-wrap">
+          <table>
+            <caption>Shared visual disciplines</caption>
+            <thead><tr><th>Dimension</th><th>The discipline</th></tr></thead>
+            <tbody>
+              <tr><td>Typography</td><td>A small type scale in practice (rarely more than 3–4 sizes on a working screen); hierarchy is carried by weight, colour, and icon more than by size jumps.</td></tr>
+              <tr><td>Colour</td><td>Monochrome-first surface; exactly one brand accent for primary actions and active states; semantic colour reserved entirely for user data (status, priority, chart series).</td></tr>
+              <tr><td>Borders &amp; separation</td><td>Hairline borders or pure whitespace, almost never a drop shadow on a resting element — shadows are reserved for genuinely floating layers (palettes, dropdowns, drawers).</td></tr>
+              <tr><td>Iconography</td><td>16–20px glyphs used as a state language (status dots, priority bars) rather than decoration; icon meaning is consistent across list, board, and detail views.</td></tr>
+              <tr><td>Elevation</td><td>Configuration surfaces are panels/drawers anchored to their trigger, not centred modals with a backdrop — reserve the heavier backdrop-modal treatment for genuinely blocking, all-or-nothing decisions.</td></tr>
+              <tr><td>Density</td><td>Achieved by removing chrome, never by shrinking type below a comfortable reading size (§2, principle 01).</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="matrix">
+      <span class="section-number">§7</span>
+      <div class="content-col">
+        <h2>Borrow-from-whom matrix</h2>
+        <p class="section-intro">A practical lookup for a specific design problem you're solving today.</p>
+        <div class="table-wrap">
+          <table>
+            <caption>Design need → best reference → why</caption>
+            <thead><tr><th>Design need</th><th>Reference</th><th>Why this one</th></tr></thead>
+            <tbody>
+              <tr><td>Fixed, team-scoped nav that must scale by org unit</td><td class="app-tag linear" style="display:inline-block;margin:2px 0;">Linear</td><td>Team-as-collapsible-group keeps sub-nav shallow no matter how many teams exist.</td></tr>
+              <tr><td>User-generated, arbitrarily nested content</td><td class="app-tag notion" style="display:inline-block;margin:2px 0;">Notion</td><td>Indentation + chevron scales to any depth without a redesign.</td></tr>
+              <tr><td>Dense record management for power users</td><td class="app-tag apollo" style="display:inline-block;margin:2px 0;">Apollo.io</td><td>Row density, inline enrichment actions, and always-visible column controls are built for hours-a-day users.</td></tr>
+              <tr><td>Keyboard-first, power-user speed</td><td class="app-tag linear" style="display:inline-block;margin:2px 0;">Linear</td><td>Context-scoped palette + single-letter shortcuts taught live in onboarding.</td></tr>
+              <tr><td>One dataset, many saved views</td><td class="app-tag notion" style="display:inline-block;margin:2px 0;">Notion</td><td>View-as-first-class-object with its own settings, independent of the others.</td></tr>
+              <tr><td>Complex automation without a visual node-graph</td><td class="app-tag apollo" style="display:inline-block;margin:2px 0;">Apollo.io</td><td>Readable-sentence rule configuration ("mark as unresponsive if no reply within [5] days") reads faster than an IF/THEN builder for most users.</td></tr>
+              <tr><td>Gating advanced features without hiding the product's ceiling</td><td class="app-tag notion" style="display:inline-block;margin:2px 0;">Notion</td><td>Visible-but-disabled with an explicit plan badge, rather than removed entirely.</td></tr>
+              <tr><td>Onboarding that teaches interaction, not just theory</td><td class="app-tag linear" style="display:inline-block;margin:2px 0;">Linear</td><td>Simulated shell tour has the user actually perform the action once.</td></tr>
+              <tr><td>Onboarding that produces a working artefact immediately</td><td class="app-tag notion" style="display:inline-block;margin:2px 0;">Notion</td><td>"Getting Started" is a real, editable page — not a throwaway tutorial mode.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="checklist">
+      <span class="section-number">§8</span>
+      <div class="content-col">
+        <h2>Build checklist</h2>
+
+        <h3>Before you design a single screen</h3>
+        <ul class="checklist">
+          <li><span class="box"></span><span>Name your primary entity model and decide which navigation taxonomy (§3) actually fits how it grows — don't default to a flat list because it's fastest to ship.</span></li>
+          <li><span class="box"></span><span>Decide, once, which single accent colour will carry every primary action and active state across the whole product.</span></li>
+          <li><span class="box"></span><span>Decide whether "view" is a concept your product needs as a named, saveable object — if two or more people will ever refer to "the X view" out loud, it needs a name and a save action.</span></li>
+        </ul>
+
+        <h3>Layout &amp; navigation</h3>
+        <ul class="checklist">
+          <li><span class="box"></span><span>Separate utility actions (search, quick-add) from the content nav tree visually, even if both live in the sidebar.</span></li>
+          <li><span class="box"></span><span>Reserve the bottom of the nav rail for account-level nudges only — never mix them into the working nav list.</span></li>
+          <li><span class="box"></span><span>Pick one detail pattern (two-pane w/ position nav, anchored slide-over, or multi-column reorderable) based on whether users triage in sequence, look up occasionally, or manage many sub-objects per record.</span></li>
+        </ul>
+
+        <h3>Data display</h3>
+        <ul class="checklist">
+          <li><span class="box"></span><span>Design one grouped-header component and reuse it for list groups, board columns, and saved-view sections — don't let three teams build three versions.</span></li>
+          <li><span class="box"></span><span>Represent status and priority as icon glyphs before reaching for coloured text badges.</span></li>
+          <li><span class="box"></span><span>Make column/field customization a persistent, always-visible affordance, not a buried settings toggle.</span></li>
+        </ul>
+
+        <h3>Customization &amp; configuration</h3>
+        <ul class="checklist">
+          <li><span class="box"></span><span>Keep Filter, Sort, and Group as separate, independently discoverable controls.</span></li>
+          <li><span class="box"></span><span>Open configuration (view settings, field editors, note composers) as a panel anchored to its trigger — never a full route change for something the user will do repeatedly.</span></li>
+          <li><span class="box"></span><span>Write destructive bulk-action confirmations as consequence sentences, not "are you sure?"</span></li>
+        </ul>
+
+        <h4 style="margin-top:32px;">Anti-patterns to avoid</h4>
+        <ul class="checklist dont-list">
+          <li><span>Combining filter + sort + group into one mega-panel because it feels "more efficient" to build — it isn't more efficient to use.</span></li>
+          <li><span>Hiding a plan-gated feature entirely instead of showing it locked — you lose the upgrade prompt and the user assumes the feature doesn't exist.</span></li>
+          <li><span>Using a full-page modal for something a power user will configure dozens of times a day (column setup, formula edits) — that belongs in an anchored panel.</span></li>
+          <li><span>Shrinking font size to increase row density — remove chrome instead; legibility isn't a lever to trade against density.</span></li>
+          <li><span>Building board view as a separate feature from list view instead of a render toggle over the same dataset — they will drift out of sync.</span></li>
+          <li><span>Writing empty states as decoration (illustration + vague copy) instead of instruction (what to press, what to click, next).</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <footer class="end">
+      Sources: pattern research conducted via Mobbin (web platform), scoped per-app to Linear, Notion, and Apollo.io — individual screen citations are linked inline throughout this guide.
+    </footer>
+  </main>
+</div>

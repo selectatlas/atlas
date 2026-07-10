@@ -1,0 +1,77 @@
+export type AccountType = 'hirer' | 'talent'
+export type Category = 'dancer' | 'actor' | 'content_creator'
+export type Proficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert'
+export type ApplicationStatus = 'sent' | 'viewed' | 'responded' | 'shortlisted' | 'hired'
+export type OutreachStatus = 'draft' | 'sent' | 'viewed' | 'responded'
+export type JobStatus = 'open' | 'closed'
+
+export interface Profile {
+  id: string
+  account_type: AccountType
+  full_name: string
+  email: string
+  avatar_url: string | null
+  cover_url: string | null
+  headline: string | null
+  city: string | null
+  country: string | null
+  bio: string | null
+  rates: string | null
+  availability: string | null
+  showreel_url: string | null
+  created_at: string
+}
+
+export interface TalentSkill {
+  id: string
+  profile_id: string
+  category: Category
+  skill: string
+  proficiency: Proficiency
+  created_at: string
+}
+
+export interface Job {
+  id: string
+  hirer_id: string
+  title: string
+  description: string
+  category: Category
+  skills_required: string[]
+  location: string
+  budget: string | null
+  status: JobStatus
+  created_at: string
+}
+
+export interface Credit {
+  id: string
+  profile_id: string
+  title: string
+  production: string
+  company: string | null
+  start_date: string | null
+  end_date: string | null
+  description: string | null
+  media_url: string | null
+  category: Category | null
+  sort_order: number
+  created_at: string
+}
+
+export interface PortfolioItem {
+  id: string
+  profile_id: string
+  type: 'video' | 'image' | 'link'
+  url: string
+  title: string | null
+  description: string | null
+  thumbnail_url: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface TalentSearchResult {
+  profile: Profile & { talent_skills: TalentSkill[] }
+  match_score: number
+}
