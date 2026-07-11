@@ -2,6 +2,32 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export default async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  if (process.env.NODE_ENV === 'development' && request.nextUrl.pathname === '/api/demo-login') {
+    return NextResponse.next()
+  }
+
+  const localDemoMode = process.env.NODE_ENV === 'development' && request.cookies.get('castd_demo')?.value === '1'
+  if (localDemoMode) return NextResponse.next()
+
+  const isPublicLandingRoute = pathname === '/'
+  const isAuthRoute =
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password'
+
+  if (isPublicLandingRoute) {
+    return NextResponse.next()
+  }
+
+  // Keep the public auth UI responsive during local development even when
+  // the configured Supabase project is unavailable.
+  if (process.env.NODE_ENV === 'development' && isAuthRoute) {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -25,13 +51,6 @@ export default async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const pathname = request.nextUrl.pathname
-  const isAuthRoute =
-    pathname === '/login' ||
-    pathname === '/signup' ||
-    pathname === '/forgot-password' ||
-    pathname === '/reset-password'
-
   // Redirect unauthenticated users to login (except auth routes)
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone()
@@ -51,7 +70,8 @@ export default async function middleware(request: NextRequest) {
   if (user) {
     const accountType = user.user_metadata?.account_type
     const hirerOnlyPrefixes = ['/search', '/jobs', '/outreach', '/talent']
-    const talentOnlyPrefixes = ['/discover', '/profile', '/activity']
+    // '/activity' and '/messages' are shared surfaces — both roles have them in their nav
+    const talentOnlyPrefixes = ['/discover', '/profile']
 
     if (accountType === 'talent' && hirerOnlyPrefixes.some(p => pathname.startsWith(p))) {
       const url = request.nextUrl.clone()

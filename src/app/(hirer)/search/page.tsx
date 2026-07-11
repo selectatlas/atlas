@@ -9,6 +9,7 @@ import { SearchHeader } from '@/components/search/SearchHeader'
 import { SwipeStack } from '@/components/talent/SwipeStack'
 import { OutreachModal } from '@/components/outreach/OutreachModal'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DEMO_TALENT_RESULTS, searchDemoTalent } from '@/lib/demo-data'
 import type { Profile, TalentSkill, Category, TalentSearchResult } from '@/types'
 
 type ViewMode = 'swipe' | 'grid' | 'list'
@@ -36,8 +37,19 @@ export default function SearchPage() {
   const [passed, setPassed] = useState<Set<string>>(new Set())
 
   const [talentStats, setTalentStats] = useState<Record<string, { views: number; likes: number }>>({})
+  const [isLocalDemo, setIsLocalDemo] = useState(false)
 
   useEffect(() => {
+    const localDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('castd_demo=1')
+    // The cookie is the local demo's external session source; hydrate it once on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsLocalDemo(localDemo)
+
+    if (localDemo) {
+      setAllTalent(DEMO_TALENT_RESULTS.map(profile => ({ profile, match_score: 0 })))
+      return
+    }
+
     const supabase = createClient()
     supabase
       .from('profiles')
@@ -69,6 +81,14 @@ export default function SearchPage() {
     setSearching(true)
     setAiError(null)
     const t0 = Date.now()
+
+    if (isLocalDemo) {
+      setAiResults(searchDemoTalent(q))
+      setSearchTime(Date.now() - t0)
+      setSearching(false)
+      return
+    }
+
     try {
       const res = await fetch('/api/search', {
         method: 'POST',
@@ -85,7 +105,7 @@ export default function SearchPage() {
       setAiError('Search failed')
     }
     setSearching(false)
-  }, [])
+  }, [isLocalDemo])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -216,11 +236,12 @@ export default function SearchPage() {
 
           {viewMode === 'grid' && (
             <div className="grid grid-cols-1 gap-4 card-stagger sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {displayResults.map(({ profile, match_score }) => (
+              {displayResults.map(({ profile, match_score, match_reasons }) => (
                 <TalentCard
                   key={profile.id}
                   profile={profile}
                   matchScore={isAiMode ? match_score : undefined}
+                  matchReasons={isAiMode ? match_reasons : undefined}
                   href={`/talent/${profile.id}`}
                   views={talentStats[profile.id]?.views}
                   likes={talentStats[profile.id]?.likes}
@@ -231,11 +252,12 @@ export default function SearchPage() {
 
           {viewMode === 'list' && (
             <div className="space-y-2">
-              {displayResults.map(({ profile, match_score }) => (
+              {displayResults.map(({ profile, match_score, match_reasons }) => (
                 <TalentListItem
                   key={profile.id}
                   profile={profile}
                   matchScore={isAiMode ? match_score : undefined}
+                  matchReasons={isAiMode ? match_reasons : undefined}
                   href={`/talent/${profile.id}`}
                   views={talentStats[profile.id]?.views}
                   likes={talentStats[profile.id]?.likes}

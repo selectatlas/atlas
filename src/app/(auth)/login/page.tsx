@@ -14,24 +14,37 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const demoLoginEnabled = process.env.NODE_ENV === 'development'
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function signIn(emailValue: string, passwordValue: string) {
     setError(null)
     setLoading(true)
 
-    const supabase = createClient()
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailValue,
+        password: passwordValue,
+      })
 
-    if (error) {
-      setError(error.message)
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      const accountType = data.user?.user_metadata?.account_type
+      router.push(accountType === 'hirer' ? '/search' : '/discover')
+      router.refresh()
+    } catch {
+      setError('Unable to reach the sign-in service. Check your Supabase configuration and try again.')
       setLoading(false)
-      return
     }
+  }
 
-    const accountType = data.user?.user_metadata?.account_type
-    router.push(accountType === 'hirer' ? '/search' : '/discover')
-    router.refresh()
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    await signIn(email, password)
   }
 
   return (
@@ -96,6 +109,29 @@ export default function LoginPage() {
                 {loading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
+
+            {demoLoginEnabled && (
+              <div className="mt-5 border-t border-border/70 pt-5">
+                <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Preview the product</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href="/api/demo-login?role=hirer"
+                    className="flex h-9 items-center justify-center rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground transition-[transform,background-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-primary/90 active:scale-[0.97]"
+                  >
+                    Hirer workspace
+                  </a>
+                  <a
+                    href="/api/demo-login?role=talent"
+                    className="flex h-9 items-center justify-center rounded-lg border border-border bg-background px-2 text-xs font-medium transition-[transform,background-color,color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-muted hover:text-foreground active:scale-[0.97]"
+                  >
+                    Talent workspace
+                  </a>
+                </div>
+                <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                  Development-only demo access
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

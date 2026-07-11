@@ -76,7 +76,18 @@ export function SearchHeader({
           : ''
       }`}
     >
-      <div className={isSticky ? 'mx-auto max-w-[1440px] space-y-3' : 'space-y-3'}>
+        <div className={isSticky ? 'mx-auto max-w-[1440px] space-y-3' : 'space-y-3'}>
+        {!isAiMode && (
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Hirer workspace</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Find the right talent</h1>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">Describe the brief in your own words. Castd will surface the people most likely to fit.</p>
+            </div>
+            <span className="hidden rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground sm:inline-flex">AI-assisted discovery</span>
+          </div>
+        )}
+
         {/* AI Search bar */}
         <div className="relative max-w-3xl">
           <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2">
@@ -105,6 +116,26 @@ export function SearchHeader({
             </button>
           )}
         </div>
+
+        {!isAiMode && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-medium text-muted-foreground">Try a brief:</span>
+            {[
+              'Bollywood dancers in London',
+              'Hindi-speaking talent available in December',
+              'Content creators for a food campaign',
+            ].map(example => (
+              <button
+                type="button"
+                key={example}
+                onClick={() => onQueryChange(example)}
+                className="rounded-full border border-border bg-card px-2.5 py-1.5 text-muted-foreground transition-[border-color,background-color,color] duration-[var(--duration-fast)] hover:border-primary/35 hover:bg-secondary/50 hover:text-foreground"
+              >
+                {example}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* AI mode: result meta */}
         {isAiMode && !searching && (

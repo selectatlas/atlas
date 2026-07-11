@@ -1,7 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 
 // GET /api/messages/threads — list threads with latest message + other participant
 export async function GET() {
+  const localDemoMode = process.env.NODE_ENV === 'development' && (await cookies()).get('castd_demo')?.value === '1'
+  if (localDemoMode) return Response.json({ threads: [] })
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })

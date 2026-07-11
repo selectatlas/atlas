@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Castd Design System</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --background: #f8f7fb;
+        --foreground: #252338;
+        --surface: #ffffff;
+        --surface-muted: #f2f1f7;
+        --muted-foreground: #66627a;
+        --primary: #6046d8;
+        --on-primary: #ffffff;
+        --primary-hover: #543ac4;
+        --secondary: #eeeafb;
+        --on-secondary: #433292;
+        --accent: #6046d8;
+        --on-accent: #ffffff;
+        --border: #e2dfea;
+        --input: #d1ccd9;
+        --ring: #6046d8;
+        --success: #167a52;
+        --on-success: #ffffff;
+        --warning: #a96108;
+        --on-warning: #ffffff;
+        --error: #c93449;
+        --on-error: #ffffff;
+        --info: #3566c8;
+        --on-info: #ffffff;
+        --brand-lime: #dfff62;
+        --brand-lavender: #cfa6e8;
+        --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        --display-size: 2.25rem;
+        --heading-1-size: 1.875rem;
+        --heading-2-size: 1.25rem;
+        --heading-3-size: 1rem;
+        --body-size: 0.875rem;
+        --label-size: 0.75rem;
+        --mono-size: 0.75rem;
+        --space-1: 0.25rem;
+        --space-2: 0.5rem;
+        --space-3: 0.75rem;
+        --space-4: 1rem;
+        --space-5: 1.25rem;
+        --space-6: 1.5rem;
+        --space-8: 2rem;
+        --space-10: 2.5rem;
+        --space-12: 3rem;
+        --space-16: 4rem;
+        --radius-xs: 0.25rem;
+        --radius-sm: 0.5rem;
+        --radius-md: 0.75rem;
+        --radius-lg: 1rem;
+        --radius-xl: 1.5rem;
+        --radius-full: 9999px;
+        --shadow-card: 0 1px 2px rgb(37 35 56 / 4%), 0 10px 28px rgb(37 35 56 / 6%);
+        --shadow-float: 0 18px 45px rgb(37 35 56 / 14%);
+        --duration-fast: 150ms;
+        --duration-base: 300ms;
+        --duration-slow: 500ms;
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+        --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+      }
+
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --background: #171522;
+        --foreground: #f5f3fa;
+        --surface: #211d2d;
+        --surface-muted: #292533;
+        --muted-foreground: #aaa4bd;
+        --primary: #b1a0ff;
+        --on-primary: #211d2d;
+        --primary-hover: #c3b6ff;
+        --secondary: #302a46;
+        --on-secondary: #f5f3fa;
+        --accent: #b1a0ff;
+        --on-accent: #211d2d;
+        --border: #3a3449;
+        --input: #49415c;
+        --ring: #b1a0ff;
+        --success: #65c89d;
+        --on-success: #17251f;
+        --warning: #f3b85e;
+        --on-warning: #34230b;
+        --error: #f0798b;
+        --on-error: #211d2d;
+        --info: #8db1ff;
+        --on-info: #14213d;
+        --brand-lime: #dfff62;
+        --brand-lavender: #d3b3ec;
+        --shadow-card: 0 1px 2px rgb(0 0 0 / 24%), 0 10px 28px rgb(0 0 0 / 24%);
+        --shadow-float: 0 18px 45px rgb(0 0 0 / 42%);
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; background: var(--background); color: var(--foreground); font: 400 var(--body-size)/1.7 var(--font-sans); font-feature-settings: "cv11" 1, "ss01" 1; -webkit-font-smoothing: antialiased; }
+
+      .shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; }
+      .toc { position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid var(--border); padding: 28px 18px; }
+      .toc-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 26px; font-size: 14px; font-weight: 700; letter-spacing: -0.02em; }
+      .logo { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: var(--radius-sm); background: var(--primary); color: var(--on-primary); font-size: 14px; font-weight: 700; }
+      .toc-group { margin-bottom: 20px; }
+      .toc-label { margin: 0 0 8px; color: color-mix(in srgb, var(--foreground) 48%, transparent); font: 600 10px/1.4 var(--font-sans); letter-spacing: .16em; text-transform: uppercase; }
+      .toc a { display: block; padding: 7px 9px; border-radius: var(--radius-sm); color: color-mix(in srgb, var(--foreground) 68%, transparent); font-size: 13px; text-decoration: none; }
+      .toc a:hover { background: var(--secondary); color: var(--on-secondary); }
+      main { min-width: 0; padding: 54px clamp(24px, 5vw, 72px) 120px; }
+      .content { max-width: 980px; }
+      header { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 72px; }
+      .eyebrow { margin: 0 0 10px; color: var(--primary); font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { max-width: 780px; margin-bottom: 18px; font-size: clamp(2.35rem, 5vw, 4.5rem); line-height: 1.03; letter-spacing: -.055em; }
+      h2 { margin-bottom: 10px; font-size: var(--heading-1-size); line-height: 1.15; letter-spacing: -.035em; }
+      h3 { margin-bottom: 6px; font-size: var(--heading-3-size); line-height: 1.4; }
+      .dek { max-width: 680px; margin-bottom: 20px; color: color-mix(in srgb, var(--foreground) 68%, transparent); font-size: 16px; line-height: 1.75; }
+      .mirror-note { color: color-mix(in srgb, var(--foreground) 50%, transparent); font: var(--mono-size)/1.5 var(--font-mono); }
+      .theme-toggle, .replay { cursor: pointer; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--foreground); padding: 9px 12px; font: 600 12px/1.4 var(--font-sans); white-space: nowrap; }
+      .theme-toggle:hover, .replay:hover { background: var(--secondary); color: var(--on-secondary); }
+      section { scroll-margin-top: 28px; margin-bottom: 72px; }
+      .section-head { max-width: 700px; margin-bottom: 24px; border-top: 1px solid var(--border); padding-top: 22px; }
+      .section-head p { color: color-mix(in srgb, var(--foreground) 62%, transparent); }
+      .group-label { margin: 26px 0 12px; color: color-mix(in srgb, var(--foreground) 52%, transparent); font: 600 11px/1.4 var(--font-sans); letter-spacing: .14em; text-transform: uppercase; }
+      .grid { display: grid; gap: 14px; }
+      .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .card { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-card); }
+      .card-pad { padding: var(--space-4); }
+      .muted { color: color-mix(in srgb, var(--foreground) 60%, transparent); }
+      .mono { font-family: var(--font-mono); font-size: var(--mono-size); }
+
+      .swatch { min-height: 110px; display: flex; align-items: flex-end; padding: 12px; border-radius: var(--radius-md) var(--radius-md) 0 0; }
+      .swatch--bordered { box-shadow: inset 0 0 0 1px var(--border); }
+      .swatch-label { display: flex; justify-content: space-between; gap: 12px; padding: 12px; font: var(--mono-size)/1.5 var(--font-mono); }
+      .ink-on { padding: 5px 7px; border-radius: var(--radius-xs); background: rgb(0 0 0 / 12%); font: 500 var(--label-size)/1.4 var(--font-sans); }
+      .ink-on--light { background: rgb(255 255 255 / 55%); color: #252338; }
+
+      .type-row { display: grid; grid-template-columns: 110px minmax(0, 1fr) 170px; gap: 16px; align-items: center; border-bottom: 1px solid var(--border); padding: 18px 20px; }
+      .type-row:last-child { border-bottom: 0; }
+      .type-display { font-size: var(--display-size); font-weight: 600; line-height: 1.08; letter-spacing: -.04em; }
+      .type-h1 { font-size: var(--heading-1-size); font-weight: 600; line-height: 1.15; letter-spacing: -.035em; }
+      .type-h2 { font-size: var(--heading-2-size); font-weight: 600; line-height: 1.25; letter-spacing: -.02em; }
+      .type-h3 { font-size: var(--heading-3-size); font-weight: 600; line-height: 1.4; }
+      .type-body { font-size: var(--body-size); line-height: 1.7; }
+      .type-label { font-size: var(--label-size); font-weight: 500; line-height: 1.4; }
+
+      .space-row { display: grid; grid-template-columns: 64px 1fr 60px; gap: 14px; align-items: center; margin: 12px 0; }
+      .space-bar { height: 12px; min-width: 4px; border-radius: 0 var(--radius-full) var(--radius-full) 0; background: var(--primary); }
+      .radius-box { height: 50px; border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border)); background: color-mix(in srgb, var(--secondary) 80%, var(--surface)); }
+
+      .elev-card { min-height: 130px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; border-radius: var(--radius-md); background: var(--surface); padding: var(--space-4); }
+      .elev-flat { border: 1px solid var(--border); box-shadow: none; }
+      .elev-raised { border: 1px solid var(--border); box-shadow: var(--shadow-card); }
+      .elev-float { border: 1px solid var(--border); box-shadow: var(--shadow-float); }
+      .focus-demo { border: 1px solid var(--border); outline: 3px solid color-mix(in srgb, var(--ring) 45%, transparent); outline-offset: 2px; }
+
+      .motion-row { display: grid; grid-template-columns: 150px 1fr 190px; gap: 16px; align-items: center; border-bottom: 1px solid var(--border); padding: 16px 20px; }
+      .motion-row:last-child { border-bottom: 0; }
+      .motion-track { position: relative; height: 26px; border-radius: var(--radius-full); background: var(--surface-muted); }
+      .motion-dot { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: var(--radius-full); background: var(--primary); }
+      .is-playing .motion-fast { transition: transform var(--duration-fast) var(--ease-out); transform: translateX(calc(100cqw - 26px)); }
+      .is-playing .motion-base { transition: transform var(--duration-base) var(--ease-in-out); transform: translateX(calc(100cqw - 26px)); }
+      .is-playing .motion-slow { transition: transform var(--duration-slow) var(--ease-out); transform: translateX(calc(100cqw - 26px)); }
+      .is-playing .motion-drawer { transition: transform var(--duration-base) var(--ease-drawer); transform: translateX(calc(100cqw - 26px)); }
+      .motion-track { container-type: inline-size; }
+
+      .component { padding: 20px; }
+      .component-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+      .component-head p { margin-bottom: 0; color: color-mix(in srgb, var(--foreground) 56%, transparent); font-size: 13px; }
+      .button-row, .badge-row { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+      .button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; cursor: pointer; border: 1px solid transparent; border-radius: var(--radius-sm); padding: 8px 13px; font: 500 var(--label-size)/1.4 var(--font-sans); transition: transform var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out); }
+      .button:active { transform: scale(.97); }
+      .button-primary { background: var(--primary); color: var(--on-primary); }
+      .button-primary:hover, .state-hover { background: var(--primary-hover); }
+      .button-secondary { background: var(--secondary); color: var(--on-secondary); }
+      .button-outline { border-color: var(--border); background: var(--background); color: var(--foreground); }
+      .button-ghost { background: transparent; color: var(--foreground); }
+      .button-destructive { background: var(--error); color: var(--on-error); }
+      .button-disabled { opacity: .48; cursor: not-allowed; }
+      .state-focus { outline: 3px solid color-mix(in srgb, var(--ring) 45%, transparent); outline-offset: 2px; }
+      .icon-button { width: 36px; padding: 8px; }
+      .badge { display: inline-flex; align-items: center; gap: 5px; min-height: 20px; border-radius: var(--radius-full); padding: 3px 8px; font: 500 var(--label-size)/1.4 var(--font-sans); }
+      .badge-default { background: var(--primary); color: var(--on-primary); }
+      .badge-secondary { background: var(--secondary); color: var(--on-secondary); }
+      .badge-outline { border: 1px solid var(--border); color: var(--foreground); }
+      .badge-match { background: var(--brand-lime); color: #252338; }
+      .badge-success { background: var(--success); color: var(--on-success); }
+      .badge-error { background: color-mix(in srgb, var(--error) 12%, transparent); color: var(--error); }
+      .field { display: block; width: 100%; border: 1px solid var(--input); border-radius: var(--radius-sm); background: var(--surface); color: var(--foreground); padding: 8px 10px; font: var(--body-size)/1.5 var(--font-sans); }
+      .field::placeholder { color: color-mix(in srgb, var(--foreground) 42%, transparent); }
+      .field:focus { border-color: var(--primary); outline: 3px solid color-mix(in srgb, var(--primary) 18%, transparent); }
+      textarea.field { min-height: 88px; resize: vertical; }
+      .field-label { display: block; margin-bottom: 7px; font: 500 var(--label-size)/1.4 var(--font-sans); }
+      .avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; overflow: hidden; border-radius: var(--radius-full); background: var(--surface-muted); color: var(--foreground); font-weight: 600; }
+      .nav-sample { display: flex; align-items: center; gap: 7px; border-radius: var(--radius-sm); padding: 9px 11px; color: color-mix(in srgb, var(--foreground) 58%, transparent); font-size: 13px; }
+      .nav-sample.active { background: var(--secondary); color: var(--on-secondary); font-weight: 600; }
+      .meter { height: 7px; overflow: hidden; border-radius: var(--radius-full); background: var(--surface-muted); }
+      .meter > i { display: block; height: 100%; border-radius: var(--radius-full); background: var(--primary); }
+
+      .do, .dont { padding: 20px; }
+      .do { border-color: color-mix(in srgb, var(--success) 35%, var(--border)); background: color-mix(in srgb, var(--success) 5%, var(--surface)); }
+      .dont { border-color: color-mix(in srgb, var(--error) 35%, var(--border)); background: color-mix(in srgb, var(--error) 5%, var(--surface)); }
+      .do h3 { color: var(--success); }
+      .dont h3 { color: var(--error); }
+      li { margin: 8px 0; color: color-mix(in srgb, var(--foreground) 68%, transparent); }
+      footer { border-top: 1px solid var(--border); padding-top: 20px; color: color-mix(in srgb, var(--foreground) 55%, transparent); font-size: 13px; }
+
+      @media (max-width: 940px) { .shell { display: block; } .toc { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); } .toc-group { display: inline-block; margin: 0 18px 8px 0; } .toc-label { display: none; } .toc a { display: inline-block; } .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 640px) { main { padding: 36px 18px 80px; } header { display: block; } .theme-toggle { margin-top: 20px; } .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .type-row, .motion-row { grid-template-columns: 1fr; gap: 7px; } .type-row .mono:last-child { text-align: left; } }
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .is-playing .motion-dot { transition-duration: 0.01ms; }
+        .button { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <nav class="toc" aria-label="Design system contents">
+        <div class="toc-brand"><span class="logo">c</span> Castd design system</div>
+        <div class="toc-group"><p class="toc-label">Foundation</p><a href="#overview">Overview</a><a href="#colors">Colors</a><a href="#typography">Typography</a><a href="#layout">Layout</a><a href="#elevation">Elevation</a><a href="#shapes">Shapes</a><a href="#motion">Motion</a></div>
+        <div class="toc-group"><p class="toc-label">UI layer</p><a href="#components">Components</a><a href="#rules">Do's & don'ts</a></div>
+      </nav>
+
+      <main>
+        <div class="content">
+          <header>
+            <div>
+              <p class="eyebrow">Castd / product language</p>
+              <h1>A calm, quick-scanning system for finding the right person.</h1>
+              <p class="dek">Indigo makes intent obvious, lime marks meaningful match moments, and quiet surfaces keep the work moving. This is the human-readable mirror of <code class="mono">docs/design.md</code>.</p>
+              <p class="mirror-note">Source of truth: docs/design.md · Implementation: src/components/ui · Tokens: src/app/globals.css</p>
+            </div>
+            <button class="theme-toggle" type="button" onclick="toggleTheme()">Toggle dark mode</button>
+          </header>
+
+          <section id="overview">
+            <div class="section-head"><p class="eyebrow">Overview</p><h2>Expressive accents, quiet foundations</h2><p>Castd is a talent discovery workspace for hirers and creative talent. The system is compact, direct, and warm enough to make a people-first workflow feel human.</p></div>
+            <div class="grid grid-3">
+              <div class="card card-pad"><span class="mono muted">01</span><h3>Make intent obvious</h3><p class="muted">Primary actions are indigo, match moments are lime, and supporting actions stay quiet.</p></div>
+              <div class="card card-pad"><span class="mono muted">02</span><h3>Keep the scan light</h3><p class="muted">Compact type, predictable spacing, and hairline borders make dense work feel effortless.</p></div>
+              <div class="card card-pad"><span class="mono muted">03</span><h3>Leave room for people</h3><p class="muted">Lavender surfaces and warm accents give a data-rich workflow a human edge.</p></div>
+            </div>
+          </section>
+
+          <section id="colors">
+            <div class="section-head"><p class="eyebrow">Colors</p><h2>Semantic palette</h2><p>Use semantic names in product code. Dark mode keeps the same roles with brighter foreground values for contrast — toggle the theme to see both sets rendered live.</p></div>
+
+            <p class="group-label">Foundation</p>
+            <div class="grid grid-4">
+              <div class="card"><div class="swatch swatch--bordered" style="background:var(--background);color:var(--foreground)"><span class="ink-on ink-on--light">Aa · foreground</span></div><div class="swatch-label"><span>background</span><span>#F8F7FB</span></div></div>
+              <div class="card"><div class="swatch swatch--bordered" style="background:var(--surface);color:var(--foreground)"><span class="ink-on ink-on--light">Aa · foreground</span></div><div class="swatch-label"><span>surface</span><span>#FFFFFF</span></div></div>
+              <div class="card"><div class="swatch swatch--bordered" style="background:var(--surface-muted);color:var(--muted-foreground)"><span class="ink-on ink-on--light">Aa · muted</span></div><div class="swatch-label"><span>surface-muted</span><span>#F2F1F7</span></div></div>
+              <div class="card"><div class="swatch" style="background:var(--foreground);color:var(--background)"><span class="ink-on">Aa · background</span></div><div class="swatch-label"><span>foreground</span><span>#252338</span></div></div>
+              <div class="card"><div class="swatch swatch--bordered" style="background:var(--border)"></div><div class="swatch-label"><span>border</span><span>#E2DFEA</span></div></div>
+              <div class="card"><div class="swatch swatch--bordered" style="background:var(--input)"></div><div class="swatch-label"><span>input</span><span>#D1CCD9</span></div></div>
+              <div class="card"><div class="swatch swatch--bordered" style="background:var(--surface);color:var(--muted-foreground)"><span class="ink-on ink-on--light">Aa · on surface</span></div><div class="swatch-label"><span>muted-foreground</span><span>#66627A</span></div></div>
+              <div class="card"><div class="swatch" style="background:var(--ring)"></div><div class="swatch-label"><span>ring (focus)</span><span>#6046D8</span></div></div>
+            </div>
+
+            <p class="group-label">Action & brand</p>
+            <div class="grid grid-4">
+              <div class="card"><div class="swatch" style="background:var(--primary);color:var(--on-primary)"><span class="ink-on">Aa · on-primary</span></div><div class="swatch-label"><span>primary</span><span>#6046D8</span></div></div>
+              <div class="card"><div class="swatch" style="background:var(--secondary);color:var(--on-secondary)"><span class="ink-on ink-on--light">Aa · on-secondary</span></div><div class="swatch-label"><span>secondary</span><span>#EEEAFB</span></div></div>
+              <div class="card"><div class="swatch" style="background:var(--brand-lime);color:#252338"><span class="ink-on ink-on--light">Aa · foreground</span></div><div class="swatch-label"><span>brand-lime</span><span>#DFFF62</span></div></div>
+              <div class="card"><div class="swatch" style="background:var(--brand-lavender);color:#252338"><span class="ink-on ink-on--light">Aa · foreground</span></div><div class="swatch-label"><span>brand-lavender</span><span>#CFA6E8</span></div></div>
+            </div>
+
+            <p class="group-label">Semantic states</p>
+            <div class="grid grid-4">
+              <div class="card"><div class="swatch" style="background:var(--success);color:var(--on-success)"><span class="ink-on">Aa · on-success</span></div><div class="swatch-label"><span>success</span><span>#167A52</span></div></div>
+              <div class="card"><div class="swatch" style="background:var(--warning);color:var(--on-warning)"><span class="ink-on">Aa · on-warning</span></div><div class="swatch-label"><span>warning</span><span>#A96108</span></div></div>
+              <div class="card"><div class="swatch" style="background:var(--info);color:var(--on-info)"><span class="ink-on">Aa · on-info</span></div><div class="swatch-label"><span>info</span><span>#3566C8</span></div></div>
+              <div class="card"><div class="swatch" style="background:var(--error);color:var(--on-error)"><span class="ink-on">Aa · on-error</span></div><div class="swatch-label"><span>error</span><span>#C93449</span></div></div>
+            </div>
+          </section>
+
+          <section id="typography">
+            <div class="section-head"><p class="eyebrow">Typography</p><h2>Direct, compact, readable</h2><p>A system sans keeps the product neutral and immediate. Weight and spacing create hierarchy before colour does.</p></div>
+            <div class="card">
+              <div class="type-row"><span class="mono muted">display</span><span class="type-display">Castd finds the fit.</span><span class="mono muted">36px / 1.08 / 600</span></div>
+              <div class="type-row"><span class="mono muted">heading-1</span><span class="type-h1">Castd finds the fit.</span><span class="mono muted">30px / 1.15 / 600</span></div>
+              <div class="type-row"><span class="mono muted">heading-2</span><span class="type-h2">Castd finds the fit.</span><span class="mono muted">20px / 1.25 / 600</span></div>
+              <div class="type-row"><span class="mono muted">heading-3</span><span class="type-h3">Castd finds the fit.</span><span class="mono muted">16px / 1.4 / 600</span></div>
+              <div class="type-row"><span class="mono muted">body</span><span class="type-body">Castd finds the fit.</span><span class="mono muted">14px / 1.7 / 400</span></div>
+              <div class="type-row"><span class="mono muted">label</span><span class="type-label">Castd finds the fit.</span><span class="mono muted">12px / 1.4 / 500</span></div>
+              <div class="type-row"><span class="mono muted">mono</span><span class="mono">Castd finds the fit.</span><span class="mono muted">12px / 1.5 / 400</span></div>
+            </div>
+          </section>
+
+          <section id="layout">
+            <div class="section-head"><p class="eyebrow">Layout</p><h2>4px rhythm, clear grouping</h2><p>Use the smallest step that creates a clear grouping. Cards default to 16px inset; sections separate at 32–48px.</p></div>
+            <div class="card card-pad">
+              <div class="space-row"><span class="mono muted">space-1</span><div class="space-bar" style="width:var(--space-1)"></div><span class="mono muted">4px</span></div>
+              <div class="space-row"><span class="mono muted">space-2</span><div class="space-bar" style="width:var(--space-2)"></div><span class="mono muted">8px</span></div>
+              <div class="space-row"><span class="mono muted">space-3</span><div class="space-bar" style="width:var(--space-3)"></div><span class="mono muted">12px</span></div>
+              <div class="space-row"><span class="mono muted">space-4</span><div class="space-bar" style="width:var(--space-4)"></div><span class="mono muted">16px</span></div>
+              <div class="space-row"><span class="mono muted">space-5</span><div class="space-bar" style="width:var(--space-5)"></div><span class="mono muted">20px</span></div>
+              <div class="space-row"><span class="mono muted">space-6</span><div class="space-bar" style="width:var(--space-6)"></div><span class="mono muted">24px</span></div>
+              <div class="space-row"><span class="mono muted">space-8</span><div class="space-bar" style="width:var(--space-8)"></div><span class="mono muted">32px</span></div>
+              <div class="space-row"><span class="mono muted">space-10</span><div class="space-bar" style="width:var(--space-10)"></div><span class="mono muted">40px</span></div>
+              <div class="space-row"><span class="mono muted">space-12</span><div class="space-bar" style="width:var(--space-12)"></div><span class="mono muted">48px</span></div>
+              <div class="space-row"><span class="mono muted">space-16</span><div class="space-bar" style="width:var(--space-16)"></div><span class="mono muted">64px</span></div>
+            </div>
+          </section>
+
+          <section id="elevation">
+            <div class="section-head"><p class="eyebrow">Elevation & depth</p><h2>Border-first, shadow-sparse</h2><p>Cards rest on a quiet border. Shadows lift a surface only when it truly floats — dialogs, popovers, drag states. Keyboard focus gets the indigo ring so hierarchy is identical for pointer and keyboard users.</p></div>
+            <div class="grid grid-4">
+              <div class="elev-card elev-flat"><strong>Flat</strong><span class="mono muted">border only</span></div>
+              <div class="elev-card elev-raised"><strong>Card</strong><span class="mono muted">shadow-card</span></div>
+              <div class="elev-card elev-float"><strong>Float</strong><span class="mono muted">shadow-float</span></div>
+              <div class="elev-card elev-flat focus-demo"><strong>Focus</strong><span class="mono muted">ring · 3px</span></div>
+            </div>
+          </section>
+
+          <section id="shapes">
+            <div class="section-head"><p class="eyebrow">Shapes</p><h2>Soft, not playful</h2><p>Controls take 8px, cards 12px, larger grouped surfaces 16px. Full rounding is reserved for compact tokens and identity — tags, avatars, meters — never every container.</p></div>
+            <div class="card card-pad">
+              <div class="space-row"><span class="mono muted">xs</span><div class="radius-box" style="border-radius:var(--radius-xs)"></div><span class="mono muted">4px</span></div>
+              <div class="space-row"><span class="mono muted">sm</span><div class="radius-box" style="border-radius:var(--radius-sm)"></div><span class="mono muted">8px</span></div>
+              <div class="space-row"><span class="mono muted">md</span><div class="radius-box" style="border-radius:var(--radius-md)"></div><span class="mono muted">12px</span></div>
+              <div class="space-row"><span class="mono muted">lg</span><div class="radius-box" style="border-radius:var(--radius-lg)"></div><span class="mono muted">16px</span></div>
+              <div class="space-row"><span class="mono muted">xl</span><div class="radius-box" style="border-radius:var(--radius-xl)"></div><span class="mono muted">24px</span></div>
+              <div class="space-row"><span class="mono muted">full</span><div class="radius-box" style="border-radius:var(--radius-full)"></div><span class="mono muted">pill</span></div>
+            </div>
+          </section>
+
+          <section id="motion">
+            <div class="section-head"><p class="eyebrow">Motion</p><h2>Fast controls, explanatory reveals</h2><p>Three durations, three easings — from the CRISP tokens in <code class="mono">src/app/globals.css</code>. Presses and tooltips take 150ms, modals and drawers 300ms, marketing motion 500ms. Reduced-motion preferences remove transform movement but keep comprehension-aiding fades.</p></div>
+            <div class="card" id="motion-demo">
+              <div class="motion-row"><span><strong>fast</strong><br /><span class="mono muted">150ms · ease-out</span></span><div class="motion-track"><div class="motion-dot motion-fast"></div></div><span class="mono muted">press, tooltip, popover</span></div>
+              <div class="motion-row"><span><strong>base</strong><br /><span class="mono muted">300ms · ease-in-out</span></span><div class="motion-track"><div class="motion-dot motion-base"></div></div><span class="mono muted">modal, standard transition</span></div>
+              <div class="motion-row"><span><strong>drawer</strong><br /><span class="mono muted">300ms · ease-drawer</span></span><div class="motion-track"><div class="motion-dot motion-drawer"></div></div><span class="mono muted">drawer & sheet gestures</span></div>
+              <div class="motion-row"><span><strong>slow</strong><br /><span class="mono muted">500ms · ease-out</span></span><div class="motion-track"><div class="motion-dot motion-slow"></div></div><span class="mono muted">marketing, explanatory</span></div>
+              <div style="padding: 14px 20px"><button class="replay" type="button" onclick="playMotion()">▶ Play motion</button></div>
+            </div>
+          </section>
+
+          <section id="components">
+            <div class="section-head"><p class="eyebrow">Components</p><h2>Shadcn primitives, Castd defaults</h2><p>These are the component contracts implemented in <code class="mono">src/components/ui</code>. Use the primitive and a semantic variant before writing new UI.</p></div>
+            <div class="grid grid-2">
+              <div class="card component"><div class="component-head"><h3>Button</h3><p>default · hover · focus · disabled</p></div><div class="button-row"><button class="button button-primary">Primary action</button><button class="button button-secondary">Secondary</button><button class="button button-outline">Outline</button><button class="button button-ghost">Ghost</button><button class="button button-destructive">Destructive</button><button class="button button-primary state-hover">Hover</button><button class="button button-primary state-focus">Focus</button><button class="button button-primary button-disabled" disabled>Disabled</button><button class="button button-primary icon-button" aria-label="Search">⌕</button></div></div>
+              <div class="card component"><div class="component-head"><h3>Badge</h3><p>short metadata only</p></div><div class="badge-row"><span class="badge badge-default">Top match</span><span class="badge badge-secondary">Available now</span><span class="badge badge-outline">London</span><span class="badge badge-match">92% match</span><span class="badge badge-success">✓ Shortlisted</span><span class="badge badge-error">Needs review</span></div><p class="muted" style="margin:14px 0 0;font-size:13px">Lime is the match-score colour. It always means match confidence — never reuse it as a generic highlight.</p></div>
+              <div class="card component"><div class="component-head"><h3>Input & textarea</h3><p>labelled · focused · invalid-ready</p></div><label class="field-label" for="demo-input">Search talent</label><input class="field" id="demo-input" placeholder="Try &ldquo;commercial dancer in London&rdquo;" /><label class="field-label" for="demo-textarea" style="margin-top:14px">Notes</label><textarea class="field" id="demo-textarea" placeholder="Add context for the hiring team"></textarea></div>
+              <div class="card component"><div class="component-head"><h3>Avatar & talent row</h3><p>identity first, action visible</p></div><div style="display:flex;align-items:center;gap:12px"><span class="avatar"><span>ML</span></span><div><strong>Maya Lewis</strong><div class="muted" style="font-size:13px">Contemporary · London</div></div><span class="badge badge-match" style="margin-left:auto">94%</span></div><div style="margin:16px 0 6px;display:flex;justify-content:space-between;font-size:12px" class="muted"><span>Profile completeness</span><span>86%</span></div><div class="meter"><i style="width:86%"></i></div></div>
+              <div class="card component"><div class="component-head"><h3>Navigation item</h3><p>quiet default, visible active</p></div><div class="grid grid-2"><div class="nav-sample">Search <span style="margin-left:auto">⌕</span></div><div class="nav-sample active">Discover <span style="margin-left:auto">✦</span></div></div></div>
+              <div class="card component"><div class="component-head"><h3>AI moment</h3><p>explain the value, keep it calm</p></div><div style="display:flex;align-items:center;gap:12px;border:1px solid color-mix(in srgb,var(--brand-lavender) 60%,var(--border));border-radius:var(--radius-md);background:color-mix(in srgb,var(--brand-lavender) 20%,transparent);padding:14px"><span class="logo">✦</span><div><strong>Search understood</strong><div class="muted" style="font-size:13px">18 profiles match your brief.</div></div></div></div>
+            </div>
+          </section>
+
+          <section id="rules">
+            <div class="section-head"><p class="eyebrow">Do's and don'ts</p><h2>The system is a guardrail</h2><p>Make room for product-specific moments only when they carry meaning.</p></div>
+            <div class="grid grid-2">
+              <div class="card do"><h3>✓ Do</h3><ul><li>Use semantic tokens like <code class="mono">bg-primary</code> and <code class="mono">text-muted-foreground</code>.</li><li>Reach for a shadcn primitive before a bespoke control.</li><li>Reserve lime for match confidence or an equally meaningful signal.</li><li>Keep primary actions visible and copy concise.</li><li>Let spacing create hierarchy before adding borders or colour.</li></ul></div>
+              <div class="card dont"><h3>✕ Don't</h3><ul><li>Introduce a new colour for a one-off card.</li><li>Mix oversized marketing treatments into compact work surfaces.</li><li>Use low-contrast muted text for required instructions.</li><li>Hide the main action behind hover-only behaviour.</li><li>Turn every container into a pill or a floating shadow.</li></ul></div>
+            </div>
+          </section>
+
+          <footer>Canonical tokens live in <code class="mono">docs/design.md</code>. This file is the human-readable mirror. Update both files when the system changes.</footer>
+        </div>
+      </main>
+    </div>
+    <script>
+      function toggleTheme() {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      }
+      function playMotion() {
+        const demo = document.getElementById('motion-demo');
+        demo.classList.remove('is-playing');
+        // Force a reflow so removing and re-adding the class restarts the transition.
+        void demo.offsetWidth;
+        demo.classList.add('is-playing');
+        setTimeout(() => demo.classList.remove('is-playing'), 900);
+      }
+    </script>
+  </body>
+</html>

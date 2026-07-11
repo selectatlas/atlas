@@ -4,6 +4,7 @@ export type Proficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert'
 export type ApplicationStatus = 'sent' | 'viewed' | 'responded' | 'shortlisted' | 'hired'
 export type OutreachStatus = 'draft' | 'sent' | 'viewed' | 'responded'
 export type JobStatus = 'open' | 'closed'
+export type JobWorkType = 'in_person' | 'remote' | 'hybrid'
 
 export interface Profile {
   id: string
@@ -42,6 +43,13 @@ export interface Job {
   budget: string | null
   status: JobStatus
   created_at: string
+  work_type?: JobWorkType | null
+  start_date?: string | null
+  end_date?: string | null
+  application_deadline?: string | null
+  duration?: string | null
+  usage_rights?: string | null
+  travel_required?: boolean | null
 }
 
 export interface Credit {
@@ -74,4 +82,5 @@ export interface PortfolioItem {
 export interface TalentSearchResult {
   profile: Profile & { talent_skills: TalentSkill[] }
   match_score: number
+  match_reasons?: string[]
 }

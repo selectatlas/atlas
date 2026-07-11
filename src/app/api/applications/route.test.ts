@@ -89,6 +89,12 @@ describe('POST /api/applications', () => {
     expect(data.application).toBeDefined()
   })
 
+  it('accepts an optional application note', async () => {
+    mockCreateClient.mockResolvedValue(makeClient({ user: { id: 'u1' }, accountType: 'talent', job: { id: 'job-1', status: 'open' } }))
+    const res = await POST(makeRequest({ job_id: 'job-1', note: 'I am available for the shoot dates.' }))
+    expect(res.status).toBe(201)
+  })
+
   it('returns 409 when already applied (unique constraint)', async () => {
     mockCreateClient.mockResolvedValue(makeClient({
       user: { id: 'u1' }, accountType: 'talent',

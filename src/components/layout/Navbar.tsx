@@ -49,6 +49,7 @@ export function Navbar({ links, primaryAction }: NavbarProps) {
       <Link
         key={href}
         href={href}
+        prefetch={true}
         aria-current={active ? 'page' : undefined}
         title={mobile ? label : undefined}
         className={mobile
