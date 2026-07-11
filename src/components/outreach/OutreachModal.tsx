@@ -41,6 +41,15 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     if (!talent) return
     setGenerating(true)
     setError(null)
+
+    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('castd_demo=1')
+    if (isLocalDemo) {
+      const firstName = talent.full_name.split(' ')[0]
+      setMessage(`Hi ${firstName}, your work looks like a strong fit for a new creative brief. I’d love to share more about the project and see if you’re available.`)
+      setGenerating(false)
+      return
+    }
+
     try {
       const res = await fetch('/api/outreach', {
         method: 'POST',
@@ -64,6 +73,15 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     if (!talent || !message.trim()) return
     setSending(true)
     setError(null)
+
+    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('castd_demo=1')
+    if (isLocalDemo) {
+      setSent(true)
+      setSending(false)
+      setTimeout(() => { onSent(); onClose() }, 1200)
+      return
+    }
+
     try {
       const res = await fetch('/api/outreach', {
         method: 'POST',

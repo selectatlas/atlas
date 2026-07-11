@@ -1,7 +1,33 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+import { DEMO_PROFILE, DEMO_TALENT_RESULTS } from '@/lib/demo-data'
 import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
 
 export async function getTalentProfile(id: string) {
+  const cookieStore = await cookies()
+  const isLocalDemo = process.env.NODE_ENV === 'development' && cookieStore.get('castd_demo')?.value === '1'
+
+  if (isLocalDemo) {
+    const demoProfile = DEMO_TALENT_RESULTS.find(profile => profile.id === id)
+
+    if (demoProfile) {
+      const primaryCategory = demoProfile.talent_skills[0]?.category
+      const similarTalent = DEMO_TALENT_RESULTS
+        .filter(profile => profile.id !== id && profile.talent_skills[0]?.category === primaryCategory)
+        .slice(0, 6)
+        .map(profile => ({ profile, match_score: 0 }))
+
+      return {
+        profile: demoProfile,
+        credits: demoProfile.id === DEMO_PROFILE.id ? DEMO_PROFILE.credits : [],
+        portfolioItems: demoProfile.id === DEMO_PROFILE.id ? DEMO_PROFILE.portfolio_items : [],
+        likesCount: 0,
+        viewsCount: 0,
+        similarTalent,
+      }
+    }
+  }
+
   const supabase = await createClient()
 
   const { data: profile } = await supabase

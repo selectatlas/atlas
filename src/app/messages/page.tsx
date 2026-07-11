@@ -16,12 +16,22 @@ interface Thread {
   lastMessageAt: string
 }
 
+function isLocalDemoMode() {
+  return typeof document !== 'undefined' && document.cookie.split(';').some(cookie => cookie.trim().startsWith('castd_demo=1'))
+}
+
 export default function MessagesPage() {
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (isLocalDemoMode()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(false)
+      return
+    }
+
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return

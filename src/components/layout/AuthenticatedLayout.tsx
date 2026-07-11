@@ -1,16 +1,22 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { HirerNav } from '@/components/layout/HirerNav'
 import { TalentNav } from '@/components/layout/TalentNav'
 
 export async function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const cookieStore = await cookies()
+  const localDemoMode = process.env.NODE_ENV === 'development' && cookieStore.get('castd_demo')?.value === '1'
+  const supabase = localDemoMode ? null : await createClient()
+  const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } }
 
-  if (!user) redirect('/login')
+  if (!user && !localDemoMode) redirect('/login')
 
-  const isHirer = user.user_metadata?.account_type === 'hirer'
-  if (!isHirer && user.user_metadata?.account_type !== 'talent') redirect('/login')
+  const accountType = localDemoMode
+    ? cookieStore.get('castd_demo_role')?.value ?? 'talent'
+    : user?.user_metadata?.account_type
+  const isHirer = accountType === 'hirer'
+  if (!localDemoMode && !isHirer && accountType !== 'talent') redirect('/login')
 
   return (
     <div className="min-h-screen bg-background md:pl-64">

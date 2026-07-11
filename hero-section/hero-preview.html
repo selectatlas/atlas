@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spinning hero preview</title>
+<style>
+  :root {
+    --paper: #f7f5f1;
+    --ink: #171717;
+    --reveal: 34%;                         /* clear centre for the headline */
+    --tile: clamp(52px, 5.4vw, 92px);      /* uniform tile size */
+    --ar: 1.15;                            /* uniform aspect (height / width) */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--paper); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--paper);
+  }
+
+  /* Preview chrome so this matches your screenshot */
+  .nav {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 30;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px;
+    padding: 26px 40px;
+  }
+  .nav-left { display: flex; align-items: center; gap: 28px; }
+  .logo-dots { width: 22px; height: 22px; color: var(--ink); }
+  .nav-link { font-size: 17px; color: #3a3a3a; text-decoration: none; }
+  .search {
+    justify-self: center; width: min(460px, 42vw); height: 48px;
+    display: flex; align-items: center; gap: 10px; padding: 0 16px;
+    background: #fff; border-radius: 999px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04);
+    color: #9a9a9a; font-size: 16px;
+  }
+  .nav-right { display: flex; align-items: center; justify-content: flex-end; gap: 20px; }
+  .nav-signup {
+    height: 44px; padding: 0 22px; border-radius: 999px;
+    background: var(--ink); color: var(--paper);
+    display: inline-flex; align-items: center; font-weight: 500; font-size: 16px; text-decoration: none;
+  }
+
+  /* Masked stage: tiles only show where the mask is opaque. Circle keeps rings even. */
+  .stage {
+    position: absolute; inset: 0; pointer-events: none;
+    -webkit-mask: radial-gradient(circle closest-side, transparent var(--reveal), #000 72%);
+    mask: radial-gradient(circle closest-side, transparent var(--reveal), #000 72%);
+  }
+  .ring-center { position: absolute; top: 50%; left: 50%; width: 0; height: 0; }
+
+  /* Each ring rotates independently. --turn and --dur are set per ring and inherited by its tiles. */
+  .ring {
+    position: absolute; left: 0; top: 0; width: 0; height: 0;
+    animation: orbit var(--dur) linear infinite;
+  }
+  .slot { position: absolute; left: 0; top: 0; transform: rotate(var(--a)) translateX(var(--r)); }
+  .card { position: absolute; transform: translate(-50%, -50%) rotate(calc(var(--t) - var(--a))); }
+  .spin { animation: counter var(--dur) linear infinite; }
+  .tile {
+    width: var(--tile);
+    height: calc(var(--tile) * var(--ar));
+    border-radius: 18px;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.07);
+    background-size: cover; background-position: center;
+  }
+
+  @keyframes orbit   { to { transform: rotate(var(--turn)); } }
+  @keyframes counter { to { transform: rotate(calc(var(--turn) * -1)); } }
+
+  .fade {
+    position: absolute; inset-inline: 0; bottom: 0; height: 240px; pointer-events: none;
+    background: linear-gradient(transparent, rgba(247,245,241,0.55) 38%, var(--paper) 84%);
+  }
+
+  .content {
+    position: relative; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center;
+  }
+  .wordmark { font-size: 14px; font-weight: 700; letter-spacing: 0.34em; color: var(--ink); }
+  h1 { font-weight: 400; font-size: clamp(42px, 6.4vw, 74px); line-height: 0.98; letter-spacing: -0.03em; color: var(--ink); text-wrap: pretty; }
+  .actions { display: flex; gap: 12px; margin-top: 8px; }
+  .btn {
+    height: 56px; padding: 0 30px; border-radius: 999px; font-size: 17px; font-weight: 500;
+    display: inline-flex; align-items: center; cursor: pointer; border: 1px solid transparent;
+    transition: all 0.2s ease; text-decoration: none;
+  }
+  .btn-primary { background: var(--ink); color: var(--paper); }
+  .btn-primary:hover { background: #333; }
+  .btn-ghost { background: transparent; color: var(--ink); border-color: rgba(0,0,0,0.16); }
+  .btn-ghost:hover { background: rgba(0,0,0,0.04); }
+
+  .filmrow { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); z-index: 10; color: #4a4a4a; font-size: 17px; display: flex; align-items: center; gap: 10px; }
+
+  @media (prefers-reduced-motion: reduce) { .ring, .spin { animation: none; } }
+</style>
+</head>
+<body>
+  <section class="hero">
+    <nav class="nav">
+      <div class="nav-left">
+        <svg class="logo-dots" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="6" cy="6" r="2.4"/><circle cx="12" cy="5" r="2.4"/><circle cx="18" cy="7" r="2.4"/>
+          <circle cx="5" cy="12" r="2.4"/><circle cx="12" cy="12" r="2.4"/><circle cx="19" cy="13" r="2.4"/>
+          <circle cx="7" cy="18" r="2.4"/><circle cx="13" cy="19" r="2.4"/>
+        </svg>
+        <a class="nav-link" href="#">Explore</a>
+        <a class="nav-link" href="#">Careers</a>
+      </div>
+      <div class="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9a9a9a" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span>Try 'b&amp;w photography'</span>
+      </div>
+      <div class="nav-right">
+        <a class="nav-link" href="#">Log in</a>
+        <a class="nav-signup" href="#">Sign up</a>
+      </div>
+    </nav>
+
+    <div class="stage" aria-hidden="true">
+      <div class="ring-center" id="ringCenter"></div>
+    </div>
+
+    <div class="fade" aria-hidden="true"></div>
+
+    <div class="content">
+      <div class="wordmark">COSMOS</div>
+      <h1>Your space<br />for inspiration</h1>
+      <div class="actions">
+        <a class="btn btn-primary" href="#">Sign up</a>
+        <a class="btn btn-ghost" href="#">Get the app</a>
+      </div>
+    </div>
+
+    <div class="filmrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#4a4a4a"><path d="M8 5v14l11-7z"/></svg>
+      Watch our new film (ft. Odessa A'zion)
+    </div>
+  </section>
+
+  <script>
+    const rand = (i, seed) => { const x = Math.sin(i * 127.1 + seed * 311.7) * 43758.5453; return x - Math.floor(x); };
+
+    // Concentric rings. Counts scale with radius so tile gaps stay roughly equal.
+    // dir alternates rotation direction, dur sets each ring's speed in seconds.
+    const RINGS = [
+      { r: 36, n: 10, dir:  1, dur: 160 },
+      { r: 48, n: 14, dir: -1, dur: 200 },
+      { r: 60, n: 17, dir:  1, dur: 240 },
+    ];
+
+    const fills = [
+      "radial-gradient(circle at 35% 30%, #f2c6e6, #c23aa0)",
+      "linear-gradient(150deg, #2b6f86, #16c7d6 70%)",
+      "linear-gradient(160deg, #3a3f4a, #0f1116)",
+      "radial-gradient(circle at 60% 40%, #cfe0ea, #7fa9c4)",
+      "linear-gradient(135deg, #efe7db, #cabfa9)",
+      "linear-gradient(160deg, #6a6f64, #2f342b)",
+      "radial-gradient(circle at 50% 45%, #f2ded4, #d59a8a)",
+      "linear-gradient(150deg, #d7d9dd, #9297a0)",
+      "linear-gradient(160deg, #222428, #050506)",
+      "radial-gradient(circle at 40% 40%, #e9ddef, #b18fc0)",
+      "linear-gradient(135deg, #f0ece4, #d4cfc4)",
+      "linear-gradient(150deg, #8fb8c9, #d9e6ec)",
+      "linear-gradient(160deg, #b7c2b0, #6f7d68)",
+      "radial-gradient(circle at 55% 35%, #ffe9d6, #e0b48f)",
+      "linear-gradient(150deg, #4a5560, #232a31)"
+    ];
+
+    const center = document.getElementById("ringCenter");
+    let gi = 0;
+
+    RINGS.forEach((ring, ri) => {
+      const ringEl = document.createElement("div");
+      ringEl.className = "ring";
+      ringEl.style.setProperty("--turn", (ring.dir * 360) + "deg");
+      ringEl.style.setProperty("--dur", ring.dur + "s");
+
+      const step = 360 / ring.n;
+      const offset = step * 0.5 * ri;            // interleave rings so tiles do not line up radially
+
+      for (let j = 0; j < ring.n; j++) {
+        const a = step * j + offset;
+        const t = (rand(gi, 3) - 0.5) * 52;      // varied tilt, ±26 deg
+
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.style.setProperty("--a", a + "deg");
+        slot.style.setProperty("--r", ring.r + "vmin");
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.style.setProperty("--a", a + "deg");
+        card.style.setProperty("--t", t + "deg");
+
+        const spin = document.createElement("div");
+        spin.className = "spin";
+
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        tile.style.background = fills[gi % fills.length];
+
+        spin.appendChild(tile);
+        card.appendChild(spin);
+        slot.appendChild(card);
+        ringEl.appendChild(slot);
+        gi++;
+      }
+      center.appendChild(ringEl);
+    });
+  </script>
+</body>
+</html>

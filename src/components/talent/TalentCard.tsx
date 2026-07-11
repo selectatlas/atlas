@@ -10,6 +10,7 @@ import { ShortlistButton } from '@/components/talent/ShortlistButton'
 interface TalentCardProps {
   profile: Profile & { talent_skills: TalentSkill[] }
   matchScore?: number
+  matchReasons?: string[]
   href?: string
   views?: number
   likes?: number
@@ -32,7 +33,7 @@ function locationFor(profile: Profile) {
   return [profile.city, profile.country].filter(Boolean).join(', ')
 }
 
-export function TalentCard({ profile, matchScore, href, views, likes }: TalentCardProps) {
+export function TalentCard({ profile, matchScore, matchReasons, href, views, likes }: TalentCardProps) {
   const topSkills = profile.talent_skills.slice(0, 3)
   const primaryCategory = profile.talent_skills[0]?.category
   const location = locationFor(profile)
@@ -97,6 +98,16 @@ export function TalentCard({ profile, matchScore, href, views, likes }: TalentCa
           )}
         </div>
 
+        {matchReasons && matchReasons.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Why this talent matches">
+            {matchReasons.map(reason => (
+              <span key={reason} className="inline-flex max-w-full items-center truncate rounded-full bg-secondary/70 px-2 py-1 text-[10px] font-medium text-secondary-foreground">
+                {reason}
+              </span>
+            ))}
+          </div>
+        )}
+
         {topSkills.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
             {topSkills.map(skill => (
@@ -142,7 +153,7 @@ export function TalentCard({ profile, matchScore, href, views, likes }: TalentCa
   return cardContent
 }
 
-export function TalentListItem({ profile, matchScore, href, views, likes }: TalentCardProps) {
+export function TalentListItem({ profile, matchScore, matchReasons, href, views, likes }: TalentCardProps) {
   const topSkills = profile.talent_skills.slice(0, 2)
   const location = locationFor(profile)
   const content = (
@@ -161,6 +172,15 @@ export function TalentListItem({ profile, matchScore, href, views, likes }: Tale
             {matchScore !== undefined && <span className="shrink-0 rounded-full bg-brand-lime px-1.5 py-0.5 text-[10px] font-bold text-black">{matchScore}%</span>}
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{profile.headline || 'Creative talent'}</p>
+          {matchReasons && matchReasons.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1.5" aria-label="Why this talent matches">
+              {matchReasons.slice(0, 2).map(reason => (
+                <span key={reason} className="truncate rounded-full bg-secondary/70 px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                  {reason}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="hidden min-w-[150px] items-center gap-1.5 text-xs text-muted-foreground lg:flex">
           <MapPin className="size-3.5" />

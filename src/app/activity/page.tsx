@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import { BriefcaseBusiness, Mail } from 'lucide-react'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DemoActivity } from '@/components/talent/DemoActivity'
 import type { Profile, TalentSkill, Job, ApplicationStatus, OutreachStatus, Category } from '@/types'
 import type { User, SupabaseClient } from '@supabase/supabase-js'
 
@@ -187,6 +189,9 @@ async function TalentActivity({ user, supabase }: { user: User, supabase: Supaba
 
 // --- Main Page ---
 export default async function CombinedActivityPage() {
+  const localDemoMode = process.env.NODE_ENV === 'development' && (await cookies()).get('castd_demo')?.value === '1'
+  if (localDemoMode) return <DemoActivity />
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null

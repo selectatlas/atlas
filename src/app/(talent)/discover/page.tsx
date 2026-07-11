@@ -3,44 +3,68 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { BriefcaseBusiness, Check, Grid2X2, List, MapPin, Search, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { DEMO_APPLICATIONS_STORAGE_KEY, DEMO_JOBS, DEMO_PROFILE, type DemoApplication } from '@/lib/demo-data'
 import { CATEGORY_LABELS } from '@/lib/skills'
+import { getJobMatchReasons } from '@/lib/matching'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { Job, Category } from '@/types'
+import { JobBriefDialog } from '@/components/talent/JobBriefDialog'
+import { ApplicationPreviewDialog } from '@/components/talent/ApplicationPreviewDialog'
+import type { Job, Category, Profile, TalentSkill } from '@/types'
 
 type JobResult = Job & { hirer?: { full_name: string } | null }
 type SortOption = 'newest' | 'rate_high' | 'rate_low'
 
+function isLocalDemoMode() {
+  return typeof document !== 'undefined' && document.cookie.split(';').some(cookie => cookie.trim().startsWith('castd_demo=1'))
+}
+
 export default function DiscoverPage() {
   const [jobs, setJobs] = useState<JobResult[]>([])
+  const [talentProfile, setTalentProfile] = useState<(Profile & { talent_skills: TalentSkill[] }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [talentCategory, setTalentCategory] = useState<Category | null>(null)
   const [passed, setPassed] = useState<Set<string>>(new Set())
   const [applied, setApplied] = useState<Set<string>>(new Set())
-  const [currentIndex, setCurrentIndex] = useState(0)
   const [applyingId, setApplyingId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'swipe' | 'list'>('swipe')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('newest')
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
+  const [briefJob, setBriefJob] = useState<JobResult | null>(null)
+  const [applicationJob, setApplicationJob] = useState<JobResult | null>(null)
+  const [applicationNote, setApplicationNote] = useState('')
+  const [advanceAfterApplication, setAdvanceAfterApplication] = useState(false)
+  const [applicationError, setApplicationError] = useState<string | null>(null)
+  const [applicationSuccess, setApplicationSuccess] = useState<JobResult | null>(null)
 
   useEffect(() => {
     async function load() {
+      if (isLocalDemoMode()) {
+        setTalentProfile(DEMO_PROFILE)
+        setTalentCategory('dancer')
+        setJobs(DEMO_JOBS)
+        setLoading(false)
+        return
+      }
+
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('talent_skills(*)')
+        .select('*, talent_skills(*)')
         .eq('id', user.id)
         .single()
 
-      const skills = (profile as unknown as { talent_skills: { category: Category }[] })?.talent_skills ?? []
+      const talent = profile as unknown as Profile & { talent_skills: TalentSkill[] }
+      setTalentProfile(talent)
+      const skills = talent.talent_skills ?? []
       const primaryCategory = skills[0]?.category ?? null
       setTalentCategory(primaryCategory)
 
@@ -93,30 +117,85 @@ export default function DiscoverPage() {
     return filtered
   }, [jobs, passed, search, sort])
 
-  async function applyToJob(jobId: string) {
-    if (applied.has(jobId) || applyingId) return
+  function buildApplicationNote(job: JobResult) {
+    const firstName = talentProfile?.full_name.split(' ')[0] ?? 'there'
+    const matchingSkill = job.skills_required.find(required => talentProfile?.talent_skills.some(skill => {
+      const currentSkill = skill.skill.toLowerCase()
+      const requiredSkill = required.toLowerCase()
+      return currentSkill.includes(requiredSkill) || requiredSkill.includes(currentSkill)
+    }))
+    return `Hi, I'm ${firstName}. I'd love to be considered for ${job.title}${matchingSkill ? ` — my experience in ${matchingSkill} feels like a strong fit` : ''}. Thanks for taking a look at my profile.`
+  }
+
+  function requestApplication(job: JobResult, shouldAdvance = false) {
+    if (applied.has(job.id) || applyingId) return
+    setApplicationError(null)
+    setAdvanceAfterApplication(shouldAdvance)
+    setApplicationNote(buildApplicationNote(job))
+    setApplicationJob(job)
+  }
+
+  async function submitApplication(jobId: string, note: string) {
+    if (applied.has(jobId) || applyingId) return false
     setApplyingId(jobId)
+
+    if (isLocalDemoMode()) {
+      const application: DemoApplication = {
+        id: `demo-application-${jobId}`,
+        job_id: jobId,
+        note: note.trim(),
+        status: 'sent',
+        created_at: new Date().toISOString(),
+      }
+      try {
+        const existing = window.sessionStorage.getItem(DEMO_APPLICATIONS_STORAGE_KEY)
+        const applications = existing ? JSON.parse(existing) as DemoApplication[] : []
+        const next = [application, ...applications.filter(item => item.job_id !== jobId)]
+        window.sessionStorage.setItem(DEMO_APPLICATIONS_STORAGE_KEY, JSON.stringify(next))
+      } catch {
+        setApplicationError('Your application could not be saved in this preview.')
+        setApplyingId(null)
+        return false
+      }
+      setApplied(prev => new Set([...prev, jobId]))
+      setApplyingId(null)
+      return true
+    }
+
     try {
       const res = await fetch('/api/applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId }),
+        body: JSON.stringify({ job_id: jobId, note: note.trim() }),
       })
-      if (res.ok || res.status === 409) {
+      if (res.ok) {
         setApplied(prev => new Set([...prev, jobId]))
+        return true
       }
-    } catch { /* silent */ }
-    setApplyingId(null)
-    advance()
+      const data = await res.json().catch(() => null) as { error?: string } | null
+      setApplicationError(data?.error ?? 'Your application could not be sent. Please try again.')
+      return false
+    } catch {
+      setApplicationError('Network error. Your application has not been sent.')
+      return false
+    } finally {
+      setApplyingId(null)
+    }
+  }
+
+  async function confirmApplication() {
+    if (!applicationJob) return
+    const job = applicationJob
+    const success = await submitApplication(job.id, applicationNote)
+    if (!success) return
+    setApplicationJob(null)
+    setApplicationSuccess(job)
+    if (advanceAfterApplication) setDragX(0)
+    window.setTimeout(() => setApplicationSuccess(current => current?.id === job.id ? null : current), 5000)
   }
 
   function passJob(jobId: string) {
     setPassed(prev => new Set([...prev, jobId]))
-    advance()
-  }
-
-  function advance() {
-    setCurrentIndex(i => i + 1)
     setDragX(0)
   }
 
@@ -143,18 +222,22 @@ export default function DiscoverPage() {
     pointerId.current = null
     setDragging(false)
     const elapsed = e.timeStamp - startTime.current
-    const currentJob = visibleJobs[currentIndex]
+    const currentJob = current
     if (!currentJob) { setDragX(0); return }
     if (elapsed > 0) {
       const velocity = Math.abs(dragX) / elapsed
-      if (dragX > 80 || (dragX > 20 && velocity > 0.3)) { applyToJob(currentJob.id); return }
+      if (dragX > 80 || (dragX > 20 && velocity > 0.3)) { requestApplication(currentJob, true); return }
       if (dragX < -80 || (dragX < -20 && velocity > 0.3)) { passJob(currentJob.id); return }
     }
     setDragX(0)
   }
 
-  const current = visibleJobs[currentIndex]
-  const next = visibleJobs[currentIndex + 1]
+  const swipeJobs = visibleJobs.filter(job => !applied.has(job.id))
+  const current = swipeJobs[0]
+  const next = swipeJobs[1]
+  const reviewedCount = passed.size + applied.size
+  const progressPosition = Math.min(reviewedCount + 1, Math.max(jobs.length, 1))
+  const hasJobsForView = viewMode === 'swipe' ? swipeJobs.length > 0 : visibleJobs.length > 0
   const rotation = dragging ? dragX * 0.06 : 0
   const isRight = dragX > 40
   const isLeft = dragX < -40
@@ -188,6 +271,9 @@ export default function DiscoverPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Discover jobs</h1>
           {talentCategory && (
             <p className="mt-1 text-sm text-muted-foreground">Matched for {CATEGORY_LABELS[talentCategory]}</p>
+          )}
+          {isLocalDemoMode() && (
+            <p className="mt-2 inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">Local demo mode</p>
           )}
         </div>
         {visibleJobs.length > 0 && (
@@ -243,7 +329,7 @@ export default function DiscoverPage() {
         </select>
       </div>
 
-      {visibleJobs.length === 0 ? (
+      {!hasJobsForView ? (
         <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center">
           <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-muted text-muted-foreground"><BriefcaseBusiness className="size-5" /></div>
           <p className="font-medium">
@@ -259,7 +345,8 @@ export default function DiscoverPage() {
               job={job}
               applied={applied.has(job.id)}
               applying={applyingId === job.id}
-              onApply={() => applyToJob(job.id)}
+              onApply={() => requestApplication(job)}
+              onViewBrief={() => setBriefJob(job)}
               onPass={() => passJob(job.id)}
             />
           ))}
@@ -272,7 +359,7 @@ export default function DiscoverPage() {
                 className="absolute inset-0 bg-card border rounded-3xl overflow-hidden"
                 style={{ transform: 'scale(0.95)', transformOrigin: 'bottom center', zIndex: 1 }}
               >
-                <JobCardContent job={next} />
+                <JobCardContent job={next} matchReasons={getJobMatchReasons(next, talentProfile)} onViewBrief={() => setBriefJob(next)} />
               </div>
             )}
 
@@ -291,7 +378,7 @@ export default function DiscoverPage() {
                 onPointerUp={onDragEnd}
                 onPointerCancel={onDragEnd}
               >
-                <JobCardContent job={current} />
+                <JobCardContent job={current} matchReasons={getJobMatchReasons(current, talentProfile)} onViewBrief={() => setBriefJob(current)} />
 
                 {isRight && (
                   <div className="absolute inset-0 bg-accent/20 flex items-center justify-center rounded-3xl">
@@ -312,7 +399,7 @@ export default function DiscoverPage() {
 
             {current && (
               <div className="absolute top-3 right-3 z-20 bg-background/70 backdrop-blur-sm text-muted-foreground text-xs px-2.5 py-1 rounded-full">
-                {currentIndex + 1} / {visibleJobs.length}
+                {progressPosition} / {Math.max(jobs.length, 1)}
               </div>
             )}
           </div>
@@ -329,7 +416,7 @@ export default function DiscoverPage() {
               </button>
               <button
                 type="button"
-                onClick={() => applyToJob(current.id)}
+                onClick={() => requestApplication(current, true)}
                 disabled={applyingId === current.id || applied.has(current.id)}
                 className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-[background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-primary/90 active:scale-[0.97] disabled:opacity-60"
                 aria-label="Apply to job"
@@ -340,11 +427,42 @@ export default function DiscoverPage() {
           )}
         </div>
       )}
+
+      {applicationSuccess && (
+        <div role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto flex max-w-lg items-center justify-between gap-4 rounded-xl border border-emerald-500/30 bg-card p-4 shadow-lg md:bottom-6">
+          <div className="flex items-start gap-3"><div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700"><Check className="size-4" /></div><div><p className="text-sm font-semibold">Application sent</p><p className="mt-0.5 text-xs text-muted-foreground">{applicationSuccess.title} is now in your Activity.</p></div></div>
+          <a href="/activity" className="shrink-0 text-xs font-semibold text-primary hover:underline">View Activity</a>
+        </div>
+      )}
+
+      <JobBriefDialog
+        job={briefJob}
+        matchReasons={briefJob ? getJobMatchReasons(briefJob, talentProfile) : []}
+        applied={briefJob ? applied.has(briefJob.id) : false}
+        onClose={() => setBriefJob(null)}
+        onApply={() => {
+          if (!briefJob) return
+          const job = briefJob
+          setBriefJob(null)
+          requestApplication(job)
+        }}
+      />
+
+      <ApplicationPreviewDialog
+        job={applicationJob}
+        profile={talentProfile}
+        note={applicationNote}
+        submitting={Boolean(applicationJob && applyingId === applicationJob.id)}
+        error={applicationError}
+        onNoteChange={setApplicationNote}
+        onClose={() => { setApplicationJob(null); setApplicationError(null) }}
+        onConfirm={confirmApplication}
+      />
     </div>
   )
 }
 
-function JobCardContent({ job }: { job: JobResult }) {
+function JobCardContent({ job, matchReasons, onViewBrief }: { job: JobResult; matchReasons: string[]; onViewBrief: () => void }) {
   const hirer = job.hirer as { full_name: string } | null
   return (
     <div className="h-full flex flex-col p-6">
@@ -360,6 +478,11 @@ function JobCardContent({ job }: { job: JobResult }) {
         {job.location}
         {job.budget && <span className="text-muted-foreground/70">· {job.budget}</span>}
       </div>
+      {matchReasons.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {matchReasons.slice(0, 2).map(reason => <Badge key={reason} variant="secondary" className="text-[11px]">{reason}</Badge>)}
+        </div>
+      )}
       <p className="text-muted-foreground text-sm leading-relaxed line-clamp-5 flex-1">{job.description}</p>
       {job.skills_required.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-4">
@@ -370,17 +493,21 @@ function JobCardContent({ job }: { job: JobResult }) {
           ))}
         </div>
       )}
+      <button type="button" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); onViewBrief() }} className="mt-4 self-start text-xs font-semibold text-primary hover:underline">
+        View full brief →
+      </button>
     </div>
   )
 }
 
 function JobCard({
-  job, applied, applying, onApply, onPass,
+  job, applied, applying, onApply, onViewBrief, onPass,
 }: {
   job: JobResult
   applied: boolean
   applying: boolean
   onApply: () => void
+  onViewBrief: () => void
   onPass: () => void
 }) {
   const hirer = job.hirer as { full_name: string } | null
@@ -399,6 +526,9 @@ function JobCard({
       <div className="flex items-center gap-2">
         <Button variant="outline" className="flex-1" onClick={onPass}>
           Pass
+        </Button>
+        <Button variant="ghost" className="px-3" onClick={onViewBrief} aria-label={`View full brief for ${job.title}`}>
+          Brief
         </Button>
         <Button
           onClick={onApply}

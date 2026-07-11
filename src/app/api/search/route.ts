@@ -2,6 +2,39 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { embedText, parseSearchQuery } from '@/lib/openai'
 import { createClient } from '@/lib/supabase/server'
 
+function normalise(value: string | null | undefined) {
+  return (value ?? '').toLowerCase().trim()
+}
+
+function getMatchReasons(
+  parsed: Awaited<ReturnType<typeof parseSearchQuery>>,
+  profile: { city?: string | null; country?: string | null; availability?: string | null; talent_skills: Array<{ category: string; skill: string }> },
+) {
+  const reasons: string[] = []
+  const skills = profile.talent_skills ?? []
+
+  if (parsed.category && skills.some(skill => skill.category === parsed.category)) {
+    reasons.push(`${parsed.category.replace('_', ' ')} talent`)
+  }
+
+  const matchedSkills = parsed.skills.filter(querySkill =>
+    skills.some(skill => normalise(skill.skill).includes(normalise(querySkill)) || normalise(querySkill).includes(normalise(skill.skill)))
+  )
+  if (matchedSkills.length > 0) reasons.push(`Skill: ${matchedSkills.slice(0, 2).join(', ')}`)
+
+  if (parsed.location) {
+    const location = normalise(parsed.location)
+    const profileLocation = normalise(`${profile.city ?? ''} ${profile.country ?? ''}`)
+    if (profileLocation.includes(location)) reasons.push(`Based in ${profile.city ?? profile.country}`)
+  }
+
+  if (parsed.availability && normalise(profile.availability).includes(normalise(parsed.availability))) {
+    reasons.push(profile.availability ?? 'Availability listed')
+  }
+
+  return reasons.length > 0 ? reasons.slice(0, 3) : ['Semantic profile match']
+}
+
 export async function POST(request: Request) {
   const { query } = await request.json() as { query: string }
 
@@ -74,7 +107,11 @@ export async function POST(request: Request) {
     .map(p => {
       const sim = similarityMap.get(p.id as string) ?? 0
       const score = Math.min(98, Math.max(55, Math.round(sim * 120)))
-      return { profile: p, match_score: score }
+      return {
+        profile: p,
+        match_score: score,
+        match_reasons: getMatchReasons(parsed, p),
+      }
     })
     .sort((a, b) => b.match_score - a.match_score)
     .slice(0, 12)

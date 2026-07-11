@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { DEMO_PROFILE } from '@/lib/demo-data'
 import { PhotoUpload } from '@/components/talent/PhotoUpload'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,12 +11,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SkillsEditor } from '@/components/talent/SkillsEditor'
 import { CreditsEditor } from '@/components/talent/CreditsEditor'
 import { PortfolioEditor } from '@/components/talent/PortfolioEditor'
+import { ProfileCompletenessCard } from '@/components/talent/ProfileCompletenessCard'
 import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
 
 type TalentWithExtras = Profile & {
   talent_skills: TalentSkill[]
   credits: Credit[]
   portfolio_items: PortfolioItem[]
+}
+
+function isLocalDemoMode() {
+  return typeof document !== 'undefined' && document.cookie.split(';').some(cookie => cookie.trim().startsWith('castd_demo=1'))
 }
 
 function Field({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
@@ -35,6 +41,12 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
 
   const loadProfile = useCallback(async () => {
+    if (isLocalDemoMode()) {
+      setProfile(DEMO_PROFILE)
+      setLoading(false)
+      return
+    }
+
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -71,6 +83,14 @@ export default function ProfilePage() {
     if (!profile) return
     setSaving(true)
     setError(null)
+
+    if (isLocalDemoMode()) {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      setSaving(false)
+      return
+    }
+
     const supabase = createClient()
     const { error } = await supabase
       .from('profiles')
@@ -116,6 +136,8 @@ export default function ProfilePage() {
     <div className="py-6 space-y-6 pb-32">
       <h1 className="text-xl font-bold">My Profile</h1>
 
+      <ProfileCompletenessCard profile={profile} />
+
       {/* Avatar & Basic Info */}
       <div className="flex items-center gap-4">
         <PhotoUpload
@@ -152,6 +174,17 @@ export default function ProfilePage() {
           </div>
           <Field label="Bio">
             <Textarea value={profile.bio ?? ''} onChange={e => update('bio', e.target.value)} className="resize-none h-28" placeholder="Describe your experience..." />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Rates">
+              <Input value={profile.rates ?? ''} onChange={e => update('rates', e.target.value)} placeholder="£300 per day" />
+            </Field>
+            <Field label="Availability">
+              <Input value={profile.availability ?? ''} onChange={e => update('availability', e.target.value)} placeholder="Available from December" />
+            </Field>
+          </div>
+          <Field label="Showreel URL">
+            <Input type="url" value={profile.showreel_url ?? ''} onChange={e => update('showreel_url', e.target.value)} placeholder="https://youtube.com/..." />
           </Field>
         </CardContent>
       </Card>
