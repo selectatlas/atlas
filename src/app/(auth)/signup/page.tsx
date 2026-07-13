@@ -72,7 +72,7 @@ export default function SignupPage() {
     <div className="flex min-h-screen items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">castd.ai</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Atlas</h1>
           <p className="mt-2 text-muted-foreground text-sm">AI-native talent discovery</p>
         </div>
 

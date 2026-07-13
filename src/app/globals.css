@@ -77,7 +77,7 @@
 }
 
 /*
- * Light theme — castd.ai product palette
+ * Light theme — Atlas product palette
  *
  * Canvas:     soft white
  * Text:       near black
@@ -96,7 +96,7 @@
  */
 
 :root {
-  /* Castd design tokens. Keep these semantic names stable across the app. */
+  /* Atlas design tokens. Keep these semantic names stable across the app. */
   --background: #f8f7fb;
   --foreground: #252338;
   --card: #ffffff;

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 
 // GET /api/messages/threads — list threads with latest message + other participant
 export async function GET() {
-  const localDemoMode = process.env.NODE_ENV === 'development' && (await cookies()).get('castd_demo')?.value === '1'
+  const localDemoMode = process.env.NODE_ENV === 'development' && (await cookies()).get('atlas_demo')?.value === '1'
   if (localDemoMode) return Response.json({ threads: [] })
 
   const supabase = await createClient()

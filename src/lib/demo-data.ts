@@ -1,7 +1,7 @@
 import type { Credit, Job, PortfolioItem, Profile, TalentSkill } from '@/types'
 
 export type DemoJob = Job & { hirer?: { full_name: string } | null }
-export const DEMO_APPLICATIONS_STORAGE_KEY = 'castd_demo_applications'
+export const DEMO_APPLICATIONS_STORAGE_KEY = 'atlas_demo_applications'
 
 export interface DemoApplication {
   id: string
@@ -19,7 +19,7 @@ export const DEMO_PROFILE: Profile & {
   id: 'demo-talent',
   account_type: 'talent',
   full_name: 'Priya Singh',
-  email: 'priya.singh@castd-demo.com',
+  email: 'priya.singh@atlas-demo.com',
   avatar_url: null,
   cover_url: null,
   headline: 'Bollywood Dancer | Choreographer',
@@ -67,7 +67,7 @@ function createDemoTalent({
     id,
     account_type: 'talent',
     full_name: fullName,
-    email: `${id}@castd-demo.com`,
+    email: `${id}@atlas-demo.com`,
     avatar_url: null,
     cover_url: null,
     headline,

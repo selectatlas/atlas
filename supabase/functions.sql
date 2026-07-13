@@ -1,5 +1,5 @@
 -- ============================================================
--- Castd.ai - Database Functions
+-- Atlas - Database Functions
 -- Run this in: Supabase Dashboard > SQL Editor
 -- Run AFTER schema.sql
 -- ============================================================

@@ -6,14 +6,14 @@ import { TalentNav } from '@/components/layout/TalentNav'
 
 export async function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
-  const localDemoMode = process.env.NODE_ENV === 'development' && cookieStore.get('castd_demo')?.value === '1'
+  const localDemoMode = process.env.NODE_ENV === 'development' && cookieStore.get('atlas_demo')?.value === '1'
   const supabase = localDemoMode ? null : await createClient()
   const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } }
 
   if (!user && !localDemoMode) redirect('/login')
 
   const accountType = localDemoMode
-    ? cookieStore.get('castd_demo_role')?.value ?? 'talent'
+    ? cookieStore.get('atlas_demo_role')?.value ?? 'talent'
     : user?.user_metadata?.account_type
   const isHirer = accountType === 'hirer'
   if (!localDemoMode && !isHirer && accountType !== 'talent') redirect('/login')

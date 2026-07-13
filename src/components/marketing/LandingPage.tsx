@@ -36,11 +36,11 @@ const steps: Array<{ number: string; title: string; description: string; icon: L
 
 export function LandingPage() {
   return (
-    <main className="landing-page" aria-label="Castd landing page">
+    <main className="landing-page" aria-label="Atlas landing page">
       <header className="landing-header">
         <div className="landing-header__inner">
-          <Link href="/" className="landing-brand" aria-label="castd.ai home">
-            <span>castd</span><b>.ai</b>
+          <Link href="/" className="landing-brand" aria-label="Atlas home">
+            <span>atlas</span><b>.ai</b>
           </Link>
 
           <nav className="landing-nav" aria-label="Main navigation">
@@ -52,7 +52,7 @@ export function LandingPage() {
           <div className="landing-header__actions">
             <Link href="/login" className="landing-header__login">Sign in</Link>
             <Link href="/signup" className="landing-button landing-button--small landing-button--dark">
-              Try Castd
+              Try Atlas
               <ArrowUpRight aria-hidden="true" />
             </Link>
           </div>
@@ -61,7 +61,7 @@ export function LandingPage() {
 
       <Hero />
 
-      <section className="landing-signal-strip" aria-label="Who Castd is for">
+      <section className="landing-signal-strip" aria-label="Who Atlas is for">
         <span>For casting directors</span><i aria-hidden="true" />
         <span>For producers</span><i aria-hidden="true" />
         <span>For creative teams</span>
@@ -71,7 +71,7 @@ export function LandingPage() {
         <div className="landing-section__heading">
           <p className="landing-eyebrow">How it works</p>
           <h2>Less scrolling. More signal.</h2>
-          <p>Castd makes the first pass feel like a conversation with someone who understands the brief.</p>
+          <p>Atlas makes the first pass feel like a conversation with someone who understands the brief.</p>
         </div>
 
         <div className="landing-steps">
@@ -88,12 +88,12 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-section landing-section--audiences" aria-label="Castd for hirers and talent">
+      <section className="landing-section landing-section--audiences" aria-label="Atlas for hirers and talent">
         <article className="landing-audience landing-audience--hirers" id="for-hirers">
           <div className="landing-audience__copy">
             <p className="landing-audience__label">For hirers</p>
             <h2>Stop searching titles. Search for the actual person behind the brief.</h2>
-            <p>From niche movement skills to a specific on-camera presence, Castd lets you ask for the combination that matters.</p>
+            <p>From niche movement skills to a specific on-camera presence, Atlas lets you ask for the combination that matters.</p>
             <ul>
               <li><Check aria-hidden="true" />Ranked matches with a reason for every result</li>
               <li><Check aria-hidden="true" />Natural-language search plus familiar filters</li>
@@ -148,9 +148,9 @@ export function LandingPage() {
       </section>
 
       <footer className="landing-footer">
-        <div className="landing-footer__brand"><Link href="/" className="landing-brand"><span>castd</span><b>.ai</b></Link><p>AI-native talent discovery for the creative industry.</p></div>
+        <div className="landing-footer__brand"><Link href="/" className="landing-brand"><span>atlas</span><b>.ai</b></Link><p>AI-native talent discovery for the creative industry.</p></div>
         <div className="landing-footer__links"><Link href="/login">Sign in</Link><Link href="/signup">Create account</Link><a href="#top">Back to top <ArrowUpRight aria-hidden="true" /></a></div>
-        <p className="landing-footer__copyright">© 2026 castd.ai</p>
+        <p className="landing-footer__copyright">© 2026 Atlas</p>
       </footer>
     </main>
   )

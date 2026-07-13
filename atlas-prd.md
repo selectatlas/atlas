@@ -1,4 +1,4 @@
-# Castd.ai — Investor Demo PRD
+# Atlas — Investor Demo PRD
 
 **Version** 1.0
 **Status** Build-ready
@@ -9,7 +9,7 @@
 
 ## 1. Purpose and scope
 
-Castd.ai is an AI-native talent discovery platform for the creative industry. This document specifies a working web application built to demonstrate the product to investors. The build must run live, on a real URL, usable on a phone in the room.
+Atlas is an AI-native talent discovery platform for the creative industry. This document specifies a working web application built to demonstrate the product to investors. The build must run live, on a real URL, usable on a phone in the room.
 
 This is a demo, not the production platform. It proves the concept and wins funding. A production team rebuilds on a validated foundation post-investment. Every decision in this document optimises for a convincing live demonstration, not for scale.
 
@@ -46,7 +46,7 @@ Existing platforms fail at the core job: helping hirers find the right talent fa
 | Spotlight | 1927 | Legacy | Gatekept, poor UX |
 | Mandy | 1999 | Legacy | Filters return irrelevant results |
 | Starnow | 2001 | Legacy | 5M users, broken search |
-| Castd.ai | 2025 | AI-native | First of its kind |
+| Atlas | 2025 | AI-native | First of its kind |
 
 Two evidence points drive the build:
 
@@ -180,7 +180,7 @@ Mobile-first responsive. Swipe optimised for touch. PWA manifest and service wor
 The build must support this exact sequence end to end.
 
 1. **The problem.** Show a legacy-style search returning a wall of irrelevant results.
-2. **Castd.ai search.** Type the Bollywood query. Eight ranked matches appear in under two seconds with visible scores.
+2. **Atlas search.** Type the Bollywood query. Eight ranked matches appear in under two seconds with visible scores.
 3. **The experience.** Swipe right on a dancer. AI generates a personalised message. Send it.
 4. **The other side.** Switch to the talent view. Show the match arriving and a swipe-to-accept.
 5. **Scale.** Reference the comparison: swipe-model job apps already drive millions of interactions daily. Same model, creative talent, large addressable market.
@@ -214,7 +214,7 @@ Label clearly in handover docs that this data is placeholder, replaceable with X
 
 ## 10. Deliverables
 
-- Live web application deployed to castd.ai
+- Live web application deployed to Atlas
 - Full source code, ownership transferred
 - Seeded Postgres database
 - Setup and handover documentation

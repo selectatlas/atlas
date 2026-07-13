@@ -21,7 +21,7 @@ type TalentWithExtras = Profile & {
 }
 
 function isLocalDemoMode() {
-  return typeof document !== 'undefined' && document.cookie.split(';').some(cookie => cookie.trim().startsWith('castd_demo=1'))
+  return typeof document !== 'undefined' && document.cookie.split(';').some(cookie => cookie.trim().startsWith('atlas_demo=1'))
 }
 
 function Field({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {

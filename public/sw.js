@@ -1,7 +1,7 @@
-// Castd.ai — PWA Service Worker (MVP)
+// Atlas — PWA Service Worker (MVP)
 // Caches the app shell for offline support.
 
-const CACHE_NAME = 'castd-ai-v1'
+const CACHE_NAME = 'atlas-v1'
 const APP_SHELL = [
   '/',
   '/manifest.json',

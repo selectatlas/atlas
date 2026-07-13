@@ -19,7 +19,7 @@ type JobResult = Job & { hirer?: { full_name: string } | null }
 type SortOption = 'newest' | 'rate_high' | 'rate_low'
 
 function isLocalDemoMode() {
-  return typeof document !== 'undefined' && document.cookie.split(';').some(cookie => cookie.trim().startsWith('castd_demo=1'))
+  return typeof document !== 'undefined' && document.cookie.split(';').some(cookie => cookie.trim().startsWith('atlas_demo=1'))
 }
 
 export default function DiscoverPage() {

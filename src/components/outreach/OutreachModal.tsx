@@ -42,7 +42,7 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     setGenerating(true)
     setError(null)
 
-    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('castd_demo=1')
+    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('atlas_demo=1')
     if (isLocalDemo) {
       const firstName = talent.full_name.split(' ')[0]
       setMessage(`Hi ${firstName}, your work looks like a strong fit for a new creative brief. I’d love to share more about the project and see if you’re available.`)
@@ -74,7 +74,7 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     setSending(true)
     setError(null)
 
-    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('castd_demo=1')
+    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('atlas_demo=1')
     if (isLocalDemo) {
       setSent(true)
       setSending(false)

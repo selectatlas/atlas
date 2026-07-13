@@ -1,5 +1,5 @@
 -- ============================================================
--- Castd.ai - Supabase Schema
+-- Atlas - Supabase Schema
 -- Run this entire file in: Supabase Dashboard > SQL Editor
 -- Prerequisites:
 --   1. Enable pgvector: Dashboard > Database > Extensions > "vector" > Enable

@@ -76,7 +76,7 @@ export function Navbar({ links, primaryAction }: NavbarProps) {
         <div className="flex h-16 items-center border-b border-sidebar-border px-5">
           <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold tracking-tight text-foreground">
             <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-[11px] font-bold text-primary-foreground">c</span>
-            castd.ai
+            Atlas
           </Link>
         </div>
 
@@ -113,7 +113,7 @@ export function Navbar({ links, primaryAction }: NavbarProps) {
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-sidebar-border bg-background/95 px-4 backdrop-blur-md md:hidden">
         <Link href="/" className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
           <span className="flex size-6 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-primary-foreground">c</span>
-          castd.ai
+          Atlas
         </Link>
         <span className="text-xs font-medium text-muted-foreground">Workspace</span>
       </header>

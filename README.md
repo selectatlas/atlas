@@ -1,6 +1,6 @@
-# castd
+# atlas
 
-Castd profile search for discovering and connecting with creative talent.
+Atlas profile search for discovering and connecting with creative talent.
 
 ## Getting Started
 

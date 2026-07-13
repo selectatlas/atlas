@@ -189,7 +189,7 @@ async function TalentActivity({ user, supabase }: { user: User, supabase: Supaba
 
 // --- Main Page ---
 export default async function CombinedActivityPage() {
-  const localDemoMode = process.env.NODE_ENV === 'development' && (await cookies()).get('castd_demo')?.value === '1'
+  const localDemoMode = process.env.NODE_ENV === 'development' && (await cookies()).get('atlas_demo')?.value === '1'
   if (localDemoMode) return <DemoActivity />
 
   const supabase = await createClient()
