@@ -1,15 +1,15 @@
-# PRD — Castd.ai
+# PRD — Atlas
 
 **Version:** 2.0  
 **Status:** Product blueprint for the full experience, implemented in prioritised releases  
 **Updated:** 2026-07-10  
-**Source references:** `castd-ai-prd.md`, `docs/design.md`, and `dots-ui-design/*`
+**Source references:** `atlas-prd.md`, `docs/design.md`, and `dots-ui-design/*`
 
 ## 1. Overview
 
 ### Product Summary
 
-Castd.ai is an AI-native creative talent network for discovering, evaluating, connecting with, and hiring creative people. Hirers describe the person they need in natural language and receive ranked, evidence-rich matches; talent build profiles that make their work discoverable and receive relevant opportunities. The broader experience adds the retention loops visible in the reference set—profiles, jobs, community, companies, follows, connections, events, notifications, and messaging—without allowing those surfaces to dilute the core matching promise.
+Atlas is an AI-native creative talent network for discovering, evaluating, connecting with, and hiring creative people. Hirers describe the person they need in natural language and receive ranked, evidence-rich matches; talent build profiles that make their work discoverable and receive relevant opportunities. The broader experience adds the retention loops visible in the reference set—profiles, jobs, community, companies, follows, connections, events, notifications, and messaging—without allowing those surfaces to dilute the core matching promise.
 
 ### Objective
 
@@ -23,11 +23,11 @@ P0 makes the discovery-to-conversation loop dependable. P1 adds community, peopl
 
 ### Market Differentiation
 
-Castd is not a generic professional network with a creative category added. Its differentiator is intent-aware matching over evidence of creative ability. The implementation must make a match understandable: a result is ranked because of specific skills, work, location, availability, language, credits, or job requirements—not because of an opaque popularity score. The interface should feel calm and editorial like the reference set, while the product logic is more focused, faster, more transparent, and more useful for real casting and hiring decisions.
+Atlas is not a generic professional network with a creative category added. Its differentiator is intent-aware matching over evidence of creative ability. The implementation must make a match understandable: a result is ranked because of specific skills, work, location, availability, language, credits, or job requirements—not because of an opaque popularity score. The interface should feel calm and editorial like the reference set, while the product logic is more focused, faster, more transparent, and more useful for real casting and hiring decisions.
 
 ### Magic Moment
 
-A hirer types a request such as “a Hindi-speaking Bollywood dancer in London, available for a December campaign.” Within 2 seconds, Castd returns a concise ranked set of talent with visible match reasons, portfolio evidence, availability, and a clear next action. The hirer opens one profile, understands the fit in under 20 seconds, asks Castd to draft a contextual message, edits it if needed, and sends it without losing the original search or job context.
+A hirer types a request such as “a Hindi-speaking Bollywood dancer in London, available for a December campaign.” Within 2 seconds, Atlas returns a concise ranked set of talent with visible match reasons, portfolio evidence, availability, and a clear next action. The hirer opens one profile, understands the fit in under 20 seconds, asks Atlas to draft a contextual message, edits it if needed, and sends it without losing the original search or job context.
 
 The talent magic moment is the reciprocal experience: after a short onboarding flow and profile import or completion, the person sees why a job matches them, can apply or express interest in one step, and can continue the conversation in a contextual thread.
 
@@ -44,7 +44,7 @@ The talent magic moment is the reciprocal experience: after a short onboarding f
 
 ### Current Baseline and Gap
 
-The repository already contains a useful P0 foundation: Next.js App Router, Supabase auth/database/storage/pgvector, OpenAI search and outreach helpers, hirer and talent layouts, talent search, swipe/list modes, profiles, jobs, applications, outreach, direct messages, shortlists, activity, PWA assets, and a Castd token system in `docs/design.md`.
+The repository already contains a useful P0 foundation: Next.js App Router, Supabase auth/database/storage/pgvector, OpenAI search and outreach helpers, hirer and talent layouts, talent search, swipe/list modes, profiles, jobs, applications, outreach, direct messages, shortlists, activity, PWA assets, and a Atlas token system in `docs/design.md`.
 
 The main gaps are not a lack of isolated screens. They are experience-level gaps: onboarding and role context, a coherent home workspace, visible match explanations, richer evidence and profile structure, persistent relationship state, saved searches and alerts, community/people/company discovery, notification orchestration, and consistent states across the product. Existing routes and database tables should be extended through additive migrations rather than discarded.
 
@@ -113,7 +113,7 @@ SENTRY_DSN                       # when error tracking is enabled
 ### Repository Structure
 
 ```text
-castd-ai/
+atlas/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/               # Login, signup, password recovery
@@ -896,7 +896,7 @@ Acceptance Criteria:
 
 ## 8. UI/UX Requirements
 
-Visual tokens live in `docs/design.md`. Use its semantic colors, typography, spacing, rounded scales, and component primitives. The Dots references inform information architecture and interaction patterns, not a literal visual copy. Keep Castd's `brand-lime` scarce for match confidence or a positive fit signal; use indigo for primary actions and focus.
+Visual tokens live in `docs/design.md`. Use its semantic colors, typography, spacing, rounded scales, and component primitives. The Dots references inform information architecture and interaction patterns, not a literal visual copy. Keep Atlas's `brand-lime` scarce for match confidence or a positive fit signal; use indigo for primary actions and focus.
 
 ### Shared shell
 
@@ -1207,7 +1207,7 @@ These items may be supported by the data model later but are not required for th
 
 ## 13. Open Questions
 
-1. **Should Castd support dual-mode accounts at launch?**  
+1. **Should Atlas support dual-mode accounts at launch?**  
    Recommended default: single primary role with a future-safe `account_type` model. Add an explicit role switcher only after the separate hirer and talent journeys are reliable.
 
 2. **What is the first community content source?**  

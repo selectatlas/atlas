@@ -80,7 +80,7 @@ export default function Hero() {
       <div className="fade" aria-hidden="true" />
 
       <div className="content">
-        <span className="wordmark">CASTD</span>
+        <span className="wordmark">ATLAS</span>
         <h1>
           Your space
           <br />

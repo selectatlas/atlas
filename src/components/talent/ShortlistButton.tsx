@@ -14,11 +14,11 @@ export function ShortlistButton({ talentId, className = '' }: ShortlistButtonPro
   const [toggling, setToggling] = useState(false)
 
   useEffect(() => {
-    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('castd_demo=1')
+    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('atlas_demo=1')
     if (isLocalDemo) {
       // Session storage is the local preview's external state source; hydrate it once on mount.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShortlisted(window.sessionStorage.getItem(`castd_demo_shortlist_${talentId}`) === '1')
+      setShortlisted(window.sessionStorage.getItem(`atlas_demo_shortlist_${talentId}`) === '1')
       setLoading(false)
       return
     }
@@ -38,9 +38,9 @@ export function ShortlistButton({ talentId, className = '' }: ShortlistButtonPro
     const prev = shortlisted
     setShortlisted(!prev)
 
-    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('castd_demo=1')
+    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('atlas_demo=1')
     if (isLocalDemo) {
-      const key = `castd_demo_shortlist_${talentId}`
+      const key = `atlas_demo_shortlist_${talentId}`
       if (prev) window.sessionStorage.removeItem(key)
       else window.sessionStorage.setItem(key, '1')
       setToggling(false)

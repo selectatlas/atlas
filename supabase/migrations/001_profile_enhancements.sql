@@ -1,5 +1,5 @@
 -- ============================================================
--- Castd.ai — Phase 1: Profile Enhancements
+-- Atlas — Phase 1: Profile Enhancements
 -- Run in: Supabase Dashboard > SQL Editor
 -- ============================================================
 

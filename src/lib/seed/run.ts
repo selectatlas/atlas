@@ -43,7 +43,7 @@ async function seed() {
     // Create the auth user - trigger auto-creates the profile row
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: profile.email,
-      password: 'CastdDemo2025!',
+      password: 'AtlasDemo2025!',
       email_confirm: true,
       user_metadata: {
         full_name: profile.full_name,

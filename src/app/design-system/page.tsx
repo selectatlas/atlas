@@ -25,8 +25,8 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 
 export const metadata: Metadata = {
-  title: 'castd.ai design system',
-  description: 'The Castd product design system and shadcn component reference.',
+  title: 'Atlas design system',
+  description: 'The Atlas product design system and shadcn component reference.',
 }
 
 const colorTokens = [
@@ -94,13 +94,13 @@ export default function DesignSystemPage() {
           <div className="max-w-3xl">
             <div className="mb-5 flex items-center gap-3">
               <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">c</span>
-              <span className="text-sm font-semibold tracking-tight">castd.ai</span>
+              <span className="text-sm font-semibold tracking-tight">Atlas</span>
               <Badge variant="secondary">Design system</Badge>
             </div>
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Build with intent</p>
             <h1 className="text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">A calm, quick-scanning system for finding the right person.</h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
-              Castd uses shadcn components as its interaction layer, then adds a focused visual language for creative talent discovery: expressive accents, quiet surfaces, and enough density to keep the work moving.
+              Atlas uses shadcn components as its interaction layer, then adds a focused visual language for creative talent discovery: expressive accents, quiet surfaces, and enough density to keep the work moving.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -170,7 +170,7 @@ export default function DesignSystemPage() {
                     {typeTokens.map((token) => (
                       <div key={token.name} className="grid gap-3 px-5 py-5 sm:grid-cols-[120px_minmax(0,1fr)_160px] sm:items-center">
                         <span className="font-mono text-xs text-muted-foreground">{token.name}</span>
-                        <span className={token.className}>Castd finds the fit.</span>
+                        <span className={token.className}>Atlas finds the fit.</span>
                         <span className="font-mono text-xs text-muted-foreground sm:text-right">{token.spec}</span>
                       </div>
                     ))}
@@ -222,7 +222,7 @@ export default function DesignSystemPage() {
             </div>
 
             <div id="components">
-              <Section eyebrow="Components" title="Shadcn primitives, castd defaults" description="These examples are the contract for the reusable UI layer in src/components/ui. Prefer a primitive and a semantic variant over one-off markup.">
+              <Section eyebrow="Components" title="Shadcn primitives, atlas defaults" description="These examples are the contract for the reusable UI layer in src/components/ui. Prefer a primitive and a semantic variant over one-off markup.">
                 <div className="grid gap-4 xl:grid-cols-2">
                   <Card className="border-border/80 shadow-none">
                     <CardHeader>

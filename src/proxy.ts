@@ -8,7 +8,7 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const localDemoMode = process.env.NODE_ENV === 'development' && request.cookies.get('castd_demo')?.value === '1'
+  const localDemoMode = process.env.NODE_ENV === 'development' && request.cookies.get('atlas_demo')?.value === '1'
   if (localDemoMode) return NextResponse.next()
 
   const isPublicLandingRoute = pathname === '/'

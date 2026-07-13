@@ -40,7 +40,7 @@ export default function SearchPage() {
   const [isLocalDemo, setIsLocalDemo] = useState(false)
 
   useEffect(() => {
-    const localDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('castd_demo=1')
+    const localDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('atlas_demo=1')
     // The cookie is the local demo's external session source; hydrate it once on mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLocalDemo(localDemo)

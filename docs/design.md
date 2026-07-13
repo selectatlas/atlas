@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: Castd
+name: Atlas
 description: A focused design system for fast, human-centered creative talent discovery.
 
 colors:
@@ -185,11 +185,11 @@ components:
     height: 2.5rem
 ---
 
-# Castd Design System
+# Atlas Design System
 
 ## Overview
 
-Castd is a talent discovery workspace for hirers and creative talent. The visual system is calm and compact so people can scan profiles, compare evidence, and act without losing context. Indigo makes intent obvious, lime marks meaningful match moments, and lavender adds warmth to supporting surfaces. Avoid noisy dashboards, decorative gradients, and one-off controls that make the product feel less trustworthy.
+Atlas is a talent discovery workspace for hirers and creative talent. The visual system is calm and compact so people can scan profiles, compare evidence, and act without losing context. Indigo makes intent obvious, lime marks meaningful match moments, and lavender adds warmth to supporting surfaces. Avoid noisy dashboards, decorative gradients, and one-off controls that make the product feel less trustworthy.
 
 ## Colors
 
@@ -205,7 +205,7 @@ Spacing follows a 4px base with named steps from `spacing.1` through `spacing.16
 
 ## Elevation & Depth
 
-Castd is border-first. Cards use a quiet border and a restrained shadow only when they need to lift above a page, such as a dialog or floating action. Avoid heavy shadows and nested surfaces with competing elevation. Focus states use the indigo ring so keyboard users receive the same hierarchy as pointer users.
+Atlas is border-first. Cards use a quiet border and a restrained shadow only when they need to lift above a page, such as a dialog or floating action. Avoid heavy shadows and nested surfaces with competing elevation. Focus states use the indigo ring so keyboard users receive the same hierarchy as pointer users.
 
 ## Shapes
 

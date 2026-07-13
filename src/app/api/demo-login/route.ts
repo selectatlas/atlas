@@ -10,12 +10,12 @@ export async function GET(request: Request) {
   const requestedRole = new URL(request.url).searchParams.get('role')
   const role = requestedRole === 'hirer' ? 'hirer' : 'talent'
   const response = NextResponse.redirect(new URL(role === 'hirer' ? '/search' : '/discover', request.url))
-  response.cookies.set('castd_demo', '1', {
+  response.cookies.set('atlas_demo', '1', {
     path: '/',
     maxAge: 60 * 60 * 24,
     sameSite: 'lax',
   })
-  response.cookies.set('castd_demo_role', role, {
+  response.cookies.set('atlas_demo_role', role, {
     path: '/',
     maxAge: 60 * 60 * 24,
     sameSite: 'lax',

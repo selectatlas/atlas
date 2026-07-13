@@ -82,7 +82,7 @@ export function SearchHeader({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Hirer workspace</p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Find the right talent</h1>
-              <p className="mt-1 max-w-xl text-sm text-muted-foreground">Describe the brief in your own words. Castd will surface the people most likely to fit.</p>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">Describe the brief in your own words. Atlas will surface the people most likely to fit.</p>
             </div>
             <span className="hidden rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground sm:inline-flex">AI-assisted discovery</span>
           </div>

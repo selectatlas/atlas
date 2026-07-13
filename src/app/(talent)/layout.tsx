@@ -4,14 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 import { TalentNav } from '@/components/layout/TalentNav'
 
 export default async function TalentLayout({ children }: { children: React.ReactNode }) {
-  const localDemoMode = process.env.NODE_ENV === 'development' && (await cookies()).get('castd_demo')?.value === '1'
+  const localDemoMode = process.env.NODE_ENV === 'development' && (await cookies()).get('atlas_demo')?.value === '1'
   const supabase = localDemoMode ? null : await createClient()
   const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } }
 
   if (!user && !localDemoMode) redirect('/login')
 
   const accountType = localDemoMode
-    ? (await cookies()).get('castd_demo_role')?.value ?? 'talent'
+    ? (await cookies()).get('atlas_demo_role')?.value ?? 'talent'
     : user?.user_metadata?.account_type
   if (accountType !== 'talent') redirect('/search')
 

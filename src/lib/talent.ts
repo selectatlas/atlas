@@ -5,7 +5,7 @@ import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
 
 export async function getTalentProfile(id: string) {
   const cookieStore = await cookies()
-  const isLocalDemo = process.env.NODE_ENV === 'development' && cookieStore.get('castd_demo')?.value === '1'
+  const isLocalDemo = process.env.NODE_ENV === 'development' && cookieStore.get('atlas_demo')?.value === '1'
 
   if (isLocalDemo) {
     const demoProfile = DEMO_TALENT_RESULTS.find(profile => profile.id === id)

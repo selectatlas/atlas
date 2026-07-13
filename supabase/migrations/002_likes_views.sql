@@ -1,5 +1,5 @@
 -- ============================================================
--- Castd.ai — Phase 2: Likes & Views
+-- Atlas — Phase 2: Likes & Views
 -- Run in: Supabase Dashboard > SQL Editor
 -- ============================================================
 

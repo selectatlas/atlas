@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'castd.ai - AI Talent Discovery',
+  title: 'Atlas - AI Talent Discovery',
   description: 'Find the right creative talent in seconds with AI-native search.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'castd.ai',
+    title: 'Atlas',
   },
 }
 

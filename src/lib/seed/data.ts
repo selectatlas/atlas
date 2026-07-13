@@ -20,7 +20,7 @@ export interface SeedProfile {
 const bollywoodDancers: SeedProfile[] = [
   {
     full_name: 'Priya Singh',
-    email: 'priya.singh@castd-demo.com',
+    email: 'priya.singh@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Professional Bollywood and Kathak dancer with 12 years of performance experience based in East London. Fluent in Hindi and English, Priya has headlined Diwali festivals across the UK and performed alongside artists on major Bollywood UK tours. Available throughout December and January for music videos, live events, and commercial shoots.',
@@ -37,7 +37,7 @@ const bollywoodDancers: SeedProfile[] = [
   },
   {
     full_name: 'Ananya Sharma',
-    email: 'ananya.sharma@castd-demo.com',
+    email: 'ananya.sharma@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Bollywood fusion dancer and choreographer based in West London. Trained at the London Academy of Indian Dance, Ananya brings cinematic energy to every performance. Native Hindi speaker, she has choreographed for two Bollywood film productions shot in the UK. Fully available from November through December for bookings.',
@@ -54,7 +54,7 @@ const bollywoodDancers: SeedProfile[] = [
   },
   {
     full_name: 'Deepika Nair',
-    email: 'deepika.nair@castd-demo.com',
+    email: 'deepika.nair@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'South Indian classical dancer specialising in Bharatanatyam and Bollywood fusion, based in North London. Deepika performs fluently in Hindi and Tamil and has represented the British Council at cultural exchange events. She is available throughout December for performance and media work.',
@@ -70,7 +70,7 @@ const bollywoodDancers: SeedProfile[] = [
   },
   {
     full_name: 'Kavya Patel',
-    email: 'kavya.patel@castd-demo.com',
+    email: 'kavya.patel@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'High-energy Bollywood and Garba dancer based in South London with extensive music video credits. Kavya is a fluent Hindi speaker raised in a classical dance tradition, combining traditional technique with contemporary Bollywood styles. Free for bookings all December.',
@@ -86,7 +86,7 @@ const bollywoodDancers: SeedProfile[] = [
   },
   {
     full_name: 'Riya Mehta',
-    email: 'riya.mehta@castd-demo.com',
+    email: 'riya.mehta@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Professional dancer and actress, specialising in Bollywood and Mujra performance styles in Central London. Fluent in Hindi, Gujarati and English, Riya has featured in three Bollywood-inspired music videos released in the UK and India. Available for all of December and early January.',
@@ -102,7 +102,7 @@ const bollywoodDancers: SeedProfile[] = [
   },
   {
     full_name: 'Sunita Joshi',
-    email: 'sunita.joshi@castd-demo.com',
+    email: 'sunita.joshi@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Award-winning Bollywood and folk dance performer based in East London. Sunita trained at the Nrityagram Dance Ensemble and relocated to London in 2018. She speaks Hindi natively and has performed at major UK venues including the Barbican and Southbank. December and January bookings welcome.',
@@ -119,7 +119,7 @@ const bollywoodDancers: SeedProfile[] = [
   },
   {
     full_name: 'Aisha Khan',
-    email: 'aisha.khan@castd-demo.com',
+    email: 'aisha.khan@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Bollywood and contemporary fusion dancer based in West London. Raised in a Punjabi household, Aisha is a native Hindi and Urdu speaker who blends traditional Bollywood technique with modern choreography. She has worked with major UK-based music labels on Asian pop video productions. Fully free in December.',
@@ -135,7 +135,7 @@ const bollywoodDancers: SeedProfile[] = [
   },
   {
     full_name: 'Pooja Verma',
-    email: 'pooja.verma@castd-demo.com',
+    email: 'pooja.verma@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'London-based Bollywood dancer and workshop facilitator with 9 years of professional experience. Pooja teaches Bollywood fitness and performance at three West End studios and regularly performs at corporate events and weddings. Hindi and Punjabi speaker. Available December for commercial, video, and event bookings.',
@@ -151,7 +151,7 @@ const bollywoodDancers: SeedProfile[] = [
   },
   {
     full_name: 'Zara Ahmed',
-    email: 'zara.ahmed@castd-demo.com',
+    email: 'zara.ahmed@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Versatile Bollywood and fusion dancer based in North West London. Zara combines classical Bollywood vocabulary with street and jazz influences for a contemporary look. Fluent in Hindi and Urdu. Actively available in December for music videos and live showcases.',
@@ -167,7 +167,7 @@ const bollywoodDancers: SeedProfile[] = [
   },
   {
     full_name: 'Nisha Rao',
-    email: 'nisha.rao@castd-demo.com',
+    email: 'nisha.rao@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Contemporary and Bollywood crossover dancer trained at Rambert and later at the London Academy of Indian Dance. Nisha is based in South East London and performs in both Western contemporary and Bollywood contexts. Hindi speaker, available for December projects of all scales.',
@@ -189,7 +189,7 @@ const bollywoodDancers: SeedProfile[] = [
 const otherDancers: SeedProfile[] = [
   {
     full_name: 'Sofia Chen',
-    email: 'sofia.chen@castd-demo.com',
+    email: 'sofia.chen@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Former Royal Ballet School graduate specialising in classical ballet and contemporary dance. Based in Covent Garden, Sofia has performed internationally with English National Ballet and the Paris Opera Ballet.',
@@ -205,7 +205,7 @@ const otherDancers: SeedProfile[] = [
   },
   {
     full_name: 'Emma Williams',
-    email: 'emma.williams@castd-demo.com',
+    email: 'emma.williams@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'West End musical theatre dancer and choreographer. Emma has performed in Hamilton, Mamma Mia, and We Will Rock You in the West End and on UK tours. Available for commercial, video, and theatre work.',
@@ -222,7 +222,7 @@ const otherDancers: SeedProfile[] = [
   },
   {
     full_name: 'Luna Garcia',
-    email: 'luna.garcia@castd-demo.com',
+    email: 'luna.garcia@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Spanish-born Latin and Flamenco specialist based in London. Luna trained in Seville and has performed at Tablao Flamenco shows across Europe. She brings fiery authenticity to music videos, events, and brand campaigns.',
@@ -238,7 +238,7 @@ const otherDancers: SeedProfile[] = [
   },
   {
     full_name: 'Jade Brown',
-    email: 'jade.brown@castd-demo.com',
+    email: 'jade.brown@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Hip-hop and street dance performer who has toured with UK grime and R&B artists. Jade is a powerhouse on stage and camera, known for high-energy routines and precision musicality. Available for music video and commercial work.',
@@ -255,7 +255,7 @@ const otherDancers: SeedProfile[] = [
   },
   {
     full_name: 'Maya Johnson',
-    email: 'maya.johnson@castd-demo.com',
+    email: 'maya.johnson@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Contemporary and aerial dance artist based in Hackney. Maya combines acrobatic aerial silks with floor-based contemporary technique for dramatic visual effects. Ideal for brand campaigns, festival performances, and editorial shoots.',
@@ -271,7 +271,7 @@ const otherDancers: SeedProfile[] = [
   },
   {
     full_name: 'Amara Osei',
-    email: 'amara.osei@castd-demo.com',
+    email: 'amara.osei@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Afrobeats and contemporary dancer hailing from Brixton. Amara fuses West African rhythm with modern urban movement and has featured in music videos for major Afrobeats and Afropop artists. Full of energy and stage presence.',
@@ -287,7 +287,7 @@ const otherDancers: SeedProfile[] = [
   },
   {
     full_name: 'Chloe Turner',
-    email: 'chloe.turner@castd-demo.com',
+    email: 'chloe.turner@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Competitive ballroom and Latin dancer, three-time UK Amateur Latin Champion. Chloe is based in Chiswick and regularly performs at corporate events, weddings, and television. Available for commercial and television work year round.',
@@ -304,7 +304,7 @@ const otherDancers: SeedProfile[] = [
   },
   {
     full_name: 'Grace Lee',
-    email: 'grace.lee@castd-demo.com',
+    email: 'grace.lee@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'K-pop and hip-hop trained dancer based in New Malden, London. Grace trained at specialist academies in Seoul and London and brings crisp K-pop choreography to performance and video work. Ideal for K-pop, urban, and Asian commercial productions.',
@@ -320,7 +320,7 @@ const otherDancers: SeedProfile[] = [
   },
   {
     full_name: 'Olivia Parker',
-    email: 'olivia.parker@castd-demo.com',
+    email: 'olivia.parker@atlas-demo.com',
     city: 'Manchester',
     country: 'UK',
     bio: 'Contemporary and physical theatre performer based in Manchester with extensive stage and screen credits. Olivia has worked with leading physical theatre companies including DV8 and Frantic Assembly. Available for London and national projects.',
@@ -335,7 +335,7 @@ const otherDancers: SeedProfile[] = [
   },
   {
     full_name: 'Rosie Thompson',
-    email: 'rosie.thompson@castd-demo.com',
+    email: 'rosie.thompson@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Breakdancer and street dance artist who competes on the international B-girl circuit. Rosie has represented the UK in Red Bull BC One competitions and brings raw authenticity to commercial and editorial projects.',
@@ -358,7 +358,7 @@ const otherDancers: SeedProfile[] = [
 const combatActors: SeedProfile[] = [
   {
     full_name: 'James Morrison',
-    email: 'james.morrison@castd-demo.com',
+    email: 'james.morrison@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Screen actor and qualified stage combat instructor based in Bermondsey. James holds an AEA stage combat weapon certification and has trained in boxing at Fitzroy Lodge ABC for 8 years. He has appeared in multiple BBC and ITV dramas requiring authentic fight choreography and stunt work. Available for bookings immediately.',
@@ -375,7 +375,7 @@ const combatActors: SeedProfile[] = [
   },
   {
     full_name: 'Marcus Cole',
-    email: 'marcus.cole@castd-demo.com',
+    email: 'marcus.cole@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Actor and former professional boxer based in Stratford, East London. Marcus brings genuine ring experience to screen roles, having fought at amateur level for England and professionally for two years. Screen trained at the Identity School of Acting, he combines credible physicality with strong emotional range for action and drama.',
@@ -392,7 +392,7 @@ const combatActors: SeedProfile[] = [
   },
   {
     full_name: 'Tom Bradley',
-    email: 'tom.bradley@castd-demo.com',
+    email: 'tom.bradley@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Theatre-trained actor with a specialist background in Jiu-Jitsu and boxing. Tom is a black belt in BJJ and has trained actors and stunt performers on BBC and Netflix productions in authentic grappling technique. Based in Camden, he brings fight credibility to leading and supporting roles.',
@@ -409,7 +409,7 @@ const combatActors: SeedProfile[] = [
   },
   {
     full_name: 'Ryan Fletcher',
-    email: 'ryan.fletcher@castd-demo.com',
+    email: 'ryan.fletcher@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Screen actor and professional stuntman based in South London. Ryan is a BECTU-registered stunt performer with Muay Thai and boxing credentials, having performed fights and stunts on major UK and US productions. Clean for close-up, doubles or leading man roles in action drama.',
@@ -426,7 +426,7 @@ const combatActors: SeedProfile[] = [
   },
   {
     full_name: 'Daniel Park',
-    email: 'daniel.park@castd-demo.com',
+    email: 'daniel.park@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Korean-British actor and martial artist based in London. Daniel holds black belts in Taekwondo and Hapkido and has screen-fought on major Korean and British productions. His movement background extends to motion capture, making him a versatile physical performer for action and drama.',
@@ -447,7 +447,7 @@ const combatActors: SeedProfile[] = [
 const otherActors: SeedProfile[] = [
   {
     full_name: 'Luke Harrison',
-    email: 'luke.harrison@castd-demo.com',
+    email: 'luke.harrison@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'RADA-trained actor with an extensive theatre and television portfolio. Luke has appeared in several long-running BBC dramas and recently completed a national tour. Known for strong character work and emotional honesty on screen.',
@@ -463,7 +463,7 @@ const otherActors: SeedProfile[] = [
   },
   {
     full_name: 'Sam Nguyen',
-    email: 'sam.nguyen@castd-demo.com',
+    email: 'sam.nguyen@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Film actor and motion capture specialist based in Soho. Sam has credits on AAA game productions and feature films, combining acting craft with technical body performance. Ideal for digital doubles, performance capture, and lead roles in genre film.',
@@ -479,7 +479,7 @@ const otherActors: SeedProfile[] = [
   },
   {
     full_name: 'Alex Bennett',
-    email: 'alex.bennett@castd-demo.com',
+    email: 'alex.bennett@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Guildhall-trained actor specialising in character work and comedy. Alex has appeared in several Channel 4 comedies and guest starred in major ITV drama series. Known for rapid character transformation and excellent accent work.',
@@ -496,7 +496,7 @@ const otherActors: SeedProfile[] = [
   },
   {
     full_name: 'Patrick Murphy',
-    email: 'patrick.murphy@castd-demo.com',
+    email: 'patrick.murphy@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Irish actor based in London, known for leading man roles in film and television drama. Patrick has appeared in two BAFTA-nominated productions and recently completed principal photography on a Sky drama series. Strong classical and screen technique.',
@@ -512,7 +512,7 @@ const otherActors: SeedProfile[] = [
   },
   {
     full_name: 'Kieran Scott',
-    email: 'kieran.scott@castd-demo.com',
+    email: 'kieran.scott@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Immersive theatre specialist who regularly performs in site-specific and promenade productions. Kieran thrives in experiential and interactive formats and has extensive improvisation experience for live and filmed work.',
@@ -528,7 +528,7 @@ const otherActors: SeedProfile[] = [
   },
   {
     full_name: 'Tobias Jones',
-    email: 'tobias.jones@castd-demo.com',
+    email: 'tobias.jones@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Voice actor and theatre performer with credits across animation, audiobooks, and commercial voiceover. Tobias has voiced characters for three animated series and provides voices for major UK consumer brands. A versatile range from warm and natural to character and comedy.',
@@ -544,7 +544,7 @@ const otherActors: SeedProfile[] = [
   },
   {
     full_name: 'Aaron Patel',
-    email: 'aaron.patel@castd-demo.com',
+    email: 'aaron.patel@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'British-Indian actor based in Wembley with experience in UK television drama and Bollywood crossover productions. Aaron has appeared in a Netflix UK original series and several British-Indian film productions, bringing bilingual capability and versatile screen range.',
@@ -563,12 +563,12 @@ const otherActors: SeedProfile[] = [
 // ----------------------------------------------------------------
 // DEMO-CRITICAL: Food & beverage content creators
 // For the contrast demo: Mandy search returned 609 results, one showed food content.
-// Castd.ai should surface these immediately.
+// Atlas should surface these immediately.
 // ----------------------------------------------------------------
 const foodContentCreators: SeedProfile[] = [
   {
     full_name: 'Sophie Clarke',
-    email: 'sophie.clarke@castd-demo.com',
+    email: 'sophie.clarke@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Professional food and beverage content creator based in Shoreditch with 180k followers across Instagram and TikTok. Sophie specialises in restaurant discovery, cocktail content, and premium brand partnerships for food and drink companies. Her content combines beautiful photography with engaging short-form video.',
@@ -585,7 +585,7 @@ const foodContentCreators: SeedProfile[] = [
   },
   {
     full_name: 'Lauren Webb',
-    email: 'lauren.webb@castd-demo.com',
+    email: 'lauren.webb@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Food photographer and recipe content creator with a dedicated following of 220k across platforms. Lauren produces scroll-stopping hero imagery for restaurant menus, food brands, and drinks companies. Her bespoke recipe content has been licensed by major UK supermarkets and lifestyle magazines.',
@@ -601,7 +601,7 @@ const foodContentCreators: SeedProfile[] = [
   },
   {
     full_name: 'Emma Rodriguez',
-    email: 'emma.rodriguez@castd-demo.com',
+    email: 'emma.rodriguez@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Food and drink journalist turned content creator based in Notting Hill. Emma has reviewed over 300 London restaurants and produced sponsored content for premium drinks brands including Moët, Diageo and Fever-Tree. Her audience is affluent, urban, and highly engaged. Available December for brand campaigns.',
@@ -617,7 +617,7 @@ const foodContentCreators: SeedProfile[] = [
   },
   {
     full_name: 'Charlotte Kim',
-    email: 'charlotte.kim@castd-demo.com',
+    email: 'charlotte.kim@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'TikTok-native food content creator with 350k followers and multiple viral food review series. Charlotte specialises in London restaurant discovery content, street food, and accessible recipe creation. Her audience skews 18-34 with very high engagement rates for food brands.',
@@ -633,7 +633,7 @@ const foodContentCreators: SeedProfile[] = [
   },
   {
     full_name: 'Jessica Hart',
-    email: 'jessica.hart@castd-demo.com',
+    email: 'jessica.hart@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Food and drink content creator specialising in premium spirits, cocktails, and fine dining experiences. Jessica collaborates with luxury hotels and bar groups to produce aspirational content for discerning audiences. Based in Chelsea with a refined visual aesthetic and strong storytelling instinct.',
@@ -649,7 +649,7 @@ const foodContentCreators: SeedProfile[] = [
   },
   {
     full_name: 'Mia Thompson',
-    email: 'mia.thompson@castd-demo.com',
+    email: 'mia.thompson@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'YouTube food creator with 95k subscribers and 8M total views. Mia produces accessible, family-friendly recipe content as well as restaurant vlogs across London. She has partnered with KitchenAid, Ninja, and several UK food brands on long-form sponsored content.',
@@ -665,7 +665,7 @@ const foodContentCreators: SeedProfile[] = [
   },
   {
     full_name: 'Poppy Foster',
-    email: 'poppy.foster@castd-demo.com',
+    email: 'poppy.foster@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Food stylist and content creator who has worked on cookbook shoots, advertising campaigns, and social media content for major FMCG brands. Poppy brings a trained culinary eye to every shoot, ensuring food looks irresistible on camera. Based in Hackney and available for December projects.',
@@ -681,7 +681,7 @@ const foodContentCreators: SeedProfile[] = [
   },
   {
     full_name: 'Ava Williams',
-    email: 'ava.williams@castd-demo.com',
+    email: 'ava.williams@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Food and lifestyle content creator based in Bermondsey with a cross-platform audience of 140k. Ava focuses on London food culture, sustainable eating, and accessible home cooking. Her bright, clean visual style is popular with health-conscious food brands and restaurant groups.',
@@ -701,7 +701,7 @@ const foodContentCreators: SeedProfile[] = [
 const otherCreators: SeedProfile[] = [
   {
     full_name: 'Bella Harris',
-    email: 'bella.harris@castd-demo.com',
+    email: 'bella.harris@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Travel and lifestyle content creator with a YouTube channel focused on luxury travel and European city guides. Bella has partnered with leading hotel chains and tourism boards.',
@@ -717,7 +717,7 @@ const otherCreators: SeedProfile[] = [
   },
   {
     full_name: 'Zoe Adams',
-    email: 'zoe.adams@castd-demo.com',
+    email: 'zoe.adams@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Fitness and wellness content creator with 280k Instagram followers. Zoe produces workout content, product reviews, and brand partnerships for activewear, nutrition, and wellness brands.',
@@ -733,7 +733,7 @@ const otherCreators: SeedProfile[] = [
   },
   {
     full_name: 'Lily Evans',
-    email: 'lily.evans@castd-demo.com',
+    email: 'lily.evans@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Fashion and street style content creator based in East London. Lily creates trend-led content for fashion brands, collaborates with UK designers on lookbook campaigns, and covers London Fashion Week for major platforms.',
@@ -749,7 +749,7 @@ const otherCreators: SeedProfile[] = [
   },
   {
     full_name: 'Iris Murphy',
-    email: 'iris.murphy@castd-demo.com',
+    email: 'iris.murphy@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Beauty and makeup content creator with 310k YouTube subscribers. Iris produces tutorials, brand reviews, and editorial looks for beauty clients ranging from indie brands to global beauty companies like L\'Oréal Paris.',
@@ -765,7 +765,7 @@ const otherCreators: SeedProfile[] = [
   },
   {
     full_name: 'Ellie Robinson',
-    email: 'ellie.robinson@castd-demo.com',
+    email: 'ellie.robinson@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Comedy and entertainment creator whose sketch content regularly achieves 1M+ views on TikTok. Ellie produces character-led comedy for brands looking to engage Gen Z audiences with humour, authenticity, and relatability.',
@@ -781,7 +781,7 @@ const otherCreators: SeedProfile[] = [
   },
   {
     full_name: 'Freya Wilson',
-    email: 'freya.wilson@castd-demo.com',
+    email: 'freya.wilson@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Food and travel content creator who documents restaurant openings and culinary travel across Europe and Southeast Asia. Freya produces content for both food brands and tourism clients, often combining both in immersive destination food content.',
@@ -797,7 +797,7 @@ const otherCreators: SeedProfile[] = [
   },
   {
     full_name: 'Nadia Brown',
-    email: 'nadia.brown@castd-demo.com',
+    email: 'nadia.brown@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Cultural and lifestyle content creator focused on London\'s multicultural creative scene. Nadia produces content that celebrates diverse communities, arts events, and food cultures, and has worked with the Mayor of London\'s cultural office and several cultural institutions.',
@@ -813,7 +813,7 @@ const otherCreators: SeedProfile[] = [
   },
   {
     full_name: 'Tia Jackson',
-    email: 'tia.jackson@castd-demo.com',
+    email: 'tia.jackson@atlas-demo.com',
     city: 'London',
     country: 'UK',
     bio: 'Fitness and transformation content creator who documents her athletic journey and coaches others through content. Tia has 190k followers and works with activewear brands, gym equipment companies, and health food brands on authentic sponsored content.',
