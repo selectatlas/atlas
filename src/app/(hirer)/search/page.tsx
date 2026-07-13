@@ -10,6 +10,7 @@ import { SwipeStack } from '@/components/talent/SwipeStack'
 import { OutreachModal } from '@/components/outreach/OutreachModal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DEMO_TALENT_RESULTS, searchDemoTalent } from '@/lib/demo-data'
+import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import type { Profile, TalentSkill, Category, TalentSearchResult } from '@/types'
 
 type ViewMode = 'swipe' | 'grid' | 'list'
@@ -53,7 +54,7 @@ export default function SearchPage() {
     const supabase = createClient()
     supabase
       .from('profiles')
-      .select('*, talent_skills(*)')
+      .select(PUBLIC_PROFILE_WITH_SKILLS)
       .eq('account_type', 'talent')
       .order('created_at', { ascending: false })
       .then(({ data }) => {

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { DEMO_PROFILE, DEMO_TALENT_RESULTS } from '@/lib/demo-data'
+import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
 
 export async function getTalentProfile(id: string) {
@@ -32,7 +33,7 @@ export async function getTalentProfile(id: string) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*, talent_skills(*)')
+    .select(PUBLIC_PROFILE_WITH_SKILLS)
     .eq('id', id)
     .eq('account_type', 'talent')
     .single()
@@ -77,7 +78,7 @@ export async function getTalentProfile(id: string) {
   if (primaryCategory) {
     const { data: similar } = await supabase
       .from('profiles')
-      .select('*, talent_skills(*)')
+      .select(PUBLIC_PROFILE_WITH_SKILLS)
       .eq('account_type', 'talent')
       .neq('id', id)
       .filter('talent_skills.category', 'eq', primaryCategory)

@@ -62,48 +62,18 @@ export async function POST(request: Request) {
   const { talent_id } = await request.json() as { talent_id: string }
   if (!talent_id) return Response.json({ error: 'talent_id required' }, { status: 400 })
 
-  // Check if thread already exists
-  const { data: existingParticipants } = await supabase
-    .from('thread_participants')
-    .select('thread_id')
-    .eq('profile_id', user.id)
+  // The database function validates roles and creates both participants atomically.
+  const { data: threadId, error } = await supabase.rpc('create_or_get_thread', {
+    other_profile_id: talent_id,
+  })
 
-  const myThreadIds = (existingParticipants ?? []).map(p => p.thread_id)
-
-  if (myThreadIds.length > 0) {
-    const { data: shared } = await supabase
-      .from('thread_participants')
-      .select('thread_id')
-      .eq('profile_id', talent_id)
-      .in('thread_id', myThreadIds)
-
-    if (shared && shared.length > 0) {
-      return Response.json({ thread_id: shared[0].thread_id })
-    }
+  if (error || !threadId) {
+    const status = error?.code === '42501' ? 403 : error?.code === '22023' ? 400 : 500
+    return Response.json(
+      { error: status === 403 ? 'Forbidden' : status === 400 ? 'Invalid participant' : 'Failed to create thread' },
+      { status },
+    )
   }
 
-  // Create new thread
-  const { data: newThread, error: threadError } = await supabase
-    .from('message_threads')
-    .insert({})
-    .select()
-    .single()
-
-  if (threadError || !newThread) {
-    return Response.json({ error: 'Failed to create thread' }, { status: 500 })
-  }
-
-  // Add both participants
-  const { error: partsError } = await supabase
-    .from('thread_participants')
-    .insert([
-      { thread_id: newThread.id, profile_id: user.id },
-      { thread_id: newThread.id, profile_id: talent_id },
-    ])
-
-  if (partsError) {
-    return Response.json({ error: 'Failed to add participants' }, { status: 500 })
-  }
-
-  return Response.json({ thread_id: newThread.id }, { status: 201 })
+  return Response.json({ thread_id: threadId }, { status: 201 })
 }

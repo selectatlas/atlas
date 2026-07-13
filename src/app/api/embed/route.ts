@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { embedText } from '@/lib/openai'
+import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 
 // POST /api/embed — regenerate embedding for a talent profile
 // Called after profile or skills are updated
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
   // Fetch profile + skills
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*, talent_skills(*)')
+    .select(PUBLIC_PROFILE_WITH_SKILLS)
     .eq('id', targetId)
     .single()
 

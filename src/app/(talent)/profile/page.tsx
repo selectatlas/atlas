@@ -13,6 +13,7 @@ import { CreditsEditor } from '@/components/talent/CreditsEditor'
 import { PortfolioEditor } from '@/components/talent/PortfolioEditor'
 import { ProfileCompletenessCard } from '@/components/talent/ProfileCompletenessCard'
 import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
+import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 
 type TalentWithExtras = Profile & {
   talent_skills: TalentSkill[]
@@ -53,7 +54,7 @@ export default function ProfilePage() {
 
     const { data } = await supabase
       .from('profiles')
-      .select('*, talent_skills(*)')
+      .select(PUBLIC_PROFILE_WITH_SKILLS)
       .eq('id', user.id)
       .single()
 
@@ -65,7 +66,8 @@ export default function ProfilePage() {
     ])
 
     setProfile({
-      ...(data as Profile & { talent_skills: TalentSkill[] }),
+      ...(data as Omit<Profile, 'email'> & { talent_skills: TalentSkill[] }),
+      email: user.email ?? '',
       credits: (credits ?? []) as Credit[],
       portfolio_items: (portfolioItems ?? []) as PortfolioItem[],
     })

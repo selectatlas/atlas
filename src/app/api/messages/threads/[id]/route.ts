@@ -62,6 +62,9 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { content } = await request.json() as { content: string }
 
   if (!content?.trim()) return Response.json({ error: 'content required' }, { status: 400 })
+  if (content.trim().length > 5000) {
+    return Response.json({ error: 'content must be 5000 characters or fewer' }, { status: 400 })
+  }
 
   // Verify participant
   const { data: participant } = await supabase

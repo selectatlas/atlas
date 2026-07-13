@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { generateOutreachMessage } from '@/lib/openai'
+import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   // Generate: fetch talent profile and build personalised message
   const { data: talent } = await supabase
     .from('profiles')
-    .select('*, talent_skills(*)')
+    .select(PUBLIC_PROFILE_WITH_SKILLS)
     .eq('id', talent_id)
     .single()
 
