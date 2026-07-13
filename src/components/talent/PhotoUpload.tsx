@@ -8,7 +8,13 @@ interface PhotoUploadProps {
   currentUrl: string | null
   initials: string
   onUploaded: (url: string) => void
-  bucket?: string
+  bucket?: 'avatars' | 'covers'
+}
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
 }
 
 export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatars' }: PhotoUploadProps) {
@@ -21,8 +27,9 @@ export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatar
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file')
+    const extension = IMAGE_EXTENSIONS[file.type]
+    if (!extension) {
+      setError('Please select a JPG, PNG, or WebP image')
       return
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -42,8 +49,7 @@ export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatar
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const ext = file.name.split('.').pop() ?? 'jpg'
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`
+      const path = `${user.id}/${crypto.randomUUID()}.${extension}`
 
       const { error: uploadError } = await supabase.storage
         .from(bucket)

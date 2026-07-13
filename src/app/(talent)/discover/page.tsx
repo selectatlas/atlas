@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { DEMO_APPLICATIONS_STORAGE_KEY, DEMO_JOBS, DEMO_PROFILE, type DemoApplication } from '@/lib/demo-data'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import { getJobMatchReasons } from '@/lib/matching'
+import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -58,7 +59,7 @@ export default function DiscoverPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*, talent_skills(*)')
+        .select(PUBLIC_PROFILE_WITH_SKILLS)
         .eq('id', user.id)
         .single()
 

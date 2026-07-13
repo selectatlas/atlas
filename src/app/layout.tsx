@@ -20,32 +20,10 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-const isDevelopment = process.env.NODE_ENV === 'development'
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full">
-        {children}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                if (${isDevelopment}) {
-                  navigator.serviceWorker.getRegistrations().then((registrations) => {
-                    registrations.forEach((registration) => registration.unregister())
-                  })
-                  if ('caches' in window) {
-                    caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)))
-                  }
-                } else {
-                  navigator.serviceWorker.register('/sw.js').catch(() => {})
-                }
-              }
-            `,
-          }}
-        />
-      </body>
+      <body className="min-h-full">{children}</body>
     </html>
   )
 }

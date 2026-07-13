@@ -1,52 +1,19 @@
-// Atlas — PWA Service Worker (MVP)
-// Caches the app shell for offline support.
+// Retirement worker for the pre-launch Atlas PWA implementation.
+// Keep this file for one release so browsers with the old worker installed can
+// activate it, clear the page cache, and unregister. There is deliberately no
+// fetch handler: every request falls through to the network.
 
-const CACHE_NAME = 'atlas-v1'
-const APP_SHELL = [
-  '/',
-  '/manifest.json',
-  '/login',
-]
+const RETIRED_CACHE_NAME = 'atlas-v1'
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_SHELL)
-    })
-  )
+self.addEventListener('install', () => {
   self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      )
-    })
-  )
-  self.clients.claim()
-})
-
-self.addEventListener('fetch', (event) => {
-  // Skip Supabase API and auth requests — always network-first
-  const url = new URL(event.request.url)
-  if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase')) {
-    return
-  }
-
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetched = fetch(event.request).then((response) => {
-        if (response.ok) {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone)
-          })
-        }
-        return response
-      })
-      return cached || fetched
-    })
+    Promise.all([
+      caches.delete(RETIRED_CACHE_NAME),
+      self.registration.unregister(),
+    ])
   )
 })

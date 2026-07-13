@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
+import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
@@ -47,7 +48,7 @@ async function embedAll() {
 
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('*, talent_skills(*)')
+    .select(PUBLIC_PROFILE_WITH_SKILLS)
     .eq('account_type', 'talent')
 
   if (error || !profiles) {

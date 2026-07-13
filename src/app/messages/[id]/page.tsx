@@ -28,6 +28,7 @@ export default function ThreadPage() {
   const [other, setOther] = useState<OtherUser | null>(null)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -87,15 +88,24 @@ export default function ThreadPage() {
     e.preventDefault()
     if (!input.trim() || sending) return
     setSending(true)
+    setSendError(null)
     try {
-      await fetch(`/api/messages/threads/${threadId}`, {
+      const response = await fetch(`/api/messages/threads/${threadId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: input.trim() }),
       })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        setSendError(data.error ?? 'Message could not be sent')
+        return
+      }
       setInput('')
-    } catch { /* ignore */ }
-    setSending(false)
+    } catch {
+      setSendError('Message could not be sent')
+    } finally {
+      setSending(false)
+    }
   }
 
   if (loading) {
@@ -163,25 +173,29 @@ export default function ThreadPage() {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSend} className="shrink-0 px-4 py-3 bg-background border-t flex gap-2">
-        <Input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1"
-        />
-        <Button
-          type="submit"
-          disabled={!input.trim() || sending}
-          size="icon"
-          className="shrink-0 rounded-xl"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-          </svg>
-        </Button>
-      </form>
+      <div className="shrink-0 border-t bg-background px-4 py-3">
+        {sendError && <p className="mb-2 text-xs text-destructive" role="alert">{sendError}</p>}
+        <form onSubmit={handleSend} className="flex gap-2">
+          <Input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder="Type a message..."
+            maxLength={5000}
+            className="flex-1"
+          />
+          <Button
+            type="submit"
+            disabled={!input.trim() || sending}
+            size="icon"
+            className="shrink-0 rounded-xl"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+            </svg>
+          </Button>
+        </form>
+      </div>
     </div>
   )
 }

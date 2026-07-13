@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { embedText, parseSearchQuery } from '@/lib/openai'
 import { createClient } from '@/lib/supabase/server'
+import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 
 function normalise(value: string | null | undefined) {
   return (value ?? '').toLowerCase().trim()
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
 
   const { data: profiles } = await serviceClient
     .from('profiles')
-    .select('*, talent_skills(*)')
+    .select(PUBLIC_PROFILE_WITH_SKILLS)
     .in('id', profileIds)
     .eq('account_type', 'talent')
 

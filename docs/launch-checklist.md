@@ -27,7 +27,7 @@
 
 ## Phase 0 — Fix before any public launch
 
-### [ ] 🤖 1. Replace the broken database migration path and prove it from an empty database — 1–2 days
+### [x] 🤖 1. Replace the broken database migration path and prove it from an empty database — 1–2 days
 
 The database source of truth is split between `supabase/schema.sql` and three incremental migrations. The migration directory has no initial migration that creates the core tables, while migrations 001 and 002 assume those tables already exist; a clean migration-only deployment therefore cannot reproduce the app. Messaging also cannot work as written: the API tries to create a thread before RLS permits the insert, tries to insert the other participant despite a policy that only permits inserting yourself, and cannot read the other participant under the current select policy. Consolidate the schema into ordered, idempotent migrations and add database-level tests for every role.
 
@@ -35,7 +35,7 @@ The database source of truth is split between `supabase/schema.sql` and three in
 
 **You’ll know it worked when:** all migrations apply in order to a new Supabase project, apply cleanly to a copy of the current database, and the two-role messaging test passes while unrelated users receive permission errors.
 
-### [ ] 🤖 2. Stop exposing private profile fields — 3–5 hours
+### [x] 🤖 2. Stop exposing private profile fields — 3–5 hours
 
 The current `profiles_select_all` policy permits broad reads and several browser/API queries use `select('*')`. That includes `profiles.email`, so authenticated clients—and potentially anonymous Supabase API callers—can retrieve email addresses that the UI does not display. Split private account data from public talent data, or expose an explicit safe view. Replace every wildcard profile select with a named field list. Make profile role and account email server-controlled.
 
@@ -43,7 +43,7 @@ The current `profiles_select_all` policy permits broad reads and several browser
 
 **You’ll know it worked when:** searching, browsing, similar-talent results, profile pages, and outreach still work, while browser network responses and direct Supabase queries never expose another user’s email.
 
-### [ ] 🤖 3. Remove authenticated-page caching from the service worker — 2–3 hours
+### [x] 🤖 3. Remove authenticated-page caching from the service worker — 2–3 hours
 
 `public/sw.js` currently caches almost every successful same-origin page with a cache-first strategy. That can preserve authenticated HTML after logout and show stale or cross-account data on a shared browser. For launch, remove the service worker and PWA registration; reintroduce offline support later with an explicit static-asset-only strategy.
 
