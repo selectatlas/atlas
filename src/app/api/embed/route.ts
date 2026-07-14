@@ -1,28 +1,37 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { embedText } from '@/lib/openai'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
+import { parseJsonBody, isUuid, badRequest } from '@/lib/validation'
+import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
+import { logEvent } from '@/lib/log'
 
-// POST /api/embed — regenerate embedding for a talent profile
-// Called after profile or skills are updated
+// POST /api/embed — regenerate the embedding for YOUR OWN profile.
+// Called after profile or skills are updated. Nobody (including hirers) may
+// regenerate another user's embedding.
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { profile_id } = await request.json() as { profile_id?: string }
-  const targetId = profile_id ?? user.id
+  const parsedBody = await parseJsonBody(request)
+  if (!parsedBody.ok) return parsedBody.response
+  const { profile_id } = parsedBody.body
 
-  // Only allow embedding your own profile
-  if (targetId !== user.id) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('account_type')
-      .eq('id', user.id)
-      .single()
-    if (profile?.account_type !== 'hirer') {
-      return Response.json({ error: 'Forbidden' }, { status: 403 })
-    }
+  if (profile_id !== undefined && !isUuid(profile_id)) {
+    return badRequest('profile_id must be a valid id')
   }
+  const targetId = (profile_id as string | undefined) ?? user.id
+
+  // Only your own profile - embeddings are derived data owned by the profile owner
+  if (targetId !== user.id) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  // Rate limit + daily AI quota BEFORE any OpenAI spend
+  const limited =
+    (await enforceRateLimit(`embed:${user.id}`, 3600, 10)) ??
+    (await enforceAiQuota(user.id))
+  if (limited) return limited
 
   // Fetch profile + skills
   const { data: profile } = await supabase
@@ -52,8 +61,11 @@ export async function POST(request: Request) {
   try {
     embedding = await embedText(sourceText)
   } catch (err) {
-    console.error('Embedding generation failed:', err)
-    return Response.json({ error: 'Embedding generation failed' }, { status: 500 })
+    logEvent('error', 'profile_embedding_error', {
+      user_id: user.id,
+      message: err instanceof Error ? err.message : 'unknown',
+    })
+    return Response.json({ error: 'Embedding generation failed' }, { status: 503 })
   }
 
   // Upsert using service client (bypasses RLS)
@@ -68,7 +80,7 @@ export async function POST(request: Request) {
     })
 
   if (error) {
-    console.error('Embedding upsert failed:', error)
+    logEvent('error', 'profile_embedding_upsert_error', { user_id: user.id, code: error.code ?? null })
     return Response.json({ error: 'Failed to store embedding' }, { status: 500 })
   }
 

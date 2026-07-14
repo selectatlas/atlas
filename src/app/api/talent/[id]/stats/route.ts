@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { isUuid } from '@/lib/validation'
 
 // GET /api/talent/[id]/stats — returns views, likes, and current user's like status
 export async function GET(
@@ -6,6 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  if (!isUuid(id)) return Response.json({ error: 'Not found' }, { status: 404 })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 

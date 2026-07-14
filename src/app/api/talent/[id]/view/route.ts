@@ -1,13 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
+import { isUuid } from '@/lib/validation'
+import { enforceRateLimit, getClientIp } from '@/lib/rate-limit'
+import { logEvent } from '@/lib/log'
 
 // POST /api/talent/[id]/view — record a profile view
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: talent_id } = await params
+  if (!isUuid(talent_id)) return Response.json({ error: 'Not found' }, { status: 404 })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Views can be anonymous, so limit per IP (and per user when signed in)
+  // to stop a single client flooding the table.
+  const limitKey = user ? `views:${user.id}` : `views-ip:${getClientIp(request)}`
+  const limited = await enforceRateLimit(limitKey, 60, 60)
+  if (limited) return limited
 
   // Record the view (viewer_id is nullable for anonymous users)
   const { error } = await supabase
@@ -18,7 +28,7 @@ export async function POST(
     })
 
   if (error) {
-    console.error('View insert error:', error)
+    logEvent('error', 'view_insert_error', { talent_id, code: error.code ?? null })
     return Response.json({ error: 'Failed to record view' }, { status: 500 })
   }
 

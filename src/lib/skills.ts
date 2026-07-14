@@ -53,6 +53,23 @@ export const SKILLS_BY_CATEGORY: Record<Category, string[]> = {
     'Documentary presenting',
     'Immersive theatre',
   ],
+  photographer_videographer: [
+    'Commercial photography',
+    'Portrait photography',
+    'Fashion photography',
+    'Wedding photography',
+    'Event photography',
+    'Product photography',
+    'Editorial photography',
+    'Documentary photography',
+    'Commercial videography',
+    'Cinematography',
+    'Music videos',
+    'Events videography',
+    'Drone',
+    'Aerial',
+    'Vlog',
+  ],
   content_creator: [
     'Food & beverage content',
     'Food photography',
@@ -80,7 +97,8 @@ export const SKILLS_BY_CATEGORY: Record<Category, string[]> = {
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   dancer: 'Dancer',
-  actor: 'Actor',
+  actor: 'Actor / Model',
+  photographer_videographer: 'Photographer / Videographer',
   content_creator: 'Content Creator',
 }
 

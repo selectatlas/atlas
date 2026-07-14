@@ -4,7 +4,7 @@
 
 **Recommended production route:** Vercel Pro + Supabase Pro, with Resend for authentication email, Sentry for errors, and PostHog for product analytics.
 
-**Estimated work:** 4–7 engineering days plus 4–6 founder hours, normally spread across 1–2 weeks so email, DNS, and account verification can settle.
+**Estimated work:** 8–12 engineering days plus 6–10 founder hours, normally spread across 2–3 weeks so implementation, legal review, email, DNS, and account verification can settle.
 
 **Expected launch cost:** about **$45/month fixed** ($20 Vercel Pro + $25 Supabase Pro), plus low usage-based OpenAI spend, a domain (typically £10–£25/year), and optional paid tiers if email or monitoring outgrows its free allowance. Current reference prices: [Vercel](https://vercel.com/pricing), [Supabase](https://supabase.com/pricing), [OpenAI](https://developers.openai.com/api/docs/models/gpt-4o-mini), [Resend](https://resend.com/pricing), and [PostHog](https://posthog.com/pricing).
 
@@ -16,7 +16,7 @@
 - 🤖 **Agent** — a coding agent can do this in the repository or command line.
 - 🤝 **Together** — the agent prepares it; you provide a value, review the result, or click the final production control.
 
-## Audit snapshot — 11 July 2026
+## Audit snapshot — 14 July 2026
 
 - `npm test`: **passed**, 6 files and 25 tests.
 - `npm run lint`: **passed with 5 warnings**; two unoptimised `<img>` usages and three unused exports.
@@ -24,6 +24,70 @@
 - `npm audit --omit=dev`: **1 high and 2 moderate findings**. The high finding comes through the `shadcn` CLI being installed as a production dependency; Next.js currently brings an affected PostCSS version.
 - Production environment variables used by the app: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`. The last two are missing from `.env.example`.
 - No deployment configuration, CI workflow, error tracking, analytics, legal pages, account deletion, abuse reporting, rate limiter, CAPTCHA, or production runbook was found.
+
+## Execution playbook — follow these gates in order
+
+The safest first release is an **invite-only beta**, not an unrestricted public launch. Finish each gate before beginning the next one. Do not put real customer data into Atlas until Gate 1 passes, and do not invite customers until Gate 8 passes.
+
+### [ ] Gate 1 — Make customer data safe — 🤖 Agent — 2–3 days
+
+Complete detailed steps **1–3** below as one workstream: create a reproducible Supabase migration history, repair messaging/RLS, stop exposing private profile fields, and remove authenticated-page caching from the service worker.
+
+**You'll know it worked when:** a fresh database can be built entirely from migrations; two-role RLS tests pass; direct Supabase and browser queries cannot read another user's private fields; and logout/account switching can never reveal cached authenticated pages.
+
+### [x] Gate 2 — Harden every server-side boundary — 🤖 Agent — 1–2 days
+
+Complete steps **4–6**: add runtime input validation, ownership and role checks, rate limits and AI quotas, reliable embedding work, and server-enforced upload controls. Treat browser validation as convenience only; the server and database must enforce the rules.
+
+**You'll know it worked when:** malformed, oversized, repeated, cross-role, and unauthenticated requests fail safely before spending money or changing data; failed embeddings can be retried; and one user cannot read, replace, or delete another user's uploads.
+
+### [ ] Gate 3 — Establish a repeatable engineering release gate — 🤖 Agent — 1–2 days
+
+Complete steps **7–8**: resolve or narrowly document dependency advisories, add CI for clean install/lint/test/build/audit, and add real Supabase integration plus Playwright end-to-end tests. Keep the existing unit tests, but do not use mocked route tests as proof that RLS or authentication works.
+
+**You'll know it worked when:** every pull request runs the full gate from a clean checkout; no unexplained high-severity production advisory remains; and isolated hirer and talent journeys pass against a real test database.
+
+### [ ] Gate 4 — Create and secure production services — 🧑 You — 2–3 hours plus account verification
+
+Complete steps **9–12**: create Vercel, Supabase, OpenAI, Resend, Sentry, and PostHog production projects; enable MFA; set billing/spend alerts; and confirm the launch domain. Put credentials directly into the services' settings or your password manager. Never paste secrets into chat or commit them.
+
+**You'll know it worked when:** every service has a production-specific project, MFA and recovery access are configured, spending has a limit or alert, and you control the final domain.
+
+### [ ] Gate 5 — Configure a production-shaped staging environment — 🤝 Together — 1–2 days
+
+Complete steps **13–17** first in staging: typed environment validation, Vercel variables, a fresh migrated Supabase project, real authentication email, monitoring, privacy-safe analytics, structured logs, and a non-sensitive health endpoint. Staging should use separate credentials and data from production.
+
+**You'll know it worked when:** missing configuration fails clearly; secrets are absent from browser bundles and logs; confirmation/reset email works on the intended domain; a deliberate exception reaches Sentry without PII; and health/analytics signals appear as expected.
+
+### [ ] Gate 6 — Put trust, legal, and marketplace safety in place — 🤝 Together — 2–3 days plus legal review
+
+Complete steps **18–20**: publish privacy, terms, acceptable-use and cookie information; record acceptance; add account export/deletion, reporting and blocking; establish a monitored support address; and name the human responsible for moderation and incidents.
+
+**You'll know it worked when:** a user can understand and exercise their data rights, abusive users/content can be reported and blocked, policy acceptance is recorded, and one named person owns every report and escalation.
+
+### [ ] Gate 7 — Deploy behind a controlled beta boundary — 🤝 Together — 1 day plus DNS propagation
+
+Complete steps **21–23**: connect the repository to Vercel, require the green CI gate, configure the domain and HTTPS, protect previews/internal routes, add security headers and SEO controls, and provide usable error/not-found/loading states. Keep signup invite-only or capped initially.
+
+**You'll know it worked when:** only a green commit can deploy; HTTPS and canonical redirects work; authenticated/internal pages are not indexed; production responses contain the intended security headers; and rollback to the previous deployment is proven.
+
+### [ ] Gate 8 — Prove the live product as real users — 🤝 Together — 1 day
+
+Complete steps **24–25** on the production domain with two new accounts, two browsers, and a real phone. Exercise the complete talent and hirer journeys, authentication email/reset, file uploads, messaging, role isolation, accessibility, performance, and bounded abuse/load checks. Inspect network responses, Sentry, application logs, Supabase logs, and OpenAI usage while testing.
+
+**You'll know it worked when:** every critical journey succeeds without manual database repair; no private cross-user data appears; no unresolved P0/P1 error remains; accessibility has no critical finding; and abusive bursts degrade to controlled 429 responses rather than excess spend or 500 errors.
+
+### [ ] Gate 9 — Make an explicit go/no-go decision — 🧑 You — 30 minutes
+
+Complete step **26**. Launch only if Gates 1–8 have evidence, all critical/high findings are closed or explicitly accepted by a named owner, support coverage is available, and rollback is ready. Record the beta audience size and success/stop thresholds.
+
+**You'll know it worked when:** there is a dated go/no-go note naming the launch owner, incident owner, support/moderation owner, rollback decision-maker, launch cap, and stop conditions.
+
+### [ ] Gate 10 — Operate the launch, then widen access — 🤝 Together — first 72 hours, then weekly
+
+Complete steps **27–29**: check errors, logs, database/storage/auth usage, email delivery, OpenAI spend, funnel drop-off and support twice daily; prove a backup restore; finish the incident runbook; and review the first week's metrics before opening the beta further.
+
+**You'll know it worked when:** alerts reach a human, a recent backup has been restored successfully into isolation, the team can follow rollback/key-rotation/outage procedures, and widening access is based on measured reliability rather than the absence of complaints.
 
 ## Phase 0 — Fix before any public launch
 
@@ -51,7 +115,7 @@ The current `profiles_select_all` policy permits broad reads and several browser
 
 **You’ll know it worked when:** after logging out, going offline or switching accounts cannot display the previous user’s authenticated pages or data.
 
-### [ ] 🤖 4. Add authorization, validation, and spend controls to every mutation/AI route — 1 day
+### [x] 🤖 4. Add authorization, validation, and spend controls to every mutation/AI route — 1 day
 
 Authentication exists, but role checks are inconsistent. `/api/outreach`, `/api/shortlist`, and message creation do not consistently enforce hirer/talent roles. `/api/search`, `/api/outreach`, and `/api/embed` can spend OpenAI credits without an app-level quota. Request bodies mostly rely on TypeScript casts rather than runtime validation, and several text fields have no maximum length.
 
@@ -59,7 +123,7 @@ Authentication exists, but role checks are inconsistent. `/api/outreach`, `/api/
 
 **You’ll know it worked when:** all abuse tests pass, invalid/cross-role requests are rejected before any OpenAI call, and a deliberately exceeded quota returns 429 without increasing OpenAI usage.
 
-### [ ] 🤖 5. Make background work reliable — 2–4 hours
+### [x] 🤖 5. Make background work reliable — 2–4 hours
 
 Job embedding is started with an unawaited promise after job creation. A serverless function can stop after sending the response, so production jobs may never receive embeddings. Move this to a durable job, Vercel-supported post-response work, or await it with an honest loading state. Add a retry path and visibility for failed embeddings.
 
@@ -67,7 +131,7 @@ Job embedding is started with an unawaited promise after job creation. A serverl
 
 **You’ll know it worked when:** terminating the request worker immediately after the response cannot permanently leave a job unembedded, and failed work is visible and retryable.
 
-### [ ] 🤖 6. Harden uploads and public media — 4–6 hours
+### [x] 🤖 6. Harden uploads and public media — 4–6 hours
 
 The UI checks image type and a 5 MB limit, but browser checks are bypassable. Storage setup is partly left as commented manual SQL. Enforce bucket limits and allowed MIME types in Supabase, use non-guessable safe extensions, strip metadata or re-encode images, clean up replaced files, and decide whether portfolios/covers are deliberately public.
 

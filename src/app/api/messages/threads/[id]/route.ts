@@ -1,4 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { parseJsonBody, isUuid, cleanString, badRequest } from '@/lib/validation'
+import { enforceRateLimit } from '@/lib/rate-limit'
+import { logEvent } from '@/lib/log'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -6,11 +9,11 @@ interface RouteParams {
 
 // GET /api/messages/threads/[id] — list messages for a thread
 export async function GET(_request: Request, { params }: RouteParams) {
+  const { id: threadId } = await params
+  if (!isUuid(threadId)) return Response.json({ error: 'Not found' }, { status: 404 })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { id: threadId } = await params
 
   // Verify user is a participant
   const { data: participant } = await supabase
@@ -54,17 +57,19 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
 // POST /api/messages/threads/[id] — send a message
 export async function POST(request: Request, { params }: RouteParams) {
+  const { id: threadId } = await params
+  if (!isUuid(threadId)) return Response.json({ error: 'Not found' }, { status: 404 })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id: threadId } = await params
-  const { content } = await request.json() as { content: string }
+  const parsedBody = await parseJsonBody(request)
+  if (!parsedBody.ok) return parsedBody.response
+  const content = cleanString(parsedBody.body.content, 5000)
+  if (!content) return badRequest('content is required (max 5000 characters)')
 
-  if (!content?.trim()) return Response.json({ error: 'content required' }, { status: 400 })
-  if (content.trim().length > 5000) {
-    return Response.json({ error: 'content must be 5000 characters or fewer' }, { status: 400 })
-  }
+  const limited = await enforceRateLimit(`messages-send:${user.id}`, 60, 30)
+  if (limited) return limited
 
   // Verify participant
   const { data: participant } = await supabase
@@ -78,11 +83,12 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const { data: message, error } = await supabase
     .from('messages')
-    .insert({ thread_id: threadId, sender_id: user.id, content: content.trim() })
+    .insert({ thread_id: threadId, sender_id: user.id, content })
     .select('id, content, sender_id, created_at')
     .single()
 
   if (error || !message) {
+    logEvent('error', 'message_insert_error', { user_id: user.id, code: error?.code ?? null })
     return Response.json({ error: 'Failed to send message' }, { status: 500 })
   }
 

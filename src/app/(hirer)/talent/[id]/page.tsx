@@ -13,6 +13,7 @@ import { ContactButton } from '@/components/talent/ContactButton'
 import { ShortlistButton } from '@/components/talent/ShortlistButton'
 import { LikeButton } from '@/components/talent/LikeButton'
 import { ViewTracker } from './ViewTracker'
+import { TalentProfileDetails } from '@/components/talent/TalentProfileDetails'
 import { getTalentProfile } from '@/lib/talent'
 import type { Profile, TalentSkill } from '@/types'
 
@@ -40,7 +41,7 @@ export default async function TalentProfilePage({
 
   if (!data) notFound()
 
-  const { profile, credits, portfolioItems, likesCount, viewsCount, similarTalent } = data
+  const { profile, credits, portfolioItems, likesCount, viewsCount, similarTalent, talentDetails } = data
   const skills = profile.talent_skills as TalentSkill[]
   const categories = [...new Set(skills.map(s => s.category))]
 
@@ -115,6 +116,8 @@ export default async function TalentProfilePage({
           )}
 
           <CreditsTimeline credits={credits} />
+
+          <TalentProfileDetails details={talentDetails} />
 
           {skills.length > 0 && (
             <section>

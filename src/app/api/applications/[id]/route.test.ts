@@ -28,10 +28,28 @@ function makeClient({
   }
 }
 
-const params = Promise.resolve({ id: 'app-1' })
+const APP_ID = '44444444-4444-4444-8444-444444444444'
+const params = Promise.resolve({ id: APP_ID })
 
 describe('PATCH /api/applications/[id]', () => {
   beforeEach(() => vi.clearAllMocks())
+
+  it('returns 404 for a non-uuid application id', async () => {
+    mockCreateClient.mockResolvedValue(makeClient({ user: { id: 'u1' } }))
+    const req = new Request('http://localhost', { method: 'PATCH', body: JSON.stringify({ status: 'shortlisted' }) })
+    const res = await PATCH(req, { params: Promise.resolve({ id: 'app-1' }) })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 400 for malformed JSON', async () => {
+    mockCreateClient.mockResolvedValue(makeClient({
+      user: { id: 'u1' },
+      application: { id: APP_ID, job_id: 'job-1', jobs: { hirer_id: 'u1' } },
+    }))
+    const req = new Request('http://localhost', { method: 'PATCH', body: '{broken' })
+    const res = await PATCH(req, { params })
+    expect(res.status).toBe(400)
+  })
 
   it('returns 401 when unauthenticated', async () => {
     mockCreateClient.mockResolvedValue(makeClient({ user: null }))

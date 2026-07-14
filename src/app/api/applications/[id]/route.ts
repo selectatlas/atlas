@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { parseJsonBody, isUuid } from '@/lib/validation'
 import type { ApplicationStatus } from '@/types'
 
 const VALID_STATUSES: ApplicationStatus[] = ['sent', 'viewed', 'responded', 'shortlisted', 'hired']
@@ -8,6 +9,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  if (!isUuid(id)) return Response.json({ error: 'Not found' }, { status: 404 })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
@@ -26,7 +28,9 @@ export async function PATCH(
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { status } = await request.json() as { status: ApplicationStatus }
+  const parsedBody = await parseJsonBody(request)
+  if (!parsedBody.ok) return parsedBody.response
+  const status = parsedBody.body.status as ApplicationStatus
   if (!VALID_STATUSES.includes(status)) {
     return Response.json({ error: 'Invalid status' }, { status: 400 })
   }

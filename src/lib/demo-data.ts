@@ -1,4 +1,6 @@
-import type { Credit, Job, PortfolioItem, Profile, TalentSkill } from '@/types'
+import type { Credit, Job, PortfolioItem, Profile, TalentProfileAttributes, TalentSensitivePreferences, TalentSkill } from '@/types'
+import type { SearchFilters, SearchFilterValue } from '@/lib/search-filters'
+import { FILTER_BY_KEY } from '@/lib/filter-taxonomy'
 
 export type DemoJob = Job & { hirer?: { full_name: string } | null }
 export const DEMO_APPLICATIONS_STORAGE_KEY = 'atlas_demo_applications'
@@ -184,9 +186,9 @@ export const DEMO_TALENT_RESULTS = [
   createDemoTalent({
     id: 'demo-talent-8',
     fullName: 'Theo Brooks',
-    headline: 'Creator | Photographer | Visual Storyteller',
+    headline: 'Photographer | Director | Visual Storyteller',
     city: 'London',
-    category: 'content_creator',
+    category: 'photographer_videographer',
     skills: [
       { skill: 'Fashion content', proficiency: 'expert' },
       { skill: 'Photography', proficiency: 'expert' },
@@ -198,14 +200,87 @@ export const DEMO_TALENT_RESULTS = [
   }),
 ] as Array<Profile & { talent_skills: TalentSkill[] }>
 
+export type DemoTalentAttributes = Omit<TalentProfileAttributes, 'profile_id' | 'updated_at'> & {
+  sensitive_preferences: TalentSensitivePreferences['preferences']
+}
+
+const demoAttribute = (overrides: Partial<DemoTalentAttributes> = {}): DemoTalentAttributes => ({
+  birth_year: 1995,
+  gender: null,
+  height_cm: null,
+  rate_min: 250,
+  rate_max: 500,
+  rate_unit: 'day',
+  rate_currency: 'GBP',
+  languages: ['english'],
+  nationalities: ['british'],
+  available_now: false,
+  public_attributes: {},
+  sensitive_preferences: {},
+  ...overrides,
+})
+
+export const DEMO_TALENT_ATTRIBUTES: Record<string, DemoTalentAttributes> = {
+  'demo-talent': demoAttribute({ birth_year: 1993, gender: 'female', height_cm: 165, rate_min: 180, rate_max: 300, languages: ['english', 'hindi'], available_now: true, public_attributes: { overseas_hire: true, own_transport: ['car'], passport: ['uk'], dance_skill_level: ['advanced_or_professional'], experienced_choreographer: true, dance_experience: ['music_videos', 'live_performance', 'choreography'] } }),
+  'demo-talent-2': demoAttribute({ birth_year: 1990, gender: 'female', height_cm: 170, languages: ['english', 'urdu'], available_now: true, public_attributes: { overseas_hire: true, dance_skill_level: ['advanced_or_professional'], experienced_choreographer: true } }),
+  'demo-talent-3': demoAttribute({ birth_year: 1998, gender: 'female', height_cm: 162, languages: ['english', 'gujarati'], public_attributes: { dance_skill_level: ['advanced_or_professional'], dance_experience: ['stage', 'music_videos'] } }),
+  'demo-talent-4': demoAttribute({ birth_year: 1991, gender: 'female', height_cm: 174, available_now: true, public_attributes: { acting_medium: ['screen_acting', 'voice_acting'], acting_technique: ['meisner_technique'], actor_type: ['character_actor'], spact: false, accents: ['cockney'] }, sensitive_preferences: { kissing_scene: true, smoking_scene: false, nudity: false, implied_nudity: true, partial_clothing: true } }),
+  'demo-talent-5': demoAttribute({ birth_year: 1996, gender: 'female', public_attributes: { overseas_hire: true, own_transport: ['car'] } }),
+  'demo-talent-6': demoAttribute({ birth_year: 1989, gender: 'male', height_cm: 182, languages: ['english', 'hindi'], available_now: true, public_attributes: { acting_medium: ['screen_acting'], spact: true, spact_types: ['martial_artist'], stunt_register: false, stunt_disciplines: ['martial_arts'] }, sensitive_preferences: { kissing_scene: true, smoking_scene: true, nudity: false, implied_nudity: true, partial_clothing: true } }),
+  'demo-talent-7': demoAttribute({ birth_year: 1994, gender: 'female', height_cm: 168, available_now: true, public_attributes: { dance_skill_level: ['advanced_or_professional'], experienced_choreographer: false, dance_experience: ['live_performance', 'teaching'] } }),
+  'demo-talent-8': demoAttribute({ birth_year: 1992, gender: 'male', rate_min: 450, rate_max: 900, available_now: true, public_attributes: { photography_camera_format: ['full_frame'], photography_equipment: ['sony', 'leica'], videography_equipment: ['sony', 'blackmagic'], netflix_approved_camera: true, photography_types: ['fashion', 'editorial', 'portrait'], videography_types: ['commercial', 'cinematic'], delivery_time: ['14_days'], overseas_hire: true } }),
+}
+
+function rangeMatches(value: number | null, range: SearchFilterValue) {
+  if (value === null || typeof range !== 'object' || Array.isArray(range)) return false
+  return (range.min === undefined || value >= range.min) && (range.max === undefined || value <= range.max)
+}
+
+function attributeMatches(actual: unknown, requested: SearchFilterValue) {
+  if (Array.isArray(requested)) {
+    const actualValues = Array.isArray(actual) ? actual : actual == null ? [] : [actual]
+    return requested.some(value => actualValues.includes(value))
+  }
+  if (typeof requested === 'boolean') return actual === requested
+  if (typeof requested === 'string') return String(actual ?? '').toLowerCase().includes(requested.toLowerCase())
+  return false
+}
+
+export function filterDemoTalent(filters: SearchFilters) {
+  const year = new Date().getUTCFullYear()
+  return DEMO_TALENT_RESULTS.filter(profile => {
+    const attributes = DEMO_TALENT_ATTRIBUTES[profile.id] ?? demoAttribute()
+    for (const [key, requested] of Object.entries(filters)) {
+      if (requested === undefined) continue
+      if (key === 'category' && !profile.talent_skills.some(skill => skill.category === requested)) return false
+      if (key === 'location' && !`${profile.city ?? ''} ${profile.country ?? ''}`.toLowerCase().includes(String(requested).toLowerCase())) return false
+      if (key === 'available_now' && attributes.available_now !== requested) return false
+      if (key === 'age' && !rangeMatches(attributes.birth_year === null ? null : year - attributes.birth_year, requested)) return false
+      if (key === 'height' && !rangeMatches(attributes.height_cm, requested)) return false
+      if (key === 'rate' && typeof requested === 'object' && !Array.isArray(requested)) {
+        if (requested.min !== undefined && (attributes.rate_max === null || attributes.rate_max < requested.min)) return false
+        if (requested.max !== undefined && (attributes.rate_min === null || attributes.rate_min > requested.max)) return false
+      }
+      if (key === 'gender' && (!Array.isArray(requested) || !attributes.gender || !requested.includes(attributes.gender))) return false
+      if (key === 'languages' && (!Array.isArray(requested) || !requested.some(value => attributes.languages.includes(value)))) return false
+      if (key === 'nationalities' && (!Array.isArray(requested) || !requested.some(value => attributes.nationalities.includes(value)))) return false
+      if (key === 'dance_styles' && (!Array.isArray(requested) || !requested.some(value => profile.talent_skills.some(skill => normaliseDemoSearch(skill.skill).replace(/ /g, '_') === value)))) return false
+      const definition = FILTER_BY_KEY.get(key)
+      if (definition?.storage === 'public_attributes' && !attributeMatches(attributes.public_attributes[key], requested)) return false
+      if (definition?.storage === 'sensitive_preferences' && !attributeMatches(attributes.sensitive_preferences[key], requested)) return false
+    }
+    return true
+  })
+}
+
 function normaliseDemoSearch(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
-export function searchDemoTalent(query: string) {
+export function searchDemoTalent(query: string, filters: SearchFilters = {}) {
   const terms = normaliseDemoSearch(query).split(' ').filter(term => term.length > 2)
 
-  return DEMO_TALENT_RESULTS
+  return filterDemoTalent(filters)
     .map(profile => {
       const searchable = normaliseDemoSearch([
         profile.full_name,

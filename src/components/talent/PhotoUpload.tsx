@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/client'
 
 interface PhotoUploadProps {
   currentUrl: string | null
@@ -11,11 +10,9 @@ interface PhotoUploadProps {
   bucket?: 'avatars' | 'covers'
 }
 
-const IMAGE_EXTENSIONS: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-}
+// Convenience pre-check only - the server route re-verifies type, size, and
+// actual file content before anything reaches storage.
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatars' }: PhotoUploadProps) {
   const [uploading, setUploading] = useState(false)
@@ -27,8 +24,7 @@ export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatar
     const file = e.target.files?.[0]
     if (!file) return
 
-    const extension = IMAGE_EXTENSIONS[file.type]
-    if (!extension) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
       setError('Please select a JPG, PNG, or WebP image')
       return
     }
@@ -45,23 +41,21 @@ export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatar
     reader.readAsDataURL(file)
 
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
+      const formData = new FormData()
+      formData.append('bucket', bucket)
+      formData.append('file', file)
 
-      const path = `${user.id}/${crypto.randomUUID()}.${extension}`
+      const response = await fetch('/api/uploads/profile-photo', {
+        method: 'POST',
+        body: formData,
+      })
 
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(path, file, { upsert: true, contentType: file.type })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error ?? 'Upload failed')
+      }
 
-      if (uploadError) throw uploadError
-
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(path)
-
-      onUploaded(urlData.publicUrl)
+      onUploaded(data.url)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
       setPreview(null)

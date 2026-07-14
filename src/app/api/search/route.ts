@@ -2,6 +2,10 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { embedText, parseSearchQuery } from '@/lib/openai'
 import { createClient } from '@/lib/supabase/server'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
+import { parseJsonBody, cleanString, badRequest } from '@/lib/validation'
+import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
+import { logEvent } from '@/lib/log'
+import { filtersToDatabase, parseSearchFilterObject, type SearchFilters } from '@/lib/search-filters'
 
 function normalise(value: string | null | undefined) {
   return (value ?? '').toLowerCase().trim()
@@ -37,36 +41,70 @@ function getMatchReasons(
 }
 
 export async function POST(request: Request) {
-  const { query } = await request.json() as { query: string }
-
-  if (!query?.trim()) {
-    return Response.json({ error: 'query required' }, { status: 400 })
-  }
-
-  // Verify the caller is authenticated
+  // Verify the caller is authenticated before reading anything else
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const parsedBody = await parseJsonBody(request)
+  if (!parsedBody.ok) return parsedBody.response
+
+  const query = cleanString(parsedBody.body.query, 500)
+  if (!query) return badRequest('query is required (max 500 characters)')
+  const requestedFilters = parseSearchFilterObject(parsedBody.body.filters)
+  if (!requestedFilters.ok) return badRequest(requestedFilters.error)
+
+  // Talent search is a hirer feature - reject cross-role calls before spending
+  const { data: callerProfile } = await supabase
+    .from('profiles')
+    .select('account_type')
+    .eq('id', user.id)
+    .single()
+  if (callerProfile?.account_type !== 'hirer') {
+    return Response.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  // Rate limit + daily AI quota BEFORE any OpenAI spend
+  const limited =
+    (await enforceRateLimit(`search:${user.id}`, 60, 20)) ??
+    (await enforceAiQuota(user.id))
+  if (limited) return limited
+
   // Run LLM parse and embedding IN PARALLEL to stay under the 2s SLA
-  const [parsed, queryEmbedding] = await Promise.all([
-    parseSearchQuery(query),
-    embedText(query),
-  ])
+  let parsed: Awaited<ReturnType<typeof parseSearchQuery>>
+  let queryEmbedding: number[]
+  try {
+    ;[parsed, queryEmbedding] = await Promise.all([
+      parseSearchQuery(query),
+      embedText(query),
+    ])
+  } catch (err) {
+    logEvent('error', 'search_openai_error', {
+      user_id: user.id,
+      message: err instanceof Error ? err.message : 'unknown',
+    })
+    return Response.json({ error: 'Search is temporarily unavailable' }, { status: 503 })
+  }
 
   // Build the pgvector similarity query via Supabase RPC
   // The function `match_talent` is defined below - call it via rpc
   const serviceClient = createServiceClient()
 
-  // Use raw SQL via Supabase rpc for cosine similarity search
-  // match_count=20 so we have room to filter, return top 12 after filtering
-  const { data: matches, error } = await serviceClient.rpc('match_talent', {
+  // Explicit UI filters win over intent parsed from the natural-language query.
+  // Both are pushed into SQL before the vector LIMIT so relevant filtered
+  // profiles cannot disappear outside a global top-N candidate set.
+  const combinedFilters: SearchFilters = { ...requestedFilters.filters }
+  if (parsed.category && !combinedFilters.category) combinedFilters.category = parsed.category
+  if (parsed.location && !combinedFilters.location) combinedFilters.location = parsed.location
+
+  const { data: matches, error } = await serviceClient.rpc('match_talent_filtered', {
     query_embedding: queryEmbedding,
+    filters: filtersToDatabase(combinedFilters),
     match_count: 20,
   })
 
   if (error) {
-    console.error('pgvector search error:', error)
+    logEvent('error', 'search_pgvector_error', { user_id: user.id, code: error.code ?? null })
     return Response.json({ error: 'Search failed' }, { status: 500 })
   }
 
@@ -84,22 +122,7 @@ export async function POST(request: Request) {
 
   if (!profiles) return Response.json({ results: [] })
 
-  // Apply structured filters from LLM parse on top of vector results
-  let filtered = profiles as Array<Record<string, unknown> & { talent_skills: Array<{ category: string; skill: string }> }>
-
-  if (parsed.category) {
-    filtered = filtered.filter(p =>
-      p.talent_skills.some((s) => s.category === parsed.category)
-    )
-  }
-
-  if (parsed.location) {
-    const loc = parsed.location.toLowerCase()
-    filtered = filtered.filter(p =>
-      (p.city as string | null)?.toLowerCase().includes(loc) ||
-      (p.country as string | null)?.toLowerCase().includes(loc)
-    )
-  }
+  const filtered = profiles as Array<Record<string, unknown> & { talent_skills: Array<{ category: string; skill: string }> }>
 
   // Sort by similarity and attach match score
   // Cosine similarity for text-embedding-3-small is typically 0.3-0.85 for relevant matches.
@@ -117,5 +140,5 @@ export async function POST(request: Request) {
     .sort((a, b) => b.match_score - a.match_score)
     .slice(0, 12)
 
-  return Response.json({ results, parsed })
+  return Response.json({ results, parsed, filters: combinedFilters })
 }

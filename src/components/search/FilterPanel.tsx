@@ -23,6 +23,7 @@ const CATEGORIES: Array<{ value: Category | 'all'; label: string }> = [
   { value: 'all', label: 'All talent' },
   { value: 'dancer', label: CATEGORY_LABELS.dancer + 's' },
   { value: 'actor', label: CATEGORY_LABELS.actor + 's' },
+  { value: 'photographer_videographer', label: 'Photo & video' },
   { value: 'content_creator', label: CATEGORY_LABELS.content_creator + 's' },
 ]
 

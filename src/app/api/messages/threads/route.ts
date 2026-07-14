@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
+import { parseJsonBody, isUuid, badRequest } from '@/lib/validation'
+import { enforceRateLimit } from '@/lib/rate-limit'
 
 // GET /api/messages/threads — list threads with latest message + other participant
 export async function GET() {
@@ -59,8 +61,13 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { talent_id } = await request.json() as { talent_id: string }
-  if (!talent_id) return Response.json({ error: 'talent_id required' }, { status: 400 })
+  const parsedBody = await parseJsonBody(request)
+  if (!parsedBody.ok) return parsedBody.response
+  const { talent_id } = parsedBody.body
+  if (!isUuid(talent_id)) return badRequest('talent_id must be a valid id')
+
+  const limited = await enforceRateLimit(`threads-create:${user.id}`, 3600, 20)
+  if (limited) return limited
 
   // The database function validates roles and creates both participants atomically.
   const { data: threadId, error } = await supabase.rpc('create_or_get_thread', {

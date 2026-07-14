@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { DEMO_PROFILE } from '@/lib/demo-data'
+import { DEMO_PROFILE, DEMO_TALENT_ATTRIBUTES } from '@/lib/demo-data'
 import { PhotoUpload } from '@/components/talent/PhotoUpload'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,8 @@ import { PortfolioEditor } from '@/components/talent/PortfolioEditor'
 import { ProfileCompletenessCard } from '@/components/talent/ProfileCompletenessCard'
 import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
+import { TalentAttributesEditor } from '@/components/talent/TalentAttributesEditor'
+import { EMPTY_TALENT_ATTRIBUTES, type TalentAttributesPayload } from '@/lib/talent-profile-attributes'
 
 type TalentWithExtras = Profile & {
   talent_skills: TalentSkill[]
@@ -40,10 +42,12 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [talentAttributes, setTalentAttributes] = useState<TalentAttributesPayload>(EMPTY_TALENT_ATTRIBUTES)
 
   const loadProfile = useCallback(async () => {
     if (isLocalDemoMode()) {
       setProfile(DEMO_PROFILE)
+      setTalentAttributes(DEMO_TALENT_ATTRIBUTES[DEMO_PROFILE.id] ?? EMPTY_TALENT_ATTRIBUTES)
       setLoading(false)
       return
     }
@@ -60,9 +64,10 @@ export default function ProfilePage() {
 
     if (!data) { setLoading(false); return }
 
-    const [{ data: credits }, { data: portfolioItems }] = await Promise.all([
+    const [{ data: credits }, { data: portfolioItems }, attributesResponse] = await Promise.all([
       supabase.from('credits').select('*').eq('profile_id', user.id).order('sort_order').order('start_date', { ascending: false }),
       supabase.from('portfolio_items').select('*').eq('profile_id', user.id).order('sort_order'),
+      fetch('/api/profile/attributes').then(response => response.ok ? response.json() : null),
     ])
 
     setProfile({
@@ -71,6 +76,7 @@ export default function ProfilePage() {
       credits: (credits ?? []) as Credit[],
       portfolio_items: (portfolioItems ?? []) as PortfolioItem[],
     })
+    if (attributesResponse?.attributes) setTalentAttributes(attributesResponse.attributes as TalentAttributesPayload)
     setLoading(false)
   }, [])
 
@@ -94,9 +100,8 @@ export default function ProfilePage() {
     }
 
     const supabase = createClient()
-    const { error } = await supabase
-      .from('profiles')
-      .update({
+    const [{ error }, attributesResponse] = await Promise.all([
+      supabase.from('profiles').update({
         full_name: profile.full_name,
         headline: profile.headline,
         city: profile.city,
@@ -105,10 +110,21 @@ export default function ProfilePage() {
         rates: profile.rates,
         availability: profile.availability,
         showreel_url: profile.showreel_url,
-      })
-      .eq('id', profile.id)
+      }).eq('id', profile.id),
+      fetch('/api/profile/attributes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(talentAttributes),
+      }),
+    ])
 
     if (error) { setError(error.message); setSaving(false); return }
+    if (!attributesResponse.ok) {
+      const payload = await attributesResponse.json().catch(() => null)
+      setError(payload?.error ?? 'Unable to save casting details')
+      setSaving(false)
+      return
+    }
 
     try {
       await fetch('/api/embed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profile_id: profile.id }) })
@@ -196,6 +212,12 @@ export default function ProfilePage() {
         skills={profile.talent_skills}
         onUpdate={skills => setProfile(p => p ? { ...p, talent_skills: skills } : p)}
         onError={setError}
+      />
+
+      <TalentAttributesEditor
+        category={profile.talent_skills[0]?.category ?? null}
+        value={talentAttributes}
+        onChange={setTalentAttributes}
       />
 
       <CreditsEditor

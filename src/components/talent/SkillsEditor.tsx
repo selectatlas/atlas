@@ -20,6 +20,7 @@ const CATEGORY_OPTIONS: Array<{ value: Category | ''; label: string }> = [
   { value: '', label: 'Select category...' },
   { value: 'dancer', label: CATEGORY_LABELS.dancer },
   { value: 'actor', label: CATEGORY_LABELS.actor },
+  { value: 'photographer_videographer', label: CATEGORY_LABELS.photographer_videographer },
   { value: 'content_creator', label: CATEGORY_LABELS.content_creator },
 ]
 

@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
+import { parseJsonBody, isUuid } from '@/lib/validation'
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  if (!isUuid(id)) return Response.json({ error: 'Not found' }, { status: 404 })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
@@ -32,6 +34,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  if (!isUuid(id)) return Response.json({ error: 'Not found' }, { status: 404 })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
@@ -45,7 +48,9 @@ export async function PATCH(
   if (!job) return Response.json({ error: 'Not found' }, { status: 404 })
   if (job.hirer_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { status } = await request.json() as { status: 'open' | 'closed' }
+  const parsedBody = await parseJsonBody(request)
+  if (!parsedBody.ok) return parsedBody.response
+  const { status } = parsedBody.body
   if (status !== 'open' && status !== 'closed') {
     return Response.json({ error: 'status must be open or closed' }, { status: 400 })
   }

@@ -12,7 +12,9 @@ function getOpenAI(): OpenAI {
     throw new Error('OPENAI_API_KEY is not configured')
   }
 
-  openai = new OpenAI({ apiKey })
+  // Bounded latency and retries so a slow upstream cannot hold serverless
+  // workers open indefinitely or silently burn credits.
+  openai = new OpenAI({ apiKey, timeout: 15_000, maxRetries: 2 })
   return openai
 }
 
@@ -20,7 +22,8 @@ export async function embedText(text: string): Promise<number[]> {
   const openai = getOpenAI()
   const response = await openai.embeddings.create({
     model: 'text-embedding-3-small',
-    input: text,
+    // Hard cap on input size regardless of caller - bounded token spend.
+    input: text.slice(0, 8000),
   })
   return response.data[0].embedding
 }

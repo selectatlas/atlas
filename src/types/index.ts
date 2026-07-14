@@ -1,5 +1,5 @@
 export type AccountType = 'hirer' | 'talent'
-export type Category = 'dancer' | 'actor' | 'content_creator'
+export type Category = 'dancer' | 'actor' | 'photographer_videographer' | 'content_creator'
 export type Proficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert'
 export type ApplicationStatus = 'sent' | 'viewed' | 'responded' | 'shortlisted' | 'hired'
 export type OutreachStatus = 'draft' | 'sent' | 'viewed' | 'responded'
@@ -83,4 +83,26 @@ export interface TalentSearchResult {
   profile: Profile & { talent_skills: TalentSkill[] }
   match_score: number
   match_reasons?: string[]
+}
+
+export interface TalentProfileAttributes {
+  profile_id: string
+  birth_year: number | null
+  gender: 'male' | 'female' | 'non_binary' | null
+  height_cm: number | null
+  rate_min: number | null
+  rate_max: number | null
+  rate_unit: 'day' | null
+  rate_currency: 'GBP'
+  languages: string[]
+  nationalities: string[]
+  available_now: boolean | null
+  public_attributes: Record<string, string | string[] | boolean | number | null>
+  updated_at: string
+}
+
+export interface TalentSensitivePreferences {
+  profile_id: string
+  preferences: Record<string, boolean | null>
+  updated_at: string
 }

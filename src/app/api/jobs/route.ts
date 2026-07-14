@@ -1,6 +1,10 @@
-import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { embedText } from '@/lib/openai'
-import type { Category } from '@/types'
+import { createClient } from '@/lib/supabase/server'
+import { embedJob } from '@/lib/job-embedding'
+import { parseJsonBody, cleanString, cleanOptionalString, cleanStringArray, badRequest } from '@/lib/validation'
+import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
+import { logEvent } from '@/lib/log'
+
+const CATEGORIES = ['dancer', 'actor', 'photographer_videographer', 'content_creator'] as const
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -17,49 +21,56 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const body = await request.json() as {
-    title: string
-    description: string
-    category: Category
-    skills_required: string[]
-    location: string
-    budget: string
+  const parsedBody = await parseJsonBody(request)
+  if (!parsedBody.ok) return parsedBody.response
+  const body = parsedBody.body
+
+  const title = cleanString(body.title, 200)
+  const description = cleanString(body.description, 5000)
+  const location = cleanString(body.location, 200)
+  const budget = cleanOptionalString(body.budget, 100)
+  const skillsRequired = cleanStringArray(body.skills_required, 20, 50)
+  const category = body.category
+
+  if (!title) return badRequest('title is required (max 200 characters)')
+  if (!description) return badRequest('description is required (max 5000 characters)')
+  if (!location) return badRequest('location is required (max 200 characters)')
+  if (!budget.ok) return badRequest('budget must be 100 characters or fewer')
+  if (!skillsRequired) return badRequest('skills_required must be at most 20 skills of 50 characters each')
+  if (typeof category !== 'string' || !CATEGORIES.includes(category as typeof CATEGORIES[number])) {
+    return badRequest(`category must be one of: ${CATEGORIES.join(', ')}`)
   }
 
-  const { title, description, category, skills_required, location, budget } = body
-
-  if (!title?.trim() || !description?.trim() || !category || !location?.trim()) {
-    return Response.json({ error: 'title, description, category, and location are required' }, { status: 400 })
-  }
+  // Rate limit job creation + daily AI quota (each job costs an embedding call)
+  const limited =
+    (await enforceRateLimit(`jobs-create:${user.id}`, 3600, 10)) ??
+    (await enforceAiQuota(user.id))
+  if (limited) return limited
 
   const { data: job, error } = await supabase
     .from('jobs')
     .insert({
       hirer_id: user.id,
-      title: title.trim(),
-      description: description.trim(),
+      title,
+      description,
       category,
-      skills_required: skills_required ?? [],
-      location: location.trim(),
-      budget: budget?.trim() || null,
+      skills_required: skillsRequired,
+      location,
+      budget: budget.value,
       status: 'open',
     })
     .select()
     .single()
 
   if (error || !job) {
-    console.error('Job insert error:', error)
+    logEvent('error', 'job_insert_error', { user_id: user.id, code: error?.code ?? null })
     return Response.json({ error: 'Failed to create job' }, { status: 500 })
   }
 
-  // Embed job description in background (non-blocking for UX)
-  const embedText_ = `${title} ${description} ${(skills_required ?? []).join(' ')}`
-  embedText(embedText_)
-    .then(embedding => {
-      const service = createServiceClient()
-      return service.from('job_embeddings').upsert({ job_id: job.id, embedding, updated_at: new Date().toISOString() })
-    })
-    .catch(err => console.error('Job embedding error:', err))
+  // Await the embedding so a stopped serverless worker cannot silently drop
+  // it. On failure the job still posts - status is recorded and retryable
+  // via POST /api/jobs/embeddings.
+  const embedding = await embedJob(job)
 
-  return Response.json({ job }, { status: 201 })
+  return Response.json({ job: { ...job, embedding_status: embedding.status } }, { status: 201 })
 }

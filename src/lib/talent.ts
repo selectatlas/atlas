@@ -1,8 +1,25 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
-import { DEMO_PROFILE, DEMO_TALENT_RESULTS } from '@/lib/demo-data'
+import { DEMO_PROFILE, DEMO_TALENT_ATTRIBUTES, DEMO_TALENT_RESULTS } from '@/lib/demo-data'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
+import type { TalentDisplayDetails } from '@/components/talent/TalentProfileDetails'
+
+function displayDetails(attributes: Record<string, unknown> | null | undefined, sensitive?: Record<string, boolean | null>): TalentDisplayDetails {
+  const birthYear = typeof attributes?.birth_year === 'number' ? attributes.birth_year : null
+  return {
+    age: birthYear ? new Date().getUTCFullYear() - birthYear : null,
+    gender: typeof attributes?.gender === 'string' ? attributes.gender : null,
+    height_cm: typeof attributes?.height_cm === 'number' ? attributes.height_cm : null,
+    rate_min: typeof attributes?.rate_min === 'number' ? attributes.rate_min : null,
+    rate_max: typeof attributes?.rate_max === 'number' ? attributes.rate_max : null,
+    languages: Array.isArray(attributes?.languages) ? attributes.languages as string[] : [],
+    nationalities: Array.isArray(attributes?.nationalities) ? attributes.nationalities as string[] : [],
+    available_now: typeof attributes?.available_now === 'boolean' ? attributes.available_now : null,
+    public_attributes: attributes?.public_attributes && typeof attributes.public_attributes === 'object' ? attributes.public_attributes as Record<string, unknown> : {},
+    sensitive_preferences: sensitive,
+  }
+}
 
 export async function getTalentProfile(id: string) {
   const cookieStore = await cookies()
@@ -25,11 +42,13 @@ export async function getTalentProfile(id: string) {
         likesCount: 0,
         viewsCount: 0,
         similarTalent,
+        talentDetails: displayDetails(DEMO_TALENT_ATTRIBUTES[id], DEMO_TALENT_ATTRIBUTES[id]?.sensitive_preferences),
       }
     }
   }
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -39,6 +58,17 @@ export async function getTalentProfile(id: string) {
     .single()
 
   if (!profile) return null
+
+  const service = createServiceClient()
+  const [{ data: attributes }, { data: callerProfile }] = await Promise.all([
+    service.from('talent_profiles').select('*').eq('profile_id', id).maybeSingle(),
+    user ? service.from('profiles').select('account_type').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null }),
+  ])
+  let sensitivePreferences: Record<string, boolean | null> | undefined
+  if (callerProfile?.account_type === 'hirer') {
+    const { data: sensitive } = await service.from('talent_sensitive_preferences').select('preferences').eq('profile_id', id).maybeSingle()
+    sensitivePreferences = sensitive?.preferences as Record<string, boolean | null> | undefined
+  }
 
   const { data: creditsData } = await supabase
     .from('credits')
@@ -96,6 +126,7 @@ export async function getTalentProfile(id: string) {
     portfolioItems,
     likesCount,
     viewsCount,
-    similarTalent
+    similarTalent,
+    talentDetails: displayDetails(attributes as Record<string, unknown> | null, sensitivePreferences),
   }
 }

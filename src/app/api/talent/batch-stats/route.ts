@@ -1,13 +1,26 @@
 import { createClient } from '@/lib/supabase/server'
+import { parseJsonBody, isUuid, badRequest } from '@/lib/validation'
+import { enforceRateLimit } from '@/lib/rate-limit'
 
 // POST /api/talent/batch-stats — returns views + likes for multiple talent IDs
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const { ids } = await request.json() as { ids: string[] }
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+  const parsedBody = await parseJsonBody(request)
+  if (!parsedBody.ok) return parsedBody.response
+  const { ids } = parsedBody.body
+
+  if (!Array.isArray(ids) || ids.length === 0) {
     return Response.json({ stats: {} })
   }
+  if (ids.length > 50 || !ids.every(isUuid)) {
+    return badRequest('ids must be at most 50 valid ids')
+  }
+
+  const limited = await enforceRateLimit(`batch-stats:${user.id}`, 60, 30)
+  if (limited) return limited
 
   // Fetch likes and views counts in parallel using Supabase RPC or raw queries
   // Since we can't easily do grouped counts in the JS client, we use two queries

@@ -1,14 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
+import { isUuid } from '@/lib/validation'
+import { enforceRateLimit } from '@/lib/rate-limit'
+import { logEvent } from '@/lib/log'
 
 // POST /api/talent/[id]/like — toggle like for the current user
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: talent_id } = await params
+  if (!isUuid(talent_id)) return Response.json({ error: 'Not found' }, { status: 404 })
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const limited = await enforceRateLimit(`likes:${user.id}`, 60, 60)
+  if (limited) return limited
 
   // Check if already liked
   const { data: existing } = await supabase
@@ -27,7 +34,7 @@ export async function POST(
       .from('profile_likes')
       .insert({ user_id: user.id, talent_id })
     if (error) {
-      console.error('Like insert error:', error)
+      logEvent('error', 'like_insert_error', { user_id: user.id, code: error.code ?? null })
       return Response.json({ error: 'Failed to like' }, { status: 500 })
     }
   }

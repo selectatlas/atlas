@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { Category } from '@/types'
 
-const CATEGORIES: Category[] = ['dancer', 'actor', 'content_creator']
+const CATEGORIES: Category[] = ['dancer', 'actor', 'photographer_videographer', 'content_creator']
 
 export default function NewJobPage() {
   const router = useRouter()
