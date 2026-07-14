@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: vi.fn(),
 }))
 vi.mock('@/lib/openai', () => ({
-  parseSearchQuery: vi.fn().mockResolvedValue({ category: null, skills: [], location: null, availability: null, languages: [] }),
+  parseSearchQuery: vi.fn().mockResolvedValue({ category: null, skills: [], location: null, availability: null, languages: [], gender: [], age_min: null, age_max: null, spact: null }),
   embedText: vi.fn().mockResolvedValue(new Array(1536).fill(0)),
 }))
 vi.mock('@/lib/rate-limit', () => ({
@@ -64,7 +64,7 @@ describe('POST /api/search', () => {
     vi.clearAllMocks()
     mockEnforceRateLimit.mockResolvedValue(null)
     mockEnforceAiQuota.mockResolvedValue(null)
-    mockParseSearchQuery.mockResolvedValue({ category: null, skills: [], location: null, availability: null, languages: [] })
+    mockParseSearchQuery.mockResolvedValue({ category: null, skills: [], location: null, availability: null, languages: [], gender: [], age_min: null, age_max: null, spact: null })
     mockEmbedText.mockResolvedValue(new Array(1536).fill(0))
     mockCreateServiceClient.mockReturnValue(makeServiceClient())
   })
@@ -95,6 +95,13 @@ describe('POST /api/search', () => {
     expect((await POST(makeRequest({ query: 'x'.repeat(501) }))).status).toBe(400)
   })
 
+  it('rejects unknown structured filters before spending on OpenAI', async () => {
+    mockCreateClient.mockResolvedValue(makeClient({ id: 'u1' }, 'hirer'))
+    const res = await POST(makeRequest({ query: 'actors', filters: { private_admin_flag: true } }))
+    expect(res.status).toBe(400)
+    expect(mockParseSearchQuery).not.toHaveBeenCalled()
+  })
+
   it('returns 429 before any OpenAI spend when rate limited', async () => {
     mockCreateClient.mockResolvedValue(makeClient({ id: 'u1' }, 'hirer'))
     mockEnforceRateLimit.mockResolvedValue(Response.json({ error: 'Too many requests' }, { status: 429 }))
@@ -122,9 +129,12 @@ describe('POST /api/search', () => {
 
   it('returns results for a valid hirer search', async () => {
     mockCreateClient.mockResolvedValue(makeClient({ id: 'u1' }, 'hirer'))
-    const res = await POST(makeRequest({ query: 'dancers in London' }))
+    const service = makeServiceClient()
+    mockCreateServiceClient.mockReturnValue(service)
+    const res = await POST(makeRequest({ query: 'dancers in London', filters: { gender: ['female'] } }))
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.results).toEqual([])
+    expect(service.rpc).toHaveBeenCalledWith('match_talent_filtered', expect.objectContaining({ filters: { gender: ['female'] } }))
   })
 })

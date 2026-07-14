@@ -41,7 +41,7 @@ Complete steps **4–6**: add runtime input validation, ownership and role check
 
 **You'll know it worked when:** malformed, oversized, repeated, cross-role, and unauthenticated requests fail safely before spending money or changing data; failed embeddings can be retried; and one user cannot read, replace, or delete another user's uploads.
 
-### [ ] Gate 3 — Establish a repeatable engineering release gate — 🤖 Agent — 1–2 days
+### [x] Gate 3 — Establish a repeatable engineering release gate — 🤖 Agent — 1–2 days
 
 Complete steps **7–8**: resolve or narrowly document dependency advisories, add CI for clean install/lint/test/build/audit, and add real Supabase integration plus Playwright end-to-end tests. Keep the existing unit tests, but do not use mocked route tests as proof that RLS or authentication works.
 
@@ -139,7 +139,7 @@ The UI checks image type and a 5 MB limit, but browser checks are bypassable. St
 
 **You’ll know it worked when:** storage policies are created by migrations, malicious/non-image uploads fail server-side, and replaced photos do not accumulate indefinitely.
 
-### [ ] 🤖 7. Resolve dependency advisories and add a CI security gate — 2–4 hours
+### [x] 🤖 7. Resolve dependency advisories and add a CI security gate — 2–4 hours
 
 Move the `shadcn` CLI out of production dependencies or remove it if unused, update its vulnerable `hono` chain, and update Next.js when a stable release includes the PostCSS fix. Do not run `npm audit fix --force` blindly because the current recommendation attempts a breaking downgrade.
 
@@ -147,7 +147,7 @@ Move the `shadcn` CLI out of production dependencies or remove it if unused, upd
 
 **You’ll know it worked when:** `npm audit --omit=dev --audit-level=high` exits successfully or a narrowly documented, time-bounded exception exists for an unreachable advisory.
 
-### [ ] 🤖 8. Add real end-to-end and RLS tests — 1 day
+### [x] 🤖 8. Add real end-to-end and RLS tests — 1 day
 
 The 25 current tests are useful but mostly mocked route/unit tests. They do not prove signup, email confirmation, password reset, storage, RLS, messaging, or a real two-role journey against Supabase.
 

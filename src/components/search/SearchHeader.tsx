@@ -2,12 +2,12 @@
 
 import { useRef, useEffect, useState } from 'react'
 import { Grid2X2, List, MoveHorizontal, Sparkles, X } from 'lucide-react'
-import type { Category } from '@/types'
-import { FilterPanel } from '@/components/search/FilterPanel'
+import { FilterBar } from '@/components/search/FilterBar'
 import { Input } from '@/components/ui/input'
+import type { SearchFilters } from '@/lib/search-filters'
 
 type ViewMode = 'swipe' | 'grid' | 'list'
-type SortMode = 'relevance' | 'newest' | 'available'
+type SortMode = 'newest' | 'available'
 
 interface SearchHeaderProps {
   query: string
@@ -15,14 +15,9 @@ interface SearchHeaderProps {
   onClearQuery: () => void
   searching: boolean
   isAiMode: boolean
-  category: Category | 'all'
-  location: string
-  availableOnly: boolean
-  hasShowreelOnly: boolean
-  onCategoryChange: (c: Category | 'all') => void
-  onLocationChange: (l: string) => void
-  onAvailableOnlyChange: (v: boolean) => void
-  onHasShowreelOnlyChange: (v: boolean) => void
+  filters: SearchFilters
+  onFiltersChange: (filters: SearchFilters) => void
+  previewCount: (filters: SearchFilters) => Promise<number>
   browseResultCount: number
   viewMode: ViewMode
   sortMode: SortMode
@@ -35,8 +30,7 @@ interface SearchHeaderProps {
 
 export function SearchHeader({
   query, onQueryChange, onClearQuery, searching, isAiMode,
-  category, location, availableOnly, hasShowreelOnly,
-  onCategoryChange, onLocationChange, onAvailableOnlyChange, onHasShowreelOnlyChange,
+  filters, onFiltersChange, previewCount,
   browseResultCount,
   viewMode, sortMode, onViewModeChange, onSortModeChange, hasResults,
   aiResultCount, searchTime,
@@ -146,20 +140,7 @@ export function SearchHeader({
           </div>
         )}
 
-        {/* Browse mode: filters */}
-        {!isAiMode && (
-          <FilterPanel
-            category={category}
-            location={location}
-            onCategoryChange={onCategoryChange}
-            onLocationChange={onLocationChange}
-            resultCount={browseResultCount}
-            availableOnly={availableOnly}
-            onAvailableOnlyChange={onAvailableOnlyChange}
-            hasShowreelOnly={hasShowreelOnly}
-            onHasShowreelOnlyChange={onHasShowreelOnlyChange}
-          />
-        )}
+        <FilterBar filters={filters} onChange={onFiltersChange} resultCount={isAiMode ? aiResultCount : browseResultCount} previewCount={previewCount} />
 
         {/* View toggle + Sort */}
         {hasResults && (
@@ -175,7 +156,6 @@ export function SearchHeader({
                   onChange={e => onSortModeChange(e.target.value as SortMode)}
                   className="h-8 cursor-pointer appearance-none rounded-lg border border-border bg-background px-2.5 text-xs text-foreground outline-none transition-[border-color,box-shadow] focus:border-ring focus:ring-2 focus:ring-ring/30"
                 >
-                  <option value="relevance">Relevance</option>
                   <option value="newest">Newest</option>
                   <option value="available">Available first</option>
                 </select>

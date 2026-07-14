@@ -20,8 +20,8 @@ export async function GET(request: Request) {
   const parsed = parseSearchFilterParams(url.searchParams)
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 })
 
-  const page = Math.max(1, Math.min(1000, Number(url.searchParams.get('page')) || 1))
-  const limit = Math.max(1, Math.min(48, Number(url.searchParams.get('limit')) || 24))
+  const page = Math.max(1, Math.min(1000, Math.trunc(Number(url.searchParams.get('page')) || 1)))
+  const limit = Math.max(1, Math.min(48, Math.trunc(Number(url.searchParams.get('limit')) || 24)))
   const sort = url.searchParams.get('sort') === 'available' ? 'available' : 'newest'
   const service = createServiceClient()
   const { data: matches, error } = await service.rpc('search_talent_filtered', {

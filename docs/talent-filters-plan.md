@@ -3,7 +3,7 @@
 Source: `docs/3 Categories filters.pdf` (Actor/Model, Dancer, Photographer/Videographer filter specs).
 Goal: LinkedIn-style filtering on the hirer talent search page (`/search`) - a top pill bar for high-value filters, an "All filters" side panel for everything else, live result counts, and shareable filter state.
 
-## Where we are today
+## Starting point
 
 - **Search page** (`src/app/(hirer)/search/page.tsx`): loads all talent profiles client-side, filters in-memory on 4 things only - category, location text, "available now", "has showreel". AI semantic search runs through `POST /api/search` (pgvector + LLM query parse).
 - **Filter UI** (`src/components/search/FilterPanel.tsx` / `SearchHeader.tsx`): a single collapsible row of pills. No sections, no multi-select, no URL state.
@@ -12,10 +12,10 @@ Goal: LinkedIn-style filtering on the hirer talent search page (`/search`) - a t
 
 So the work splits into four layers: **taxonomy (config) → schema (data) → filtering (server) → UI (LinkedIn-style panel)**, plus a follow-on layer for talent to actually populate the new fields.
 
-## Open decisions (need product sign-off)
+## Decisions and guardrails
 
-1. **Third category**: does `photographer_videographer` replace `content_creator`, or become a 4th category? Plan assumes it replaces it (PDF says "3 Categories"), with a data migration for existing content_creator rows.
-2. **Model/Actor**: PDF treats "Model/Actor" as one category. Plan assumes one category `actor` labelled "Actors & Models".
+1. **Third category**: `photographer_videographer` is added as a 4th database category. Existing `content_creator` data is preserved until it can be audited rather than being semantically rewritten.
+2. **Model/Actor**: PDF treats "Model/Actor" as one category. The existing `actor` key is retained and labelled "Actor / Model" to avoid a destructive migration.
 3. **Deferred filters** (depend on features that don't exist yet - excluded from initial build, listed in Phase 6):
    - Reviews (1-5 star) - no reviews system exists.
    - "Responds within 8 hours" - needs message response-time tracking.
@@ -67,30 +67,35 @@ type FilterDef = {
   topOptions?: number            // how many to show before "Show more" (LinkedIn pattern)
   pill?: boolean                 // promoted to the top pill bar for its category
   unit?: 'cm' | 'gbp' | 'years'
+  storage: 'profile' | 'talent_profile' | 'public_attributes' | 'sensitive_preferences' | 'skills'
+  operator: 'equals' | 'contains' | 'overlaps' | 'range'
+  restricted?: boolean
+  dependsOn?: { key: string; value: string | boolean }
 }
 ```
 
-### 2. Schema - migration `009_talent_attributes.sql`
+### 2. Schema - migration `009_talent_filters.sql`
 Hybrid model:
-- **Typed columns** on `profiles` for range/high-traffic filters (indexable): `date_of_birth`, `gender`, `height_cm`, `rate_min int`, `rate_max int`, `languages text[]`, `nationality text[]`.
-- **One JSONB column** `attributes jsonb default '{}'` for the long tail (hair type, SPACT, equipment, dance styles, scene comfort, transport, passport, …) with a GIN index. Keys match taxonomy keys exactly.
-- Category check constraints updated: `content_creator` → `photographer_videographer` (with data migration), applied to `talent_skills` and `jobs`.
-- Update column-level grants following the migration `005` pattern; scene-comfort fields visible to signed-in hirers only.
-- `PUBLIC_PROFILE_FIELDS` / `PUBLIC_PROFILE_WITH_SKILLS` in `src/lib/profile-fields.ts` extended to match.
+- **Typed columns** in a server-owned 1:1 `talent_profiles` table for range/high-traffic filters: `birth_year`, `gender`, `height_cm`, numeric GBP day-rate range, `languages`, `nationalities`, and `available_now`.
+- **Public JSONB** `public_attributes` for the long tail (hair type, SPACT, equipment, dance attributes, transport, passport, etc.) with a GIN index.
+- **Restricted JSONB** in a separate `talent_sensitive_preferences` table for scene-comfort fields. It is never part of the general profile projection and is only accessed through role-checked server routes.
+- Category constraints accept both the new `photographer_videographer` value and legacy `content_creator`; no existing data is rewritten automatically.
+- Exact date of birth is not collected or returned. Age is derived from the less precise birth year on the server.
 
 ### 3. Server-side filtering - extend the search API
 Browse currently filters client-side over all profiles. That breaks with 20+ filters and real data volume.
 - New `GET /api/talent?` (or extend `POST /api/search` with a `filters` object): builds a Supabase query - typed columns as SQL predicates, JSONB via `attributes @> / ?|` containment, validated against the taxonomy (reject unknown keys - never interpolate raw input).
-- AI mode: same filter object applied **after** the pgvector match (filter the 20 candidates), so semantic search and structured filters compose, mirroring how `parsed.category`/`parsed.location` already work in `src/app/api/search/route.ts`.
+- Browse and AI mode use the same validated filter object. Structured predicates are applied in SQL **before** vector ordering and `LIMIT`, preserving filtered-search recall.
+- Browse responses are paginated and return a total count with a stable order.
 - Auth/rate-limit identical to the existing search route (401 unauthenticated, 403 non-hirer). Tests per project testing rules: happy path, 401, 403.
 
 ### 4. Filter state in the URL
-Serialize active filters to query params (`/search?category=actor&gender=female,non_binary&height=160-180`). Back button, refresh, and shareable searches all work - like LinkedIn. Debounced fetch on change.
+Serialize active filters with repeated and explicit range params (`/search?category=actor&gender=female&gender=non_binary&height_min=160&height_max=180`). Back button, refresh, and shareable searches all work. The side sheet keeps draft state; its debounced count preview does not update the URL until “Show results” is selected.
 
 ## UI design (LinkedIn pattern, mapped to our components)
 
 **Top pill bar** (always visible, under the AI search box):
-- Category pills: `All | Actors & Models | Dancers | Photo & Video` (like LinkedIn's 1st/2nd/3rd+).
+- Category pills: `All | Actors & Models | Dancers | Photo & Video | Content creators` (legacy content-creator records stay discoverable until their category is audited).
 - 2-3 **contextual dropdown pills** that change with category - Actors: `Medium`, `SPACT`, `Height`; Dancers: `Dance style`, `Skill level`; Photo/Video: `Photography type`, `Delivery time`; All: `Location`, `Price`.
 - **"All filters"** button with active-count badge, plus `Reset`.
 - Pill dropdowns are small popovers with checkboxes + "Show results" - not the full panel.
@@ -112,25 +117,32 @@ Serialize active filters to query params (`/search?category=actor&gender=female,
 - `ActiveFilterChips.tsx`
 - `useSearchFilters.ts` - URL ⇄ state hook
 
-## Phases
+## Build progress
 
-**Phase 1 - Taxonomy + schema (foundation)**
-`filter-taxonomy.ts` with the full PDF option lists; migration 009; types in `src/types/index.ts`; `profile-fields.ts`; update `skills.ts` category labels; demo-data + seed updated so the UI is testable immediately. Resolve open decisions 1-2 first.
+- [x] **Phase 1 - Taxonomy + schema (foundation)**
+`filter-taxonomy.ts` with the full PDF option lists; migration 009; types and attribute validation; category labels; demo data and seed updated so the UI is testable immediately.
 
-**Phase 2 - Filter UI on /search**
-FilterBar + AllFiltersSheet + chips + URL state. Filtering still client-side against demo/loaded data so UI ships without waiting on the API. Live result counts.
+- [x] **Phase 2 - Talent entry and profile display**
+Role-checked attribute API, config-driven talent editor, demo data, and hirer-only profile detail rendering.
 
-**Phase 3 - Server-side filtering**
-Filter-aware talent query API + integration with AI search route. Route tests (happy/401/403). Switch the page from client filtering to the API.
+- [x] **Phase 3 - Server-side filtering**
+Filter-aware paginated talent API, pre-limit vector filtering, input validation, and route/unit tests.
 
-**Phase 4 - Talent profile editor + profile display**
-Talent can't be filtered on data they can't enter. Extend profile editing (`(talent)/profile`) with config-driven sections per category (same taxonomy file), and show the attributes on the public profile page. Update profile completeness scoring to nudge fill-in.
+- [x] **Phase 4 - Filter UI on `/search`**
+FilterBar, AllFiltersSheet, contextual pills, chips, URL state, live draft counts, server browse integration, and demo parity.
 
-**Phase 5 - Embedding + matching alignment**
+- [x] **Phase 5 - Embedding + matching alignment**
 Include new attributes in `profile_embeddings` source text and the LLM query parser (`parseSearchQuery`) so "female stunt performer in London who rides horses" auto-applies structured filters from natural language - the differentiator over LinkedIn.
 
-**Phase 6 - Deferred**
+- [ ] **Phase 6 - Deferred**
 Distance radius (geocode postcode → lat/lng, haversine/PostGIS), reviews filter (needs reviews feature), "responds within 8h" badge + filter (needs response tracking), saved searches, per-option result counts.
 
+## Verification
+
+- Production build and TypeScript compilation pass.
+- 133 automated tests pass across 22 test files.
+- ESLint reports no errors; five existing warnings remain outside this feature.
+- Migration 009 must be applied to the target Supabase project before non-demo filtering is exercised.
+
 ## Sensitivity notes
-Gender, skin tone, age, and scene-comfort (nudity/kissing/smoking) filters are standard casting metadata, but: all values are **talent self-declared and optional**; scene-comfort fields are only exposed to authenticated hirers (column grants); skin tone / hair type use the industry-standard scales from the PDF verbatim. No filter defaults to excluding profiles with missing data except where the talent explicitly opted out.
+All values are **talent self-declared and optional**. Restricted scene preferences are stored outside the public attribute record and accessed only through role-checked server code. “Background” may contain racial or ethnic-origin data and therefore requires documented privacy/legal review before production launch. A profile with a missing value remains visible until a hirer actively applies a filter that requires that value.

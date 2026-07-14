@@ -154,7 +154,7 @@ export default function ProfilePage() {
     <div className="py-6 space-y-6 pb-32">
       <h1 className="text-xl font-bold">My Profile</h1>
 
-      <ProfileCompletenessCard profile={profile} />
+      <ProfileCompletenessCard profile={profile} attributes={talentAttributes} />
 
       {/* Avatar & Basic Info */}
       <div className="flex items-center gap-4">

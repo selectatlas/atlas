@@ -36,7 +36,7 @@ export function TalentProfileDetails({ details }: { details: TalentDisplayDetail
   ].filter((item): item is string[] => Boolean(item))
 
   const publicEntries = Object.entries(details.public_attributes).filter(([, value]) => value !== null && value !== '' && (!Array.isArray(value) || value.length > 0))
-  const sensitiveEntries = Object.entries(details.sensitive_preferences ?? {})
+  const sensitiveEntries = Object.entries(details.sensitive_preferences ?? {}).filter(([, value]) => typeof value === 'boolean')
   if (core.length === 0 && publicEntries.length === 0 && sensitiveEntries.length === 0) return null
 
   return (

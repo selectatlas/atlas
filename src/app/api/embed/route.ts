@@ -42,6 +42,8 @@ export async function POST(request: Request) {
 
   if (!profile) return Response.json({ error: 'Profile not found' }, { status: 404 })
 
+  const serviceClient = createServiceClient()
+  const { data: talentAttributes } = await serviceClient.from('talent_profiles').select('gender, height_cm, languages, nationalities, available_now, public_attributes').eq('profile_id', targetId).maybeSingle()
   const skills = (profile.talent_skills as Array<{ skill: string; category: string }>)
   const skillNames = skills.map(s => s.skill).join(', ')
   const categories = [...new Set(skills.map(s => s.category))].join(', ')
@@ -54,6 +56,11 @@ export async function POST(request: Request) {
     profile.city ?? '',
     profile.country ?? '',
     profile.bio ?? '',
+    talentAttributes?.gender ?? '',
+    ...(talentAttributes?.languages ?? []),
+    ...(talentAttributes?.nationalities ?? []),
+    talentAttributes?.available_now ? 'available now' : '',
+    talentAttributes?.public_attributes ? JSON.stringify(talentAttributes.public_attributes) : '',
   ].filter(Boolean).join('. ')
 
   // Generate embedding
@@ -69,7 +76,6 @@ export async function POST(request: Request) {
   }
 
   // Upsert using service client (bypasses RLS)
-  const serviceClient = createServiceClient()
   const { error } = await serviceClient
     .from('profile_embeddings')
     .upsert({

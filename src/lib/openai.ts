@@ -29,11 +29,15 @@ export async function embedText(text: string): Promise<number[]> {
 }
 
 export interface ParsedQuery {
-  category: string | null       // dancer | actor | content_creator | null
+  category: string | null       // dancer | actor | photographer_videographer | content_creator | null
   skills: string[]              // ["Bollywood", "Hindi"]
   location: string | null       // "London"
   availability: string | null   // "December"
   languages: string[]           // ["Hindi"]
+  gender: string[]              // female | male | non_binary
+  age_min: number | null
+  age_max: number | null
+  spact: boolean | null
 }
 
 export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
@@ -47,11 +51,15 @@ export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
         role: 'system',
         content: `Extract structured search intent from a talent search query.
 Return a JSON object with exactly these keys:
-- category: one of "dancer", "actor", "content_creator", or null
+- category: one of "dancer", "actor", "photographer_videographer", "content_creator", or null
 - skills: array of specific skills or style keywords (e.g. ["Bollywood", "Kathak"])
 - location: city or region string, or null
 - availability: availability text (month, season, etc.), or null
 - languages: array of languages mentioned, or []
+- gender: array containing only "female", "male", or "non_binary", or []
+- age_min: minimum age explicitly requested, or null
+- age_max: maximum age explicitly requested, or null
+- spact: true or false only when explicitly requested, or null
 
 Only extract what is explicitly stated. Do not infer.`,
       },
@@ -67,9 +75,13 @@ Only extract what is explicitly stated. Do not infer.`,
       location: raw.location ?? null,
       availability: raw.availability ?? null,
       languages: Array.isArray(raw.languages) ? raw.languages : [],
+      gender: Array.isArray(raw.gender) ? raw.gender : [],
+      age_min: typeof raw.age_min === 'number' ? raw.age_min : null,
+      age_max: typeof raw.age_max === 'number' ? raw.age_max : null,
+      spact: typeof raw.spact === 'boolean' ? raw.spact : null,
     }
   } catch {
-    return { category: null, skills: [], location: null, availability: null, languages: [] }
+    return { category: null, skills: [], location: null, availability: null, languages: [], gender: [], age_min: null, age_max: null, spact: null }
   }
 }
 

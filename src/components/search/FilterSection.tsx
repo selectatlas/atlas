@@ -1,0 +1,106 @@
+'use client'
+
+import { useState } from 'react'
+import { Input } from '@/components/ui/input'
+import type { TalentFilterDefinition } from '@/lib/filter-taxonomy'
+import type { NumericRange, SearchFilters, SearchFilterValue } from '@/lib/search-filters'
+
+interface FilterSectionProps {
+  definition: TalentFilterDefinition
+  filters: SearchFilters
+  onChange: (filters: SearchFilters) => void
+  compact?: boolean
+}
+
+function humanise(value: string) {
+  return value.replace(/_/g, ' ').replace(/^\w/, character => character.toUpperCase())
+}
+
+export function FilterSection({ definition, filters, onChange, compact = false }: FilterSectionProps) {
+  const [expanded, setExpanded] = useState(false)
+  const [optionSearch, setOptionSearch] = useState('')
+  const value = filters[definition.key as keyof SearchFilters]
+
+  function update(next: SearchFilterValue | undefined) {
+    const updated = { ...filters }
+    if (next === undefined || next === '' || Array.isArray(next) && next.length === 0 || typeof next === 'object' && !Array.isArray(next) && next.min === undefined && next.max === undefined) {
+      delete updated[definition.key as keyof SearchFilters]
+    } else updated[definition.key as keyof SearchFilters] = next
+    onChange(updated)
+  }
+
+  if (definition.dependsOn && filters[definition.dependsOn.key as keyof SearchFilters] !== definition.dependsOn.value) return null
+
+  if (definition.kind === 'boolean') {
+    return (
+      <div className={compact ? '' : 'space-y-2'}>
+        {!compact && <p className="text-sm font-medium">{definition.label}</p>}
+        <div className="grid grid-cols-3 gap-2">
+          {([['Any', undefined], ['Yes', true], ['No', false]] as const).map(([label, next]) => (
+            <button key={label} type="button" onClick={() => update(next)} className={`h-9 rounded-lg border px-3 text-xs font-medium ${value === next || next === undefined && value === undefined ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'}`}>{label}</button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (definition.kind === 'range') {
+    const range = value && typeof value === 'object' && !Array.isArray(value) ? value as NumericRange : {}
+    return (
+      <div className="space-y-2">
+        {!compact && <p className="text-sm font-medium">{definition.label}</p>}
+        <div className="grid grid-cols-2 gap-2">
+          <Input type="number" min={definition.min} max={definition.max} value={range.min ?? ''} onChange={event => update({ ...range, min: event.target.value ? Number(event.target.value) : undefined })} placeholder={`Min${definition.unit ? ` ${definition.unit}` : ''}`} aria-label={`Minimum ${definition.label}`} />
+          <Input type="number" min={definition.min} max={definition.max} value={range.max ?? ''} onChange={event => update({ ...range, max: event.target.value ? Number(event.target.value) : undefined })} placeholder={`Max${definition.unit ? ` ${definition.unit}` : ''}`} aria-label={`Maximum ${definition.label}`} />
+        </div>
+      </div>
+    )
+  }
+
+  if (definition.kind === 'text') {
+    return (
+      <div className="space-y-2">
+        {!compact && <p className="text-sm font-medium">{definition.label}</p>}
+        <Input value={typeof value === 'string' ? value : ''} onChange={event => update(event.target.value || undefined)} placeholder={definition.label} />
+      </div>
+    )
+  }
+
+  if (definition.kind === 'single') {
+    return (
+      <div className="space-y-2">
+        {!compact && <p className="text-sm font-medium">{definition.label}</p>}
+        <select value={typeof value === 'string' ? value : ''} onChange={event => update(event.target.value || undefined)} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30">
+          <option value="">Any</option>
+          {definition.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </div>
+    )
+  }
+
+  const selected = Array.isArray(value) ? value : []
+  const options = definition.options?.filter(option => option.label.toLowerCase().includes(optionSearch.toLowerCase())) ?? []
+  const visibleOptions = expanded || compact ? options : options.slice(0, definition.topOptions ?? 6)
+
+  return (
+    <div className="space-y-2">
+      {!compact && <p className="text-sm font-medium">{definition.label}</p>}
+      {(definition.allowCustom || options.length > 12) && <Input value={optionSearch} onChange={event => setOptionSearch(event.target.value)} placeholder={`Find ${definition.label.toLowerCase()}`} />}
+      {visibleOptions.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {visibleOptions.map(option => (
+            <label key={option.value} className="flex min-h-9 items-center gap-2 rounded-lg border border-border/80 bg-background px-3 text-xs">
+              <input type="checkbox" className="size-4 accent-primary" checked={selected.includes(option.value)} onChange={event => update(event.target.checked ? [...selected, option.value] : selected.filter(item => item !== option.value))} />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      )}
+      {definition.allowCustom && optionSearch.trim() && !options.some(option => option.label.toLowerCase() === optionSearch.trim().toLowerCase()) && (
+        <button type="button" onClick={() => { const custom = optionSearch.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); if (custom) update([...selected, custom]); setOptionSearch('') }} className="text-xs font-medium text-primary">Add “{optionSearch.trim()}”</button>
+      )}
+      {!compact && options.length > (definition.topOptions ?? 6) && <button type="button" className="text-xs font-medium text-primary" onClick={() => setExpanded(current => !current)}>{expanded ? 'Show less' : 'Show more'}</button>}
+      {selected.length > 0 && <p className="text-[11px] text-muted-foreground">{selected.map(item => definition.options?.find(option => option.value === item)?.label ?? humanise(item)).join(', ')}</p>}
+    </div>
+  )
+}

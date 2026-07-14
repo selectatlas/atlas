@@ -17,9 +17,34 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ```bash
 npm run lint
-npm test
+npm test          # unit tests (mocked, fast)
 npm run build
 ```
+
+## Integration and end-to-end tests
+
+These run against a real local Supabase stack (Docker required) and are what
+CI uses to prove RLS and the two-role journeys - the mocked unit tests are not
+evidence that authentication or tenant isolation works.
+
+```bash
+supabase start                      # local stack on the 553xx ports
+supabase test db                    # pgTAP policy tests
+set -a; eval "$(supabase status -o env)"; set +a
+npm run test:integration            # real-database RLS tests (vitest)
+
+# End-to-end (production build against the local stack; NEXT_PUBLIC_* values
+# are inlined at build time so the build must use the stack URL):
+NEXT_PUBLIC_SUPABASE_URL=$API_URL \
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY \
+SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY \
+OPENAI_API_KEY=sk-local-placeholder npm run build
+npm run test:e2e                    # Playwright journeys
+```
+
+Dependency advisories that are deliberately accepted are recorded in
+[docs/security-advisories.md](docs/security-advisories.md); CI fails on any
+undocumented high-severity production advisory.
 
 ## Database
 

@@ -51,8 +51,12 @@ export default async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Redirect unauthenticated users to login (except auth routes)
+  // Redirect unauthenticated users to login (except auth routes).
+  // API calls get a JSON 401 instead of an HTML redirect.
   if (!user && !isAuthRoute) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

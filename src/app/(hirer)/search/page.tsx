@@ -3,28 +3,29 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { SearchX, Sparkles } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { TalentCard, TalentListItem } from '@/components/talent/TalentCard'
 import { SearchHeader } from '@/components/search/SearchHeader'
 import { SwipeStack } from '@/components/talent/SwipeStack'
 import { OutreachModal } from '@/components/outreach/OutreachModal'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DEMO_TALENT_RESULTS, searchDemoTalent } from '@/lib/demo-data'
-import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
-import type { Profile, TalentSkill, Category, TalentSearchResult } from '@/types'
+import { DEMO_TALENT_ATTRIBUTES, filterDemoTalent, searchDemoTalent } from '@/lib/demo-data'
+import { serializeSearchFilters, type SearchFilters } from '@/lib/search-filters'
+import { useSearchFilters } from '@/components/search/useSearchFilters'
+import type { Profile, TalentSkill, TalentSearchResult } from '@/types'
 
 type ViewMode = 'swipe' | 'grid' | 'list'
-type SortMode = 'relevance' | 'newest' | 'available'
+type SortMode = 'newest' | 'available'
 
 export default function SearchPage() {
   const router = useRouter()
+  const { filters, setFilters } = useSearchFilters()
 
   const [allTalent, setAllTalent] = useState<TalentSearchResult[]>([])
-  const [category, setCategory] = useState<Category | 'all'>('all')
-  const [location, setLocation] = useState('')
-  const [availableOnly, setAvailableOnly] = useState(false)
-  const [hasShowreelOnly, setHasShowreelOnly] = useState(false)
-  const [sortMode, setSortMode] = useState<SortMode>('relevance')
+  const [sortMode, setSortMode] = useState<SortMode>('newest')
+  const [browseTotal, setBrowseTotal] = useState(0)
+  const [browseLoading, setBrowseLoading] = useState(true)
+  const [browseError, setBrowseError] = useState<string | null>(null)
+  const [browseRetry, setBrowseRetry] = useState(0)
 
   const [query, setQuery] = useState('')
   const [aiResults, setAiResults] = useState<TalentSearchResult[] | null>(null)
@@ -32,6 +33,7 @@ export default function SearchPage() {
   const [searchTime, setSearchTime] = useState<number | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const aiAbortRef = useRef<AbortController | null>(null)
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [outreachTalent, setOutreachTalent] = useState<(Profile & { talent_skills: TalentSkill[] }) | null>(null)
@@ -47,21 +49,30 @@ export default function SearchPage() {
     setIsLocalDemo(localDemo)
 
     if (localDemo) {
-      setAllTalent(DEMO_TALENT_RESULTS.map(profile => ({ profile, match_score: 0 })))
+      let profiles = filterDemoTalent(filters)
+      if (sortMode === 'available') profiles = [...profiles].sort((a, b) => Number(Boolean(DEMO_TALENT_ATTRIBUTES[b.id]?.available_now)) - Number(Boolean(DEMO_TALENT_ATTRIBUTES[a.id]?.available_now)))
+      setAllTalent(profiles.map(profile => ({ profile, match_score: 0 })))
+      setBrowseTotal(profiles.length)
+      setBrowseLoading(false)
       return
     }
 
-    const supabase = createClient()
-    supabase
-      .from('profiles')
-      .select(PUBLIC_PROFILE_WITH_SKILLS)
-      .eq('account_type', 'talent')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        const results = (data ?? []).map(p => ({ profile: p as Profile & { talent_skills: TalentSkill[] }, match_score: 0 }))
-        setAllTalent(results)
+    const controller = new AbortController()
+    const params = serializeSearchFilters(filters)
+    params.set('limit', '48')
+    params.set('sort', sortMode === 'available' ? 'available' : 'newest')
+    setBrowseLoading(true)
+    setBrowseError(null)
+    fetch(`/api/talent?${params.toString()}`, { signal: controller.signal })
+      .then(response => response.ok ? response.json() : Promise.reject(new Error('Unable to load talent')))
+      .then(data => {
+        setAllTalent(data.results ?? [])
+        setBrowseTotal(data.total ?? 0)
       })
-  }, [])
+      .catch(error => { if (error.name !== 'AbortError') setBrowseError('Unable to load talent') })
+      .finally(() => { if (!controller.signal.aborted) setBrowseLoading(false) })
+    return () => controller.abort()
+  }, [browseRetry, filters, sortMode])
 
   useEffect(() => {
     const results = aiResults ?? allTalent
@@ -78,13 +89,16 @@ export default function SearchPage() {
   }, [allTalent, aiResults])
 
   const runAiSearch = useCallback(async (q: string) => {
-    if (!q.trim()) { setAiResults(null); setSearchTime(null); return }
+    aiAbortRef.current?.abort()
+    if (!q.trim()) { setAiResults(null); setSearchTime(null); setSearching(false); return }
+    const controller = new AbortController()
+    aiAbortRef.current = controller
     setSearching(true)
     setAiError(null)
     const t0 = Date.now()
 
     if (isLocalDemo) {
-      setAiResults(searchDemoTalent(q))
+      setAiResults(searchDemoTalent(q, filters))
       setSearchTime(Date.now() - t0)
       setSearching(false)
       return
@@ -94,7 +108,8 @@ export default function SearchPage() {
       const res = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
+        body: JSON.stringify({ query: q, filters }),
+        signal: controller.signal,
       })
       const data = await res.json()
       if (data.error) { setAiError(data.error) }
@@ -102,45 +117,39 @@ export default function SearchPage() {
         setAiResults(data.results ?? [])
         setSearchTime(Date.now() - t0)
       }
-    } catch {
-      setAiError('Search failed')
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) setAiError('Search failed')
     }
-    setSearching(false)
-  }, [isLocalDemo])
+    if (aiAbortRef.current === controller) setSearching(false)
+  }, [filters, isLocalDemo])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!query.trim()) { setAiResults(null); setSearchTime(null); return }
     debounceRef.current = setTimeout(() => runAiSearch(query), 500)
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      aiAbortRef.current?.abort()
+    }
   }, [query, runAiSearch])
 
-  const browseResults = allTalent.filter(({ profile }) => {
-    if (category !== 'all' && !profile.talent_skills.some(s => s.category === category)) return false
-    if (location.trim()) {
-      const q = location.toLowerCase()
-      if (!profile.city?.toLowerCase().includes(q) && !profile.country?.toLowerCase().includes(q)) return false
-    }
-    if (availableOnly && !profile.availability) return false
-    if (hasShowreelOnly && !profile.showreel_url) return false
-    return true
-  })
-
-  const sortedBrowseResults = [...browseResults].sort((a, b) => {
-    if (sortMode === 'newest') {
-      return new Date(b.profile.created_at).getTime() - new Date(a.profile.created_at).getTime()
-    }
-    if (sortMode === 'available') {
-      const aHas = a.profile.availability ? 1 : 0
-      const bHas = b.profile.availability ? 1 : 0
-      return bHas - aHas
-    }
-    return 0
-  })
-
   const isAiMode = query.trim().length > 0
-  const displayResults = (isAiMode ? (aiResults ?? []) : sortedBrowseResults).filter(r => !passed.has(r.profile.id))
+  // Browse results are already stably ordered by the filtered SQL function.
+  // Keeping that order is especially important for `available`, which uses
+  // the structured `available_now` field that is intentionally not public.
+  const displayResults = (isAiMode ? (aiResults ?? []) : allTalent).filter(r => !passed.has(r.profile.id))
+  const loadingResults = searching || (!isAiMode && browseLoading)
+
+  const previewCount = useCallback(async (previewFilters: SearchFilters) => {
+    if (isLocalDemo) return filterDemoTalent(previewFilters).length
+    const params = serializeSearchFilters(previewFilters)
+    params.set('limit', '1')
+    const response = await fetch(`/api/talent?${params.toString()}`)
+    if (!response.ok) throw new Error('Unable to preview filters')
+    const data = await response.json()
+    return Number(data.total ?? 0)
+  }, [isLocalDemo])
 
   function handleContact(talent: Profile & { talent_skills: TalentSkill[] }) {
     setOutreachTalent(talent)
@@ -158,15 +167,10 @@ export default function SearchPage() {
         onClearQuery={() => { setQuery(''); setAiResults(null) }}
         searching={searching}
         isAiMode={isAiMode}
-        category={category}
-        location={location}
-        availableOnly={availableOnly}
-        hasShowreelOnly={hasShowreelOnly}
-        onCategoryChange={setCategory}
-        onLocationChange={setLocation}
-        onAvailableOnlyChange={setAvailableOnly}
-        onHasShowreelOnlyChange={setHasShowreelOnly}
-        browseResultCount={browseResults.length}
+        filters={filters}
+        onFiltersChange={setFilters}
+        previewCount={previewCount}
+        browseResultCount={browseTotal}
         viewMode={viewMode}
         sortMode={sortMode}
         onViewModeChange={setViewMode}
@@ -188,7 +192,14 @@ export default function SearchPage() {
         </div>
       )}
 
-      {searching && (
+      {browseError && !isAiMode && (
+        <div className="text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
+          <p>{browseError}</p>
+          <button onClick={() => setBrowseRetry(value => value + 1)} className="mt-2 text-xs font-medium text-primary hover:text-primary/80">Try again →</button>
+        </div>
+      )}
+
+      {loadingResults && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="overflow-hidden rounded-xl border border-border/80 bg-card">
@@ -210,7 +221,7 @@ export default function SearchPage() {
         </div>
       )}
 
-      {!searching && displayResults.length === 0 && (
+      {!loadingResults && displayResults.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="mb-4 flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
             {isAiMode ? <Sparkles className="size-5" /> : <SearchX className="size-5" />}
@@ -222,7 +233,7 @@ export default function SearchPage() {
         </div>
       )}
 
-      {!searching && displayResults.length > 0 && (
+      {!loadingResults && displayResults.length > 0 && (
         <>
           {viewMode === 'swipe' && (
             <div className="pb-20">

@@ -1,4 +1,5 @@
-import { FILTER_BY_KEY, TALENT_FILTERS, type FilterKey, type TalentFilterDefinition } from '@/lib/filter-taxonomy'
+import { FILTER_BY_KEY, TALENT_FILTERS, filtersForCategory, type FilterKey, type TalentFilterDefinition } from '@/lib/filter-taxonomy'
+import type { Category } from '@/types'
 
 export interface NumericRange {
   min?: number
@@ -26,6 +27,7 @@ function normaliseMulti(values: unknown, definition: TalentFilterDefinition): st
   const allowed = new Set(definition.options?.map(option => option.value) ?? [])
   const normalised = [...new Set(source
     .map(normaliseText)
+    .map(value => value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''))
     .filter(Boolean)
     .slice(0, MAX_MULTI_VALUES))]
 
@@ -69,6 +71,15 @@ export function parseSearchFilterObject(input: unknown): FilterParseResult {
     if (value === null) return { ok: false, error: `Invalid value for filter: ${key}` }
     if (value === '' || (Array.isArray(value) && value.length === 0) || (typeof value === 'object' && Object.keys(value).length === 0)) continue
     filters[key as FilterKey] = value
+  }
+  const category = filters.category
+  if (typeof category === 'string') {
+    for (const key of Object.keys(filters)) {
+      const definition = FILTER_BY_KEY.get(key)
+      if (definition && definition.categories !== 'all' && !definition.categories.includes(category as Category)) {
+        return { ok: false, error: `${definition.label} is not available for category: ${category}` }
+      }
+    }
   }
   return { ok: true, filters }
 }
@@ -136,4 +147,15 @@ export function filtersToDatabase(filters: SearchFilters) {
 
 export function activeFilterCount(filters: SearchFilters) {
   return Object.keys(filters).length
+}
+
+export function pruneFiltersForCategory(filters: SearchFilters, category: Category | 'all'): SearchFilters {
+  const allowed = new Set(filtersForCategory(category).map(filter => filter.key))
+  const next: SearchFilters = {}
+  for (const [key, value] of Object.entries(filters)) {
+    if (key === 'category' || allowed.has(key)) next[key as FilterKey] = value
+  }
+  if (category === 'all') delete next.category
+  else next.category = category
+  return next
 }

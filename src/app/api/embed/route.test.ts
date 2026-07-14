@@ -56,7 +56,10 @@ describe('POST /api/embed', () => {
     mockEnforceAiQuota.mockResolvedValue(null)
     mockEmbedText.mockResolvedValue(new Array(1536).fill(0))
     mockCreateServiceClient.mockReturnValue({
-      from: vi.fn(() => ({ upsert: vi.fn().mockResolvedValue({ error: null }) })),
+      from: vi.fn(() => ({
+        select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }) }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+      })),
     })
   })
 

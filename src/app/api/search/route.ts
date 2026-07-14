@@ -96,10 +96,16 @@ export async function POST(request: Request) {
   const combinedFilters: SearchFilters = { ...requestedFilters.filters }
   if (parsed.category && !combinedFilters.category) combinedFilters.category = parsed.category
   if (parsed.location && !combinedFilters.location) combinedFilters.location = parsed.location
+  if (parsed.languages.length > 0 && !combinedFilters.languages) combinedFilters.languages = parsed.languages.map(language => language.toLowerCase().replace(/[^a-z0-9]+/g, '_'))
+  if (parsed.gender.length > 0 && !combinedFilters.gender) combinedFilters.gender = parsed.gender
+  if ((parsed.age_min !== null || parsed.age_max !== null) && !combinedFilters.age) combinedFilters.age = { min: parsed.age_min ?? undefined, max: parsed.age_max ?? undefined }
+  if (parsed.spact !== null && combinedFilters.spact === undefined) combinedFilters.spact = parsed.spact
+  const validatedCombined = parseSearchFilterObject(combinedFilters)
+  const effectiveFilters = validatedCombined.ok ? validatedCombined.filters : requestedFilters.filters
 
   const { data: matches, error } = await serviceClient.rpc('match_talent_filtered', {
     query_embedding: queryEmbedding,
-    filters: filtersToDatabase(combinedFilters),
+    filters: filtersToDatabase(effectiveFilters),
     match_count: 20,
   })
 
@@ -140,5 +146,5 @@ export async function POST(request: Request) {
     .sort((a, b) => b.match_score - a.match_score)
     .slice(0, 12)
 
-  return Response.json({ results, parsed, filters: combinedFilters })
+  return Response.json({ results, parsed, filters: effectiveFilters })
 }

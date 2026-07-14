@@ -12,7 +12,7 @@ alter table public.jobs add constraint jobs_category_check
 
 create table public.talent_profiles (
   profile_id         uuid primary key references public.profiles(id) on delete cascade,
-  birth_year         smallint check (birth_year between 1900 and extract(year from current_date)::int),
+  birth_year         smallint check (birth_year between 1900 and 2100),
   gender             text check (gender in ('male', 'female', 'non_binary')),
   height_cm          smallint check (height_cm between 100 and 230),
   rate_min           integer check (rate_min between 0 and 20000),

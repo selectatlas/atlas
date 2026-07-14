@@ -829,6 +829,57 @@ const otherCreators: SeedProfile[] = [
   },
 ]
 
+const photographersAndVideographers: SeedProfile[] = [
+  {
+    full_name: 'Theo Brooks',
+    email: 'theo.brooks.photo@atlas-demo.com',
+    city: 'London',
+    country: 'UK',
+    bio: 'Fashion and editorial photographer working across campaigns, portraits, and culture-led commissions. Theo shoots Sony and Leica and is available for UK and overseas productions.',
+    rates: '£650 per day',
+    availability: 'Available now',
+    avatar_url: 'https://randomuser.me/api/portraits/men/41.jpg',
+    showreel_url: null,
+    skills: [
+      { category: 'photographer_videographer', skill: 'Fashion photography', proficiency: 'expert' },
+      { category: 'photographer_videographer', skill: 'Editorial photography', proficiency: 'expert' },
+      { category: 'photographer_videographer', skill: 'Portrait photography', proficiency: 'advanced' },
+    ],
+  },
+  {
+    full_name: 'Mara Okafor',
+    email: 'mara.okafor.video@atlas-demo.com',
+    city: 'Manchester',
+    country: 'UK',
+    bio: 'Commercial director of photography and videographer specialising in branded films, live sessions, and music videos. Mara works with ARRI, Blackmagic, and Sony camera systems.',
+    rates: '£900 per day',
+    availability: 'Available from next month',
+    avatar_url: 'https://randomuser.me/api/portraits/women/42.jpg',
+    showreel_url: null,
+    skills: [
+      { category: 'photographer_videographer', skill: 'Cinematography', proficiency: 'expert' },
+      { category: 'photographer_videographer', skill: 'Commercial videography', proficiency: 'expert' },
+      { category: 'photographer_videographer', skill: 'Music videos', proficiency: 'advanced' },
+    ],
+  },
+  {
+    full_name: 'Lucas Ferreira',
+    email: 'lucas.ferreira.events@atlas-demo.com',
+    city: 'Bristol',
+    country: 'UK',
+    bio: 'Bilingual English and Portuguese photographer-videographer covering events, weddings, and documentary-led brand stories across the UK and Europe.',
+    rates: '£500 per day',
+    availability: 'Fully available with two weeks notice',
+    avatar_url: 'https://randomuser.me/api/portraits/men/43.jpg',
+    showreel_url: null,
+    skills: [
+      { category: 'photographer_videographer', skill: 'Event photography', proficiency: 'expert' },
+      { category: 'photographer_videographer', skill: 'Wedding photography', proficiency: 'advanced' },
+      { category: 'photographer_videographer', skill: 'Events videography', proficiency: 'advanced' },
+    ],
+  },
+]
+
 export const SEED_PROFILES: SeedProfile[] = [
   ...bollywoodDancers,
   ...otherDancers,
@@ -836,4 +887,5 @@ export const SEED_PROFILES: SeedProfile[] = [
   ...otherActors,
   ...foodContentCreators,
   ...otherCreators,
+  ...photographersAndVideographers,
 ]

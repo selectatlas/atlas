@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filtersToDatabase, parseSearchFilterObject, parseSearchFilterParams, serializeSearchFilters, type SearchFilters } from './search-filters'
+import { filtersToDatabase, parseSearchFilterObject, parseSearchFilterParams, pruneFiltersForCategory, serializeSearchFilters, type SearchFilters } from './search-filters'
 
 describe('search filter contract', () => {
   it('round-trips repeated multi values, booleans and ranges through the URL', () => {
@@ -33,5 +33,10 @@ describe('search filter contract', () => {
       attributes: { hair_type: ['3b_curly'] },
       sensitive: { nudity: false },
     })
+  })
+
+  it('removes incompatible category-specific filters when the category changes', () => {
+    expect(pruneFiltersForCategory({ category: 'actor', spact: true, location: 'London' }, 'dancer')).toEqual({ category: 'dancer', location: 'London' })
+    expect(parseSearchFilterObject({ category: 'dancer', spact: true })).toEqual({ ok: false, error: 'SPACT is not available for category: dancer' })
   })
 })

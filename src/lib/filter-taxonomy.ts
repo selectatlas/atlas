@@ -109,7 +109,8 @@ export const FILTER_SECTIONS = [...new Set(TALENT_FILTERS.map(filter => filter.s
 
 export function filtersForCategory(category: Category | 'all'): readonly TalentFilterDefinition[] {
   return TALENT_FILTERS.filter(filter => {
-    if (filter.categories === 'all' || category === 'all') return true
+    if (category === 'all') return filter.categories === 'all'
+    if (filter.categories === 'all') return true
     return filter.categories.includes(category)
   })
 }

@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    name: Lint, unit tests, build, audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Clean install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-publishable-key
+
+      - name: Production dependency audit (high severity blocks)
+        run: npm audit --omit=dev --audit-level=high
+
+  database:
+    name: Migrations, RLS integration, end-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Clean install
+        run: npm ci
+
+      - name: Start local Supabase stack (applies all migrations)
+        run: supabase start
+
+      - name: Database policy tests (pgTAP)
+        run: supabase test db
+
+      - name: Export stack credentials
+        # -o env emits NAME="value"; $GITHUB_ENV needs unquoted NAME=value
+        run: supabase status -o env | sed 's/^\([A-Z0-9_]*\)="\(.*\)"$/\1=\2/' >> "$GITHUB_ENV"
+
+      - name: RLS integration tests (real database, two roles)
+        run: npm run test:integration
+
+      - name: Build against the local stack
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.API_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: sk-ci-placeholder
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests (Playwright)
+        run: npm run test:e2e
+
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

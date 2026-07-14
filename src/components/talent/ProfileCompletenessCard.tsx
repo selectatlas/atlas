@@ -2,13 +2,15 @@ import { Check, CircleAlert } from 'lucide-react'
 import { getProfileCompleteness } from '@/lib/profile-completeness'
 import { Card } from '@/components/ui/card'
 import type { Credit, PortfolioItem, Profile, TalentSkill } from '@/types'
+import type { TalentAttributesPayload } from '@/lib/talent-profile-attributes'
 
 interface ProfileCompletenessCardProps {
   profile: Profile & { talent_skills: TalentSkill[]; credits: Credit[]; portfolio_items: PortfolioItem[] }
+  attributes: TalentAttributesPayload
 }
 
-export function ProfileCompletenessCard({ profile }: ProfileCompletenessCardProps) {
-  const { score, missing } = getProfileCompleteness(profile)
+export function ProfileCompletenessCard({ profile, attributes }: ProfileCompletenessCardProps) {
+  const { score, missing } = getProfileCompleteness(profile, attributes)
   const nextSteps = missing.slice(0, 2)
 
   return (
