@@ -10,6 +10,11 @@ const links = [
   { href: '/outreach', label: 'Outreach' },
 ]
 
+const bottomLinks = [
+  { href: '/settings', label: 'Settings' },
+  { href: '/profile', label: 'Profile' },
+]
+
 export function HirerNav() {
-  return <Navbar links={links} primaryAction={{ href: '/jobs/new', label: 'Post a job' }} />
+  return <Navbar links={links} bottomLinks={bottomLinks} primaryAction={{ href: '/jobs/new', label: 'Post a job' }} />
 }

@@ -183,7 +183,7 @@ Create a **Resend** account (free tier: 3,000 transactional emails/month), a **S
 
 ## Phase 2 — Production configuration and services
 
-### [ ] 🤖 13. Add typed environment validation and complete the example file — 2 hours
+### [x] 🤖 13. Add typed environment validation and complete the example file — 2 hours
 
 Fail startup clearly when a required production setting is absent. Document `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY` in `.env.example` with placeholders, plus the new Sentry/PostHog settings. Ensure server-only secrets cannot enter client bundles. Remove unused DeepSeek settings from the production environment unless a code path actually needs them.
 
@@ -209,7 +209,7 @@ In **Supabase → Authentication → URL Configuration**, set the final Site URL
 
 **You’ll know it worked when:** a new external email address receives confirmation and password-reset messages in the inbox, both links land on the production domain, and an unlisted redirect URL is rejected.
 
-### [ ] 🤖 17. Add error monitoring, structured logs, health checks, and product analytics — 4–6 hours
+### [ ] 🤖 17. Add error monitoring, structured logs, health checks, and product analytics — 4–6 hours *(structured logs and the `/api/health` endpoint are done; Sentry + PostHog wiring waits on the Gate 4 accounts)*
 
 Capture server and client exceptions in Sentry without sending message content, emails, API keys, or full AI prompts. Add a lightweight health endpoint that checks app health without exposing secrets. Track a small event set in PostHog: signup started/completed, profile completed, search performed, talent contacted, job posted, application submitted, and message sent. Respect consent requirements and document analytics in the privacy policy.
 
@@ -251,7 +251,7 @@ In **Vercel → Project → Settings → Domains**, add the apex domain and `www
 
 **You’ll know it worked when:** both domain forms use HTTPS, one redirects to the canonical domain, the browser shows a valid certificate, and authentication links remain on that domain.
 
-### [ ] 🤖 23. Add production headers, robots, sitemap, metadata, and error states — 4–6 hours
+### [x] 🤖 23. Add production headers, robots, sitemap, metadata, and error states — 4–6 hours
 
 Add a tested Content Security Policy, HSTS after the domain is stable, frame protection, referrer and permissions policies. Prevent authenticated/design-system routes from indexing, add `robots.ts` and `sitemap.ts` for public pages, provide canonical/Open Graph metadata, and add accessible `error.tsx`, `global-error.tsx`, `not-found.tsx`, and loading states. Remove the two `<img>` lint warnings where they affect the real landing page.
 

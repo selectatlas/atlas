@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { SEED_PROFILES } from './data'
-import { DEMO_HIRER, DEMO_PASSWORD, seedDemoWorld } from './demo-world'
+import { DEMO_HIRER, DEMO_PASSWORD, DEMO_PROFILE_IMAGES, seedDemoWorld } from './demo-world'
 import { mirrorImageToStorage } from './images'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
@@ -225,6 +225,25 @@ async function seedTalent(idsByEmail: Map<string, string>): Promise<number> {
   return failed
 }
 
+async function assignDemoPortraits(idsByEmail: Map<string, string>): Promise<void> {
+  const updates = Object.entries(DEMO_PROFILE_IMAGES).map(([email, avatar_url]) => ({
+    id: idsByEmail.get(email),
+    avatar_url,
+  }))
+  if (updates.some(update => !update.id)) {
+    throw new Error('Could not assign demo portraits because a referenced talent profile is missing')
+  }
+
+  const results = await Promise.all(
+    updates.map(({ id, avatar_url }) =>
+      supabase.from('profiles').update({ avatar_url }).eq('id', id!)
+    )
+  )
+  const failed = results.find(result => result.error)?.error
+  if (failed) throw new Error(`Failed to assign generated demo portraits: ${failed.message}`)
+  console.log(`  Generated portraits assigned: ${updates.length}`)
+}
+
 async function seedHirer(idsByEmail: Map<string, string>): Promise<boolean> {
   process.stdout.write(`\nSeeding hirer ${DEMO_HIRER.full_name}... `)
 
@@ -264,6 +283,8 @@ async function seed() {
     console.log('\nSome profiles failed; skipping demo world seed. Check errors above.')
     process.exit(1)
   }
+
+  await assignDemoPortraits(idsByEmail)
 
   // The demo world clears and recreates everything scoped to the demo hirer
   // on every run, so re-running the seed always yields fresh relative dates.

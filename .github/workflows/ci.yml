@@ -74,6 +74,12 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
           OPENAI_API_KEY: sk-ci-placeholder
 
+      - name: Verify server secrets are absent from client bundles
+        run: node scripts/check-client-bundles.mjs
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: sk-ci-placeholder
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 

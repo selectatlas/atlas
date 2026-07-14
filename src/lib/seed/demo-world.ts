@@ -23,6 +23,24 @@ export const DEMO_HIRER = {
   bio: 'Independent production company making music videos, branded content, and short film across London. We cast dancers, actors, and creators for fast-turnaround shoots with major label and brand clients.',
 }
 
+// Served by the Next app, these intentionally replace externally hosted
+// portraits for talent most visible in the demo journey.
+export const DEMO_PROFILE_IMAGES: Record<string, string> = {
+  'priya.singh@atlas-demo.com': '/hero/01.jpg',
+  'ananya.sharma@atlas-demo.com': '/hero/12.jpg',
+  'deepika.nair@atlas-demo.com': '/hero/04.jpg',
+  'kavya.patel@atlas-demo.com': '/hero/06.jpg',
+  'riya.mehta@atlas-demo.com': '/hero/08.jpg',
+  'aisha.khan@atlas-demo.com': '/hero/13.jpg',
+  'james.morrison@atlas-demo.com': '/hero/02.jpg',
+  'marcus.cole@atlas-demo.com': '/hero/05.jpg',
+  'tom.bradley@atlas-demo.com': '/hero/07.jpg',
+  'ryan.fletcher@atlas-demo.com': '/hero/09.jpg',
+  'sophie.clarke@atlas-demo.com': '/hero/03.jpg',
+  'charlotte.kim@atlas-demo.com': '/hero/10.jpg',
+  'sam.nguyen@atlas-demo.com': '/hero/11.jpg',
+}
+
 const now = () => Date.now()
 const daysAgoIso = (days: number) => new Date(now() - days * 86_400_000).toISOString()
 const hoursAgoIso = (hours: number) => new Date(now() - hours * 3_600_000).toISOString()

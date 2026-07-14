@@ -12,6 +12,7 @@ import {
   Plus,
   Search,
   Send,
+  Settings,
   UserRound,
 } from 'lucide-react'
 import { signOut } from '@/app/actions/auth'
@@ -23,6 +24,7 @@ interface NavLink {
 
 interface NavbarProps {
   links: NavLink[]
+  bottomLinks?: NavLink[]
   primaryAction?: NavLink
 }
 
@@ -34,9 +36,10 @@ const iconByHref: Record<string, typeof Search> = {
   '/messages': MessageSquare,
   '/outreach': Send,
   '/profile': UserRound,
+  '/settings': Settings,
 }
 
-export function Navbar({ links, primaryAction }: NavbarProps) {
+export function Navbar({ links, bottomLinks = [], primaryAction }: NavbarProps) {
   const pathname = usePathname()
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
@@ -98,6 +101,11 @@ export function Navbar({ links, primaryAction }: NavbarProps) {
         </div>
 
         <div className="border-t border-sidebar-border p-3">
+          {bottomLinks.length > 0 && (
+            <nav className="mb-3 space-y-1 border-b border-sidebar-border pb-3" aria-label="Account navigation">
+              {bottomLinks.map(link => renderLink(link))}
+            </nav>
+          )}
           <form action={signOut}>
             <button
               type="submit"

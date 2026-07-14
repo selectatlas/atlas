@@ -4,12 +4,19 @@ Atlas profile search for discovering and connecting with creative talent.
 
 ## Getting Started
 
-Install dependencies and start the development server:
+Install dependencies, configure the environment, and start the development server:
 
 ```bash
 npm install
+cp .env.example .env.local   # then fill in real values
 npm run dev
 ```
+
+Every required variable is documented in `.env.example`. The server validates
+them at startup (`src/instrumentation.ts`) and fails by NAME when one is
+missing. `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY` are server-only:
+never prefix them with `NEXT_PUBLIC_` - CI verifies their values are absent
+from client bundles (`scripts/check-client-bundles.mjs`).
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 

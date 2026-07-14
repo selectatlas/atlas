@@ -1,9 +1,29 @@
 import type { Metadata, Viewport } from 'next'
+import { SITE_URL } from '@/lib/site'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Atlas - AI Talent Discovery',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'Atlas - AI Talent Discovery',
+    template: '%s | Atlas',
+  },
   description: 'Find the right creative talent in seconds with AI-native search.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    url: SITE_URL,
+    siteName: 'Atlas',
+    title: 'Atlas - AI Talent Discovery',
+    description: 'Find the right creative talent in seconds with AI-native search.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Atlas - AI Talent Discovery',
+    description: 'Find the right creative talent in seconds with AI-native search.',
+  },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

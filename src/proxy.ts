@@ -11,6 +11,12 @@ export default async function middleware(request: NextRequest) {
   const localDemoMode = process.env.NODE_ENV === 'development' && request.cookies.get('atlas_demo')?.value === '1'
   if (localDemoMode) return NextResponse.next()
 
+  // Public machine-readable endpoints: health checks (uptime monitors) and
+  // SEO files (crawlers never authenticate).
+  if (pathname === '/api/health' || pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+    return NextResponse.next()
+  }
+
   const isPublicLandingRoute = pathname === '/'
   const isAuthRoute =
     pathname === '/login' ||

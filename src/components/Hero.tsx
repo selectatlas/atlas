@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { CSSProperties } from "react";
 
 const RINGS = [
@@ -107,7 +108,7 @@ export default function Hero() {
                     })}
                   >
                     <div className="spin">
-                      <img className="tile" src={tile.src} alt="" loading="lazy" />
+                      <Image className="tile" src={tile.src} alt="" width={92} height={106} sizes="92px" />
                     </div>
                   </div>
                 </div>
