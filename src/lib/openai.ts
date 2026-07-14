@@ -1,9 +1,23 @@
 import OpenAI from 'openai'
 
-// Singleton - safe to import server-side only
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+let openai: OpenAI | undefined
+
+// Routes are imported while Next.js collects build-time page data, so defer
+// credential validation and client creation until an API request needs OpenAI.
+function getOpenAI(): OpenAI {
+  if (openai) return openai
+
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured')
+  }
+
+  openai = new OpenAI({ apiKey })
+  return openai
+}
 
 export async function embedText(text: string): Promise<number[]> {
+  const openai = getOpenAI()
   const response = await openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: text,
@@ -20,6 +34,7 @@ export interface ParsedQuery {
 }
 
 export async function parseSearchQuery(query: string): Promise<ParsedQuery> {
+  const openai = getOpenAI()
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     temperature: 0,
@@ -62,6 +77,7 @@ export async function generateOutreachMessage(params: {
   talentBio: string
 }): Promise<string> {
   const { hirerContext, talentName, talentSkills, talentBio } = params
+  const openai = getOpenAI()
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     temperature: 0.7,
