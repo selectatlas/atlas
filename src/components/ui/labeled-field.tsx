@@ -1,6 +1,8 @@
 'use client'
 
 import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from 'react'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 type LabeledFieldProps = {
   label: ReactNode
@@ -17,10 +19,10 @@ export function LabeledField({ label, className, children }: LabeledFieldProps) 
     : children
 
   return (
-    <div className={className}>
-      <label htmlFor={id} className="mb-1.5 block text-xs font-medium text-muted-foreground">
+    <div className={cn(className)}>
+      <Label htmlFor={id} className="mb-1.5 block text-xs font-medium text-muted-foreground">
         {label}
-      </label>
+      </Label>
       {control}
     </div>
   )

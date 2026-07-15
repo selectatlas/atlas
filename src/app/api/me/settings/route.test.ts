@@ -8,6 +8,15 @@ vi.mock('@/lib/supabase/server', () => ({
     auth: { getUser: authGetUser },
     from: fromMock,
   }),
+  createServiceClient: () => ({
+    from: vi.fn(() => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () => Promise.resolve({ data: null }),
+        }),
+      }),
+    })),
+  }),
 }))
 
 vi.mock('@/lib/rate-limit', () => ({

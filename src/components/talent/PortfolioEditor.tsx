@@ -74,7 +74,7 @@ export function PortfolioEditor({ profileId, items, onUpdate, onError }: Portfol
                   <p className="text-sm font-medium truncate">{item.title || item.url}</p>
                   <p className="text-muted-foreground text-xs mt-0.5">{item.type}</p>
                 </div>
-                <button onClick={() => deleteItem(item.id)} className="text-xs text-destructive hover:underline ml-3">✕</button>
+                <Button type="button" variant="link" size="xs" className="ml-3 h-auto p-0 text-destructive" onClick={() => deleteItem(item.id)}>✕</Button>
               </div>
             ))}
           </div>

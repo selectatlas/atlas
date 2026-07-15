@@ -104,34 +104,32 @@ export default function SignupPage() {
           <CardContent>
             {/* Account type selector */}
             <div className="grid grid-cols-2 gap-3 mb-6">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setAccountType('hirer')}
                 aria-pressed={accountType === 'hirer'}
-                className={`rounded-xl border-2 p-4 text-left transition-[border-color,background-color,box-shadow] duration-[var(--duration-fast)] ${
-                  accountType === 'hirer'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border bg-muted/50 hover:border-muted-foreground/30'
+                className={`h-auto flex-col items-start rounded-xl border-2 p-4 text-left ${
+                  accountType === 'hirer' ? 'border-primary bg-primary/5' : 'border-border bg-muted/50'
                 }`}
               >
                 <div className="text-2xl mb-2">🎬</div>
                 <div className="text-sm font-semibold">I&apos;m Hiring</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Cast directors, producers</div>
-              </button>
-              <button
+                <div className="text-xs font-normal text-muted-foreground mt-0.5">Cast directors, producers</div>
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setAccountType('talent')}
                 aria-pressed={accountType === 'talent'}
-                className={`rounded-xl border-2 p-4 text-left transition-[border-color,background-color,box-shadow] duration-[var(--duration-fast)] ${
-                  accountType === 'talent'
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border bg-muted/50 hover:border-muted-foreground/30'
+                className={`h-auto flex-col items-start rounded-xl border-2 p-4 text-left ${
+                  accountType === 'talent' ? 'border-primary bg-primary/5' : 'border-border bg-muted/50'
                 }`}
               >
                 <div className="text-2xl mb-2">⭐</div>
                 <div className="text-sm font-semibold">I&apos;m Talent</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Dancers, actors, creators</div>
-              </button>
+                <div className="text-xs font-normal text-muted-foreground mt-0.5">Dancers, actors, creators</div>
+              </Button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">

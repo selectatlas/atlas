@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Bookmark, Heart } from 'lucide-react'
+import { PageShell } from '@/components/layout/PageShell'
 import { Card } from '@/components/ui/card'
 import { SavedTalentRow } from '@/components/saved/SavedTalentRow'
 import type { Profile, TalentSkill } from '@/types'
@@ -25,14 +26,8 @@ export function SavedTalentView({ activeTab, shortlisted, liked }: SavedTalentVi
   const rows = activeTab === 'liked' ? liked : shortlisted
 
   return (
-    <div className="space-y-8 py-2">
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Workspace</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Saved talent</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Use the bookmark on a profile to shortlist someone for a cast. Use the heart to like a profile you want to revisit.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageShell />
 
       <div className="flex gap-2 rounded-xl border border-border/80 bg-card p-1">
         {tabs.map(({ id, label, href, icon: Icon }) => {

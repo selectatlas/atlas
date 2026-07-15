@@ -9,6 +9,7 @@ import {
   Bookmark,
   BriefcaseBusiness,
   Compass,
+  Flag,
   Home,
   LayoutGrid,
   LogOut,
@@ -18,8 +19,10 @@ import {
   Send,
   Settings,
   UserRound,
+  Users,
 } from 'lucide-react'
 import { signOut } from '@/app/actions/auth'
+import { Button } from '@/components/ui/button'
 
 interface NavLink {
   href: string
@@ -30,6 +33,7 @@ interface NavbarProps {
   links: NavLink[]
   bottomLinks?: NavLink[]
   primaryAction?: NavLink
+  badgeCounts?: Record<string, number>
 }
 
 const iconByHref: Record<string, typeof Search> = {
@@ -43,9 +47,14 @@ const iconByHref: Record<string, typeof Search> = {
   '/outreach': Send,
   '/profile': UserRound,
   '/settings': Settings,
+  '/admin': LayoutGrid,
+  '/admin/reports': Flag,
+  '/admin/users': Users,
+  '/admin/jobs': BriefcaseBusiness,
+  '/admin/talent': UserRound,
 }
 
-export function Navbar({ links, bottomLinks = [], primaryAction }: NavbarProps) {
+export function Navbar({ links, bottomLinks = [], primaryAction, badgeCounts = {} }: NavbarProps) {
   const pathname = usePathname()
 
   // Move the active highlight the moment a link is clicked, instead of
@@ -60,6 +69,7 @@ export function Navbar({ links, bottomLinks = [], primaryAction }: NavbarProps) 
   const renderLink = ({ href, label }: NavLink, mobile = false) => {
     const active = isActive(href)
     const Icon = iconByHref[href] ?? LayoutGrid
+    const badge = badgeCounts[href] ?? 0
 
     return (
       <Link
@@ -70,17 +80,24 @@ export function Navbar({ links, bottomLinks = [], primaryAction }: NavbarProps) 
         aria-current={active ? 'page' : undefined}
         title={mobile ? label : undefined}
         className={mobile
-          ? `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium transition-[color,background-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+          ? `relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium transition-[color,background-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
               active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground hover:text-foreground'
             }`
-          : `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-[color,background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.98] ${
+          : `group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-[color,background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.98] ${
               active
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                 : 'text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground'
             }`
         }
       >
-        <Icon className={mobile ? 'size-4' : 'size-[17px]'} strokeWidth={active ? 2.2 : 1.8} />
+        <span className="relative">
+          <Icon className={mobile ? 'size-4' : 'size-[17px]'} strokeWidth={active ? 2.2 : 1.8} />
+          {badge > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
+        </span>
         <span className={mobile ? 'truncate' : ''}>{label}</span>
         {!mobile && active && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
       </Link>
@@ -121,13 +138,14 @@ export function Navbar({ links, bottomLinks = [], primaryAction }: NavbarProps) 
             </nav>
           )}
           <form action={signOut}>
-            <button
+            <Button
               type="submit"
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-[color,background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-sidebar-accent/70 hover:text-foreground active:scale-[0.98]"
+              variant="ghost"
+              className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
             >
               <LogOut className="size-[17px]" strokeWidth={1.8} />
               Sign out
-            </button>
+            </Button>
           </form>
         </div>
       </aside>

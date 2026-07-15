@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import type { TalentFilterDefinition } from '@/lib/filter-taxonomy'
 import type { NumericRange, SearchFilters, SearchFilterValue } from '@/lib/search-filters'
 
@@ -37,7 +40,7 @@ export function FilterSection({ definition, filters, onChange, compact = false }
         {!compact && <p className="text-sm font-medium">{definition.label}</p>}
         <div className="grid grid-cols-3 gap-2">
           {([['Any', undefined], ['Yes', true], ['No', false]] as const).map(([label, next]) => (
-            <button key={label} type="button" onClick={() => update(next)} className={`h-9 rounded-lg border px-3 text-xs font-medium ${value === next || next === undefined && value === undefined ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'}`}>{label}</button>
+            <Button key={label} type="button" variant={value === next || next === undefined && value === undefined ? 'secondary' : 'outline'} className={value === next || next === undefined && value === undefined ? 'border-primary bg-primary/10 text-primary' : ''} onClick={() => update(next)}>{label}</Button>
           ))}
         </div>
       </div>
@@ -89,17 +92,17 @@ export function FilterSection({ definition, filters, onChange, compact = false }
       {visibleOptions.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2">
           {visibleOptions.map(option => (
-            <label key={option.value} className="flex min-h-9 items-center gap-2 rounded-lg border border-border/80 bg-background px-3 text-xs">
-              <input type="checkbox" className="size-4 accent-primary" checked={selected.includes(option.value)} onChange={event => update(event.target.checked ? [...selected, option.value] : selected.filter(item => item !== option.value))} />
+            <Label key={option.value} className="flex min-h-9 items-center gap-2 rounded-lg border border-border/80 bg-background px-3 text-xs font-normal">
+              <Checkbox checked={selected.includes(option.value)} onCheckedChange={checked => update(checked ? [...selected, option.value] : selected.filter(item => item !== option.value))} />
               {option.label}
-            </label>
+            </Label>
           ))}
         </div>
       )}
       {definition.allowCustom && optionSearch.trim() && !options.some(option => option.label.toLowerCase() === optionSearch.trim().toLowerCase()) && (
-        <button type="button" onClick={() => { const custom = optionSearch.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); if (custom) update([...selected, custom]); setOptionSearch('') }} className="text-xs font-medium text-primary">Add “{optionSearch.trim()}”</button>
+        <Button type="button" variant="link" size="xs" className="h-auto p-0" onClick={() => { const custom = optionSearch.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); if (custom) update([...selected, custom]); setOptionSearch('') }}>Add “{optionSearch.trim()}”</Button>
       )}
-      {!compact && options.length > (definition.topOptions ?? 6) && <button type="button" className="text-xs font-medium text-primary" onClick={() => setExpanded(current => !current)}>{expanded ? 'Show less' : 'Show more'}</button>}
+      {!compact && options.length > (definition.topOptions ?? 6) && <Button type="button" variant="link" size="xs" className="h-auto p-0" onClick={() => setExpanded(current => !current)}>{expanded ? 'Show less' : 'Show more'}</Button>}
       {selected.length > 0 && <p className="text-[11px] text-muted-foreground">{selected.map(item => definition.options?.find(option => option.value === item)?.label ?? humanise(item)).join(', ')}</p>}
     </div>
   )

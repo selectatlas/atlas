@@ -13,11 +13,12 @@ vi.mock('@/lib/rate-limit', () => ({
 }))
 
 import { POST } from './route'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { runAgentSearch } from '@/lib/agent-search'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>
+const mockCreateServiceClient = createServiceClient as ReturnType<typeof vi.fn>
 const mockRunAgentSearch = runAgentSearch as ReturnType<typeof vi.fn>
 const mockEnforceRateLimit = enforceRateLimit as ReturnType<typeof vi.fn>
 const mockEnforceAiQuota = enforceAiQuota as ReturnType<typeof vi.fn>
@@ -54,6 +55,15 @@ describe('POST /api/search/agent', () => {
     mockEnforceRateLimit.mockResolvedValue(null)
     mockEnforceAiQuota.mockResolvedValue(null)
     mockRunAgentSearch.mockResolvedValue({ summary: '', results: [], searches: 0 })
+    mockCreateServiceClient.mockReturnValue({
+      from: vi.fn(() => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: () => Promise.resolve({ data: null }),
+          }),
+        }),
+      })),
+    })
   })
 
   it('returns 401 when unauthenticated', async () => {

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedCaller } from '@/lib/access'
 import { generateOutreachMessage } from '@/lib/openai'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import { parseJsonBody, isUuid, cleanString, cleanOptionalString, badRequest } from '@/lib/validation'
@@ -7,9 +8,12 @@ import { logEvent } from '@/lib/log'
 import { getPostHogClient } from '@/lib/posthog-server'
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const caller = await getAuthenticatedCaller()
+  if (!caller.ok) return caller.response
+  if (!caller.access.canHirer) return Response.json({ error: 'Forbidden' }, { status: 403 })
+
+  const supabase = caller.supabase
+  const user = caller.user
 
   const parsedBody = await parseJsonBody(request)
   if (!parsedBody.ok) return parsedBody.response
@@ -20,15 +24,11 @@ export async function POST(request: Request) {
     return badRequest('action must be generate or send')
   }
 
-  // Outreach is a hirer feature - reject cross-role calls before any spend
   const { data: callerProfile } = await supabase
     .from('profiles')
     .select('account_type, full_name')
     .eq('id', user.id)
     .single()
-  if (callerProfile?.account_type !== 'hirer') {
-    return Response.json({ error: 'Forbidden' }, { status: 403 })
-  }
 
   // The target must be a talent profile
   const { data: talent } = await supabase
@@ -46,6 +46,29 @@ export async function POST(request: Request) {
     const limited = await enforceRateLimit(`outreach-send:${user.id}`, 3600, 30)
     if (limited) return limited
 
+    const { data: createdThreadId, error: threadError } = await supabase.rpc('create_or_get_thread', {
+      other_profile_id: talent_id,
+    })
+    if (threadError || !createdThreadId) {
+      logEvent('error', 'outreach_thread_error', {
+        user_id: user.id,
+        code: threadError?.code ?? null,
+      })
+      return Response.json({ error: 'Failed to start conversation' }, { status: 500 })
+    }
+
+    const threadId = createdThreadId as string
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert({ thread_id: threadId, sender_id: user.id, content: message })
+    if (messageError) {
+      logEvent('error', 'outreach_message_mirror_error', {
+        user_id: user.id,
+        code: messageError.code ?? null,
+      })
+      return Response.json({ error: 'Failed to send message' }, { status: 500 })
+    }
+
     const { error } = await supabase.from('outreach').insert({
       hirer_id: user.id,
       talent_id,
@@ -57,34 +80,11 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Failed to send outreach' }, { status: 500 })
     }
 
-    // Mirror outreach into the direct-message thread so inbox and thread views stay in sync.
-    let threadId: string | null = null
-    const { data: createdThreadId, error: threadError } = await supabase.rpc('create_or_get_thread', {
-      other_profile_id: talent_id,
-    })
-    if (threadError || !createdThreadId) {
-      logEvent('error', 'outreach_thread_error', {
-        user_id: user.id,
-        code: threadError?.code ?? null,
-      })
-    } else {
-      threadId = createdThreadId as string
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert({ thread_id: threadId, sender_id: user.id, content: message })
-      if (messageError) {
-        logEvent('error', 'outreach_message_mirror_error', {
-          user_id: user.id,
-          code: messageError.code ?? null,
-        })
-      }
-    }
-
     const posthog = getPostHogClient()
     posthog.capture({
       distinctId: user.id,
       event: 'outreach_message_sent',
-      properties: { talent_id, has_thread: Boolean(threadId) },
+      properties: { talent_id, has_thread: true },
     })
     void posthog.flush()
     return Response.json({ success: true, thread_id: threadId })
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
   const skills = (talent.talent_skills as Array<{ skill: string }>).map(s => s.skill)
   try {
     const generated = await generateOutreachMessage({
-      hirerContext: hirerContext.value ?? (callerProfile.full_name ? `from ${callerProfile.full_name}` : 'a casting director'),
+      hirerContext: hirerContext.value ?? (callerProfile?.full_name ? `from ${callerProfile.full_name}` : 'a casting director'),
       talentName: talent.full_name,
       talentSkills: skills,
       talentBio: talent.bio ?? '',

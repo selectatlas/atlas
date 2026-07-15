@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedCaller } from '@/lib/access'
 import { parseJsonBody, isUuid, badRequest } from '@/lib/validation'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
@@ -21,24 +22,17 @@ export async function GET() {
 
 // POST /api/shortlist — toggle shortlist for a talent (hirer only)
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const caller = await getAuthenticatedCaller()
+  if (!caller.ok) return caller.response
+  if (!caller.access.canHirer) return Response.json({ error: 'Forbidden' }, { status: 403 })
+
+  const supabase = caller.supabase
+  const user = caller.user
 
   const parsedBody = await parseJsonBody(request)
   if (!parsedBody.ok) return parsedBody.response
   const { talent_id } = parsedBody.body
   if (!isUuid(talent_id)) return badRequest('talent_id must be a valid id')
-
-  // Shortlisting is a hirer feature
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('account_type')
-    .eq('id', user.id)
-    .single()
-  if (profile?.account_type !== 'hirer') {
-    return Response.json({ error: 'Forbidden' }, { status: 403 })
-  }
 
   const limited = await enforceRateLimit(`shortlist:${user.id}`, 60, 60)
   if (limited) return limited

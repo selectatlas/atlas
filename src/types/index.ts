@@ -1,4 +1,6 @@
 export type AccountType = 'hirer' | 'talent'
+export type PlatformAdminRole = 'owner' | 'moderator' | 'support'
+export type ReportStatus = 'open' | 'reviewing' | 'resolved' | 'dismissed'
 export type Category = 'dancer' | 'actor' | 'photographer_videographer' | 'content_creator'
 export type Proficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert'
 export type ApplicationStatus = 'sent' | 'viewed' | 'responded' | 'shortlisted' | 'hired'
@@ -46,6 +48,22 @@ export interface Profile {
   availability: string | null
   showreel_url: string | null
   profile_visibility?: ProfileVisibility
+  suspended_at?: string | null
+  suspension_reason?: string | null
+  created_at: string
+}
+
+export interface PlatformReport {
+  id: string
+  reporter_id: string
+  reported_profile_id: string | null
+  reported_job_id: string | null
+  reason: string
+  details: string | null
+  status: ReportStatus
+  admin_notes: string | null
+  resolved_by: string | null
+  resolved_at: string | null
   created_at: string
 }
 
@@ -68,6 +86,8 @@ export interface Job {
   location: string
   budget: string | null
   status: JobStatus
+  removed_at?: string | null
+  removal_reason?: string | null
   created_at: string
   work_type?: JobWorkType | null
   start_date?: string | null

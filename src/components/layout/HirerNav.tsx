@@ -1,6 +1,8 @@
 'use client'
 
 import { Navbar } from './Navbar'
+import { useInbox } from './inbox-context'
+import { useAppShell } from './app-shell-context'
 
 const links = [
   { href: '/home', label: 'Home' },
@@ -11,11 +13,25 @@ const links = [
   { href: '/outreach', label: 'Outreach' },
 ]
 
+const adminLinks = [
+  { href: '/admin', label: 'Admin' },
+  { href: '/admin/talent', label: 'Add talent' },
+]
+
 const bottomLinks = [
   { href: '/settings', label: 'Settings' },
   { href: '/profile', label: 'Profile' },
 ]
 
 export function HirerNav() {
-  return <Navbar links={links} bottomLinks={bottomLinks} primaryAction={{ href: '/jobs/new', label: 'Post a job' }} />
+  const { navBadges } = useInbox()
+  const { isPlatformAdmin } = useAppShell()
+  return (
+    <Navbar
+      links={isPlatformAdmin ? [...links, ...adminLinks] : links}
+      bottomLinks={bottomLinks}
+      primaryAction={{ href: '/jobs/new', label: 'Post a job' }}
+      badgeCounts={navBadges}
+    />
+  )
 }

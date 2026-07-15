@@ -21,7 +21,18 @@ function caller(user: { id: string } | null, accountType: string | null) {
 function service() {
   return {
     rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
-    from: vi.fn(() => ({ select: () => ({ in: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }) })),
+    from: vi.fn((table: string) => {
+      if (table === 'platform_admins') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: null }),
+            }),
+          }),
+        }
+      }
+      return { select: () => ({ in: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }) }
+    }),
   }
 }
 

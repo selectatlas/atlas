@@ -1,6 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(),
+  createServiceClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () => Promise.resolve({ data: null }),
+        }),
+      }),
+    })),
+  })),
+}))
 vi.mock('@/lib/rate-limit', () => ({
   enforceRateLimit: vi.fn().mockResolvedValue(null),
   enforceAiQuota: vi.fn().mockResolvedValue(null),

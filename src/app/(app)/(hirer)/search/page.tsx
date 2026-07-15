@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { SearchX, Sparkles } from 'lucide-react'
 import { TalentCard, TalentListItem } from '@/components/talent/TalentCard'
 import { SearchHeader } from '@/components/search/SearchHeader'
+import { PageShell } from '@/components/layout/PageShell'
 import { SwipeStack } from '@/components/talent/SwipeStack'
 import { OutreachModal } from '@/components/outreach/OutreachModal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { isLocalDemoMode } from '@/lib/demo-mode'
+import { isActiveLocalDemoMode } from '@/lib/demo-mode'
 import { searchDemoTalent } from '@/lib/demo-data'
 import { serializeSearchFilters, type SearchFilters } from '@/lib/search-filters'
 import { useSearchFilters } from '@/components/search/useSearchFilters'
@@ -21,7 +22,16 @@ type SortMode = 'newest' | 'available'
 const BROWSE_PAGE_SIZE = 48
 
 export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="space-y-6 animate-pulse"><div className="h-8 w-48 rounded-lg bg-muted" /><div className="h-32 rounded-xl bg-muted" /></div>}>
+      <SearchPageContent />
+    </Suspense>
+  )
+}
+
+function SearchPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { filters, setFilters } = useSearchFilters()
 
   const [allTalent, setAllTalent] = useState<TalentSearchResult[]>([])
@@ -48,6 +58,11 @@ export default function SearchPage() {
   const [outreachTalent, setOutreachTalent] = useState<(Profile & { talent_skills: TalentSkill[] }) | null>(null)
   const [passed, setPassed] = useState<Set<string>>(new Set())
 
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) setQuery(q)
+  }, [searchParams])
+
   const [talentStats, setTalentStats] = useState<Record<string, { views: number; likes: number }>>({})
   const [isLocalDemo, setIsLocalDemo] = useState(false)
   const filterSortKey = useMemo(
@@ -57,11 +72,10 @@ export default function SearchPage() {
   const prevFilterSortKey = useRef(filterSortKey)
 
   useEffect(() => {
-    const localDemo = isLocalDemoMode()
-    // The cookie is the local demo's external session source; hydrate it once on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsLocalDemo(localDemo)
+    void isActiveLocalDemoMode().then(demo => setIsLocalDemo(demo))
+  }, [])
 
+  useEffect(() => {
     const filtersChanged = prevFilterSortKey.current !== filterSortKey
     if (filtersChanged) {
       prevFilterSortKey.current = filterSortKey
@@ -294,7 +308,8 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="space-y-6 py-2">
+    <div className="space-y-6">
+      <PageShell />
       <SearchHeader
         query={query}
         onQueryChange={setQuery}
@@ -344,19 +359,16 @@ export default function SearchPage() {
       {aiError && (
         <div className="text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
           <p>{aiError}</p>
-          <button
-            onClick={() => runAiSearch(query)}
-            className="mt-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-          >
+          <Button type="button" variant="link" size="xs" className="mt-2 h-auto p-0" onClick={() => runAiSearch(query)}>
             Try again →
-          </button>
+          </Button>
         </div>
       )}
 
       {browseError && !isAiMode && (
         <div className="text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
           <p>{browseError}</p>
-          <button onClick={() => setBrowseRetry(value => value + 1)} className="mt-2 text-xs font-medium text-primary hover:text-primary/80">Try again →</button>
+          <Button type="button" variant="link" size="xs" className="mt-2 h-auto p-0" onClick={() => setBrowseRetry(value => value + 1)}>Try again →</Button>
         </div>
       )}
 

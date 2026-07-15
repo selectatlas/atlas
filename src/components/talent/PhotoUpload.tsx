@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Image from 'next/image'
+import { Button } from '@/components/ui/button'
 
 interface PhotoUploadProps {
   currentUrl: string | null
@@ -69,11 +70,12 @@ export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatar
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <button
+      <Button
         type="button"
+        variant="outline"
         onClick={() => fileRef.current?.click()}
         disabled={uploading}
-        className="relative w-20 h-20 rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border hover:border-primary transition-colors group disabled:opacity-60"
+        className="relative size-20 overflow-hidden rounded-2xl border-2 border-dashed bg-muted p-0 hover:border-primary disabled:opacity-60"
         aria-label="Upload profile photo"
       >
         {displayUrl ? (
@@ -99,7 +101,7 @@ export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatar
             </svg>
           )}
         </div>
-      </button>
+      </Button>
 
       <input
         ref={fileRef}

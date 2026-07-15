@@ -4,6 +4,7 @@ import { useEffect, useState, KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { SKILLS_BY_CATEGORY, CATEGORY_LABELS } from '@/lib/skills'
 import { isLocalDemoMode } from '@/lib/demo-mode'
+import { PageShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -98,20 +99,14 @@ export default function NewJobPage() {
   }
 
   return (
-    <div className="py-4 space-y-4">
-      <div className="flex items-center gap-3 mb-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold">Post a job</h1>
-          {defaultsLoaded && (category || location || budget || skills.length > 0) && (
-            <p className="text-xs text-muted-foreground">Prefills from your workspace settings</p>
-          )}
-        </div>
-      </div>
+    <div className="space-y-4">
+      <PageShell
+        description={
+          defaultsLoaded && (category || location || budget || skills.length > 0)
+            ? 'Prefills from your workspace settings'
+            : undefined
+        }
+      />
 
       {error && (
         <p className="text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">{error}</p>
@@ -144,17 +139,15 @@ export default function NewJobPage() {
           <label className="block text-xs font-medium text-muted-foreground mb-3">Category</label>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map(cat => (
-              <button
+              <Button
                 key={cat}
+                type="button"
+                variant="outline"
                 onClick={() => { setCategory(cat); setSkills([]) }}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  category === cat
-                    ? 'bg-foreground text-background'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                }`}
+                className={`rounded-full ${category === cat ? 'bg-foreground text-background hover:bg-foreground/90' : ''}`}
               >
                 {CATEGORY_LABELS[cat]}
-              </button>
+              </Button>
             ))}
           </div>
         </CardContent>
@@ -170,7 +163,7 @@ export default function NewJobPage() {
               {skills.map(s => (
                 <Badge key={s} variant="secondary" className="gap-1 text-xs">
                   {s}
-                  <button onClick={() => removeSkill(s)} className="hover:text-foreground ml-0.5">✕</button>
+                  <Button type="button" variant="ghost" size="icon-xs" className="ml-0.5 size-auto p-0 hover:bg-transparent" onClick={() => removeSkill(s)}>✕</Button>
                 </Badge>
               ))}
             </div>

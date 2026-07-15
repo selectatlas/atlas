@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, UsersRound } from 'lucide-react'
+import { UsersRound } from 'lucide-react'
 import { CATEGORY_LABELS } from '@/lib/skills'
+import { PageShell } from '@/components/layout/PageShell'
+import { useSetPageShell } from '@/components/layout/use-set-page-shell'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -22,7 +24,6 @@ const ALL_STATUSES: ApplicationStatus[] = ['sent', 'viewed', 'responded', 'short
 
 export default function JobDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const id = params.id as string
 
   const [job, setJob] = useState<Job | null>(null)
@@ -55,9 +56,9 @@ export default function JobDetailPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [id, router])
+  }, [id])
 
-  async function toggleStatus() {
+  const toggleStatus = useCallback(async () => {
     if (!job) return
     const closing = job.status === 'open'
     if (closing && !window.confirm('Close this job? It will stop accepting new applications.')) return
@@ -73,7 +74,7 @@ export default function JobDetailPage() {
       setJob(data.job)
     }
     setToggling(false)
-  }
+  }, [id, job])
 
   async function updateApplicationStatus(appId: string, status: ApplicationStatus) {
     setUpdatingId(appId)
@@ -88,6 +89,32 @@ export default function JobDetailPage() {
     setUpdatingId(null)
   }
 
+  const shellOverride = useMemo(() => {
+    if (loadError) {
+      return {
+        breadcrumbs: [{ label: 'Jobs', href: '/jobs' }, { label: 'Job' }],
+        title: 'Job',
+      }
+    }
+    if (!job) return null
+    return {
+      breadcrumbs: [{ label: 'Jobs', href: '/jobs' }, { label: job.title }],
+      title: job.title,
+      actions: (
+        <Button
+          variant={job.status === 'open' ? 'default' : 'outline'}
+          size="sm"
+          onClick={toggleStatus}
+          disabled={toggling}
+        >
+          {toggling ? '...' : job.status === 'open' ? 'Close job' : 'Reopen job'}
+        </Button>
+      ),
+    }
+  }, [job, loadError, toggling, toggleStatus])
+
+  useSetPageShell(loading ? { breadcrumbsLoading: true } : shellOverride)
+
   if (loading) {
     return (
       <div className="py-4 space-y-4 animate-pulse">
@@ -100,9 +127,9 @@ export default function JobDetailPage() {
 
   if (loadError) {
     return (
-      <div className="py-4 space-y-4">
+      <div className="space-y-4">
+        <PageShell />
         <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{loadError}</p>
-        <Button variant="outline" onClick={() => router.push('/jobs')}>Back to jobs</Button>
       </div>
     )
   }
@@ -110,22 +137,8 @@ export default function JobDetailPage() {
   if (!job) return null
 
   return (
-    <div className="py-4 space-y-4 pb-8">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/jobs')} aria-label="Back to jobs">
-          <ArrowLeft className="size-5" />
-        </Button>
-        <h1 className="text-lg font-bold flex-1 min-w-0 truncate">{job.title}</h1>
-        <Button
-          variant={job.status === 'open' ? 'default' : 'outline'}
-          size="sm"
-          onClick={toggleStatus}
-          disabled={toggling}
-        >
-          {toggling ? '...' : job.status === 'open' ? 'Close job' : 'Reopen job'}
-        </Button>
-      </div>
+    <div className="space-y-4 pb-8">
+      <PageShell />
 
       {/* Job details */}
       <Card className="p-5 space-y-3">

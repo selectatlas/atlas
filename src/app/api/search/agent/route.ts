@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedCaller } from '@/lib/access'
 import { runAgentSearch } from '@/lib/agent-search'
 import { parseJsonBody, cleanString, badRequest } from '@/lib/validation'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
@@ -12,10 +13,11 @@ const RUNS_PER_MINUTE = 3
 const RUNS_PER_DAY = 25
 
 export async function POST(request: Request) {
-  // Verify the caller is authenticated before reading anything else
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const caller = await getAuthenticatedCaller()
+  if (!caller.ok) return caller.response
+  if (!caller.access.canHirer) return Response.json({ error: 'Forbidden' }, { status: 403 })
+
+  const user = caller.user
 
   const parsedBody = await parseJsonBody(request)
   if (!parsedBody.ok) return parsedBody.response
@@ -24,16 +26,6 @@ export async function POST(request: Request) {
   if (!query) return badRequest('query is required (max 500 characters)')
   const requestedFilters = parseSearchFilterObject(parsedBody.body.filters)
   if (!requestedFilters.ok) return badRequest(requestedFilters.error)
-
-  // Agentic search is a hirer feature - reject cross-role calls before spending
-  const { data: callerProfile } = await supabase
-    .from('profiles')
-    .select('account_type')
-    .eq('id', user.id)
-    .single()
-  if (callerProfile?.account_type !== 'hirer') {
-    return Response.json({ error: 'Forbidden' }, { status: 403 })
-  }
 
   // All limits BEFORE any OpenAI spend
   const limited =

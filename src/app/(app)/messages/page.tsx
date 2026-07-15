@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { SearchX } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { isLocalDemoMode } from '@/lib/demo-mode'
+import { isActiveLocalDemoMode } from '@/lib/demo-mode'
+import { PageShell } from '@/components/layout/PageShell'
 import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { nameInitial } from '@/lib/display'
 
@@ -16,6 +18,7 @@ interface Thread {
   lastMessage: string
   lastSenderId: string
   lastMessageAt: string
+  unread?: boolean
 }
 
 export default function MessagesPage() {
@@ -25,31 +28,40 @@ export default function MessagesPage() {
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isLocalDemoMode()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoading(false)
-      return
-    }
+    let cancelled = false
 
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    void (async () => {
+      const demo = await isActiveLocalDemoMode()
+      if (cancelled) return
+      if (demo) {
+        setLoading(false)
+        return
+      }
+
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (cancelled) return
       if (!user) return
       setUserId(user.id)
-    })
 
-    fetch('/api/messages/threads')
-      .then(async r => {
-        if (!r.ok) throw new Error('Unable to load messages')
-        return r.json()
-      })
-      .then(data => {
-        setThreads(data.threads ?? [])
-        setLoading(false)
-      })
-      .catch(() => {
-        setLoadError('Unable to load messages')
-        setLoading(false)
-      })
+      fetch('/api/messages/threads')
+        .then(async r => {
+          if (!r.ok) throw new Error('Unable to load messages')
+          return r.json()
+        })
+        .then(data => {
+          if (cancelled) return
+          setThreads(data.threads ?? [])
+          setLoading(false)
+        })
+        .catch(() => {
+          if (cancelled) return
+          setLoadError('Unable to load messages')
+          setLoading(false)
+        })
+    })()
+
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
@@ -91,24 +103,16 @@ export default function MessagesPage() {
     return (
       <div className="space-y-4 py-2">
         <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{loadError}</p>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="text-sm font-medium text-primary hover:text-primary/80"
-        >
+        <Button type="button" variant="link" onClick={() => window.location.reload()}>
           Try again
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8 py-2">
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Workspace</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Keep every conversation with your creative network in one place.</p>
-      </div>
+    <div className="space-y-8">
+      <PageShell description="Keep every conversation with your creative network in one place." />
 
       {threads.length === 0 ? (
         <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center">
@@ -131,12 +135,19 @@ export default function MessagesPage() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-sm truncate">{thread.otherName}</p>
-                      <span className="text-muted-foreground text-xs shrink-0">
-                        {formatTime(thread.lastMessageAt)}
-                      </span>
+                      <p className={`text-sm truncate ${thread.unread ? 'font-semibold text-foreground' : 'font-medium'}`}>
+                        {thread.otherName}
+                      </p>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {thread.unread && (
+                          <span className="size-2 rounded-full bg-primary" aria-label="Unread" />
+                        )}
+                        <span className="text-muted-foreground text-xs">
+                          {formatTime(thread.lastMessageAt)}
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-muted-foreground text-xs mt-0.5 truncate">
+                    <p className={`text-xs mt-0.5 truncate ${thread.unread ? 'text-foreground' : 'text-muted-foreground'}`}>
                       {thread.lastSenderId === userId ? 'You: ' : ''}
                       {thread.lastMessage}
                     </p>

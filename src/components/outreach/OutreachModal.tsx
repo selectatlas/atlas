@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { isLocalDemoMode } from '@/lib/demo-mode'
+import { isActiveLocalDemoMode } from '@/lib/demo-mode'
 import type { Profile, TalentSkill } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,25 +27,29 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isDemo, setIsDemo] = useState(false)
 
   useEffect(() => {
     if (!talent) return
-    const reset = () => {
-      setMessage('')
-      setSent(false)
-      setError(null)
-    }
-    reset()
-    generateMessage()
+    setMessage('')
+    setSent(false)
+    setError(null)
+    void refreshDemoModeAndGenerate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [talent?.id])
 
-  async function generateMessage() {
+  async function refreshDemoModeAndGenerate() {
+    const demo = await isActiveLocalDemoMode()
+    setIsDemo(demo)
+    await generateMessage(demo)
+  }
+
+  async function generateMessage(demo = isDemo) {
     if (!talent) return
     setGenerating(true)
     setError(null)
 
-    if (isLocalDemoMode()) {
+    if (demo) {
       const firstName = talent.full_name.split(' ')[0]
       setMessage(`Hi ${firstName}, your work looks like a strong fit for a new creative brief. I’d love to share more about the project and see if you’re available.`)
       setGenerating(false)
@@ -94,7 +98,9 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     setSending(true)
     setError(null)
 
-    if (isLocalDemoMode()) {
+    const demo = await isActiveLocalDemoMode()
+    setIsDemo(demo)
+    if (demo) {
       setSent(true)
       setSending(false)
       setTimeout(() => { onSent(); onClose() }, 1200)
@@ -188,7 +194,7 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={generateMessage}
+                onClick={() => void generateMessage()}
                 disabled={generating || sending}
                 className="gap-1.5"
               >

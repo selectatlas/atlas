@@ -16,6 +16,7 @@ import { getSession } from '@/lib/auth'
 import { getProfileCompletion } from '@/lib/profile-completion'
 import { findThreadWithOther } from '@/lib/thread-lookup'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
+import { PageShell } from '@/components/layout/PageShell'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -82,13 +83,7 @@ async function getRecentThreads(supabase: SupabaseClient, userId: string, limit 
 }
 
 function DashboardHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Dashboard</p>
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-    </div>
-  )
+  return <PageShell title={title} description={subtitle} />
 }
 
 function StatCard({ value, label, href }: { value: number | string; label: string; href?: string }) {
@@ -414,13 +409,13 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
 }
 
 export default async function HomePage() {
-  const { userId, accountType, isLocalDemo } = await getSession()
+  const { userId, accountType, isLocalDemo, isPlatformAdmin } = await getSession()
   if (isLocalDemo) return <DemoActivity />
   if (!userId) redirect('/login')
 
   const supabase = await createClient()
 
-  return accountType === 'hirer' ? (
+  return accountType === 'hirer' || isPlatformAdmin ? (
     <HirerDashboard userId={userId} supabase={supabase} />
   ) : (
     <TalentDashboard userId={userId} supabase={supabase} />

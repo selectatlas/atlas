@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { FILTER_BY_KEY } from '@/lib/filter-taxonomy'
 import type { SearchFilters } from '@/lib/search-filters'
 
@@ -17,9 +19,9 @@ export function ActiveFilterChips({ filters, onChange }: { filters: SearchFilter
             ? `${value.min ?? 'Any'}–${value.max ?? 'Any'}${definition?.unit ? ` ${definition.unit}` : ''}`
             : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)
         return (
-          <button key={key} type="button" aria-label={`Remove ${definition?.label ?? key} filter`} onClick={() => { const next = { ...filters }; delete next[key as keyof SearchFilters]; onChange(next) }} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs text-secondary-foreground">
+          <Button key={key} type="button" variant="secondary" size="xs" className="max-w-full rounded-full" aria-label={`Remove ${definition?.label ?? key} filter`} onClick={() => { const next = { ...filters }; delete next[key as keyof SearchFilters]; onChange(next) }}>
             <span className="truncate">{definition?.label ?? key}: {text}</span><X className="size-3" />
-          </button>
+          </Button>
         )
       })}
     </div>

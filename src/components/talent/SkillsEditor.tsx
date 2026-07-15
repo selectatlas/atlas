@@ -62,7 +62,7 @@ export function SkillsEditor({ profileId, skills, onUpdate, onError }: SkillsEdi
             {skills.map(skill => (
               <Badge key={skill.id} variant="secondary" className="gap-1 text-xs">
                 {skill.skill} ({PROFICIENCY_LABELS[skill.proficiency]})
-                <button onClick={() => removeSkill(skill.id)} className="hover:text-foreground ml-0.5">✕</button>
+                <Button type="button" variant="ghost" size="icon-xs" className="ml-0.5 size-auto p-0 hover:bg-transparent" onClick={() => removeSkill(skill.id)}>✕</Button>
               </Badge>
             ))}
           </div>

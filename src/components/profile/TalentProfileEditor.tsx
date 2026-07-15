@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SkillsEditor } from '@/components/talent/SkillsEditor'
 import { CreditsEditor } from '@/components/talent/CreditsEditor'
 import { PortfolioEditor } from '@/components/talent/PortfolioEditor'
+import { PageShell } from '@/components/layout/PageShell'
 import { ProfileCompletenessCard } from '@/components/talent/ProfileCompletenessCard'
 import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
@@ -143,8 +144,8 @@ export function TalentProfileEditor() {
   if (!profile) return null
 
   return (
-    <div className="py-6 space-y-6 pb-32">
-      <h1 className="text-xl font-bold">My Profile</h1>
+    <div className="space-y-6 pb-32">
+      <PageShell title="My profile" />
 
       <ProfileCompletenessCard profile={profile} attributes={talentAttributes} />
 

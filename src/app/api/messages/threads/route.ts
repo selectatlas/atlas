@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
+import { isServerDemoOnly } from '@/lib/auth'
+import { isThreadUnread } from '@/lib/inbox'
 import { parseJsonBody, isUuid, badRequest } from '@/lib/validation'
 import { enforceRateLimit } from '@/lib/rate-limit'
 
 // GET /api/messages/threads — list threads with latest message + other participant
 export async function GET() {
-  const localDemoMode = process.env.NODE_ENV === 'development' && (await cookies()).get('atlas_demo')?.value === '1'
-  if (localDemoMode) return Response.json({ threads: [] })
+  if (await isServerDemoOnly()) return Response.json({ threads: [] })
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,11 +15,15 @@ export async function GET() {
   // Get threads I'm a participant of
   const { data: myThreads } = await supabase
     .from('thread_participants')
-    .select('thread_id')
+    .select('thread_id, last_read_at')
     .eq('profile_id', user.id)
 
   const threadIds = (myThreads ?? []).map(t => t.thread_id as string)
   if (threadIds.length === 0) return Response.json({ threads: [] })
+
+  const readByThread = new Map(
+    (myThreads ?? []).map(row => [row.thread_id as string, row.last_read_at as string]),
+  )
 
   // Get all participants + latest message for each thread
   const { data: threads } = await supabase
@@ -43,6 +47,7 @@ export async function GET() {
       profiles: { full_name: string; avatar_url: string | null } | null
     }>)
     const other = participants.find(p => p.profile_id !== user.id)
+    const lastReadAt = readByThread.get(thread.id as string) ?? new Date(0).toISOString()
     return {
       id: thread.id,
       otherName: other?.profiles?.full_name ?? 'Unknown',
@@ -50,6 +55,7 @@ export async function GET() {
       lastMessage: msg?.content ?? 'No messages yet',
       lastSenderId: msg?.sender_id ?? '',
       lastMessageAt: msg?.created_at ?? thread.created_at,
+      unread: isThreadUnread(msg, lastReadAt, user.id),
     }
   }).sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
 

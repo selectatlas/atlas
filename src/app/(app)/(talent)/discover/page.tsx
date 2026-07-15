@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { BriefcaseBusiness, Check, Grid2X2, List, MapPin, Search, X } from 'lucide-react'
+import { Suspense, useState, useEffect, useMemo, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { BriefcaseBusiness, Check, Grid2X2, List, MapPin, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isLocalDemoMode } from '@/lib/demo-mode'
 import { DEMO_APPLICATIONS_STORAGE_KEY, DEMO_JOBS, DEMO_PROFILE, type DemoApplication } from '@/lib/demo-data'
@@ -11,6 +11,7 @@ import { getJobMatchReasons } from '@/lib/matching'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PageShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,7 +24,16 @@ type JobResult = Job & { hirer?: { full_name: string } | null }
 type SortOption = 'newest' | 'rate_high' | 'rate_low'
 
 export default function DiscoverPage() {
+  return (
+    <Suspense fallback={<div className="space-y-6 animate-pulse"><div className="h-8 w-48 rounded-lg bg-muted" /><div className="h-64 rounded-xl bg-muted" /></div>}>
+      <DiscoverPageContent />
+    </Suspense>
+  )
+}
+
+function DiscoverPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [jobs, setJobs] = useState<JobResult[]>([])
   const [talentProfile, setTalentProfile] = useState<(Profile & { talent_skills: TalentSkill[] }) | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,7 +42,7 @@ export default function DiscoverPage() {
   const [applied, setApplied] = useState<Set<string>>(new Set())
   const [applyingId, setApplyingId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'swipe' | 'list'>('swipe')
-  const [search, setSearch] = useState('')
+  const search = searchParams.get('q') ?? ''
   const [sort, setSort] = useState<SortOption>('newest')
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -77,6 +87,7 @@ export default function DiscoverPage() {
         .from('jobs')
         .select('*, profiles!hirer_id(full_name)')
         .eq('status', 'open')
+        .is('removed_at', null)
         .order('created_at', { ascending: false })
 
       if (primaryCategory) {
@@ -271,60 +282,40 @@ export default function DiscoverPage() {
   }
 
   return (
-    <div className="space-y-6 py-2">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Your opportunities</p>
-          <h1 className="text-2xl font-semibold tracking-tight">Discover jobs</h1>
-          {talentCategory && (
-            <p className="mt-1 text-sm text-muted-foreground">Matched for {CATEGORY_LABELS[talentCategory]}</p>
-          )}
-          {isLocalDemoMode() && (
-            <p className="mt-2 inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">Local demo mode</p>
-          )}
-        </div>
-        {visibleJobs.length > 0 && (
-          <div className="flex gap-0.5 rounded-lg bg-muted p-1">
-            {(['swipe', 'list'] as const).map(mode => (
-              <button
-                type="button"
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                aria-pressed={viewMode === mode}
-                className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-[background-color,color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.97] ${
-                  viewMode === mode ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {mode === 'swipe' ? <Grid2X2 className="size-3.5" /> : <List className="size-3.5" />}
-                <span>{mode}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="space-y-6">
+      <PageShell
+        description={
+          talentCategory
+            ? `Matched for ${CATEGORY_LABELS[talentCategory]}`
+            : 'Swipe through roles matched to your skills and availability.'
+        }
+        actions={
+          visibleJobs.length > 0 ? (
+            <div className="flex gap-0.5 rounded-lg bg-muted p-1">
+              {(['swipe', 'list'] as const).map(mode => (
+                <Button
+                  type="button"
+                  key={mode}
+                  size="xs"
+                  variant={viewMode === mode ? 'secondary' : 'ghost'}
+                  onClick={() => setViewMode(mode)}
+                  aria-pressed={viewMode === mode}
+                  className={viewMode === mode ? 'bg-background text-foreground shadow-sm' : ''}
+                >
+                  {mode === 'swipe' ? <Grid2X2 className="size-3.5" /> : <List className="size-3.5" />}
+                  <span>{mode}</span>
+                </Button>
+              ))}
+            </div>
+          ) : undefined
+        }
+      />
+      {isLocalDemoMode() && (
+        <p className="-mt-4 inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">Local demo mode</p>
+      )}
 
-      {/* Search bar + sort */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search jobs..."
-            className="pl-9"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Clear job search"
-            >
-              <X className="size-4" />
-            </button>
-          )}
-        </div>
+      {/* Sort */}
+      <div className="flex justify-end">
         <select
           value={sort}
           onChange={e => setSort(e.target.value as SortOption)}
@@ -336,6 +327,12 @@ export default function DiscoverPage() {
           <option value="rate_low">Rate ↓</option>
         </select>
       </div>
+
+      {search.trim() && (
+        <p className="text-sm text-muted-foreground">
+          Filtering by “{search.trim()}” — use the top search bar to change.
+        </p>
+      )}
 
       {!hasJobsForView ? (
         <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center">
@@ -418,23 +415,26 @@ export default function DiscoverPage() {
 
           {current && (
             <div className="flex items-center justify-center gap-6 mt-4">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="icon-lg"
                 onClick={() => passJob(current.id)}
-                className="flex size-14 items-center justify-center rounded-full border bg-muted text-muted-foreground shadow-sm transition-[border-color,color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-muted-foreground/30 hover:text-foreground active:scale-[0.97]"
+                className="size-14 rounded-full bg-muted text-muted-foreground shadow-sm hover:text-foreground"
                 aria-label="Pass on job"
               >
                 <X className="size-5" />
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                size="icon-lg"
                 onClick={() => requestApplication(current, true)}
                 disabled={applyingId === current.id || applied.has(current.id)}
-                className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-[background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-primary/90 active:scale-[0.97] disabled:opacity-60"
+                className="size-14 rounded-full shadow-sm"
                 aria-label="Apply to job"
               >
                 {applyingId === current.id ? '...' : <Check className="size-5" />}
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -505,9 +505,9 @@ function JobCardContent({ job, matchReasons, onViewBrief }: { job: JobResult; ma
           ))}
         </div>
       )}
-      <button type="button" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); onViewBrief() }} className="mt-4 self-start text-xs font-semibold text-primary hover:underline">
+      <Button type="button" variant="link" size="xs" className="mt-4 h-auto self-start p-0" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); onViewBrief() }}>
         View full brief →
-      </button>
+      </Button>
     </div>
   )
 }

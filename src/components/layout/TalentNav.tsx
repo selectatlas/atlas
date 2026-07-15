@@ -1,6 +1,7 @@
 'use client'
 
 import { Navbar } from './Navbar'
+import { useInbox } from './inbox-context'
 
 const links = [
   { href: '/home', label: 'Home' },
@@ -14,5 +15,6 @@ const bottomLinks = [
 ]
 
 export function TalentNav() {
-  return <Navbar links={links} bottomLinks={bottomLinks} />
+  const { navBadges } = useInbox()
+  return <Navbar links={links} bottomLinks={bottomLinks} badgeCounts={navBadges} />
 }

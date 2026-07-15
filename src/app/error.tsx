@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { Button } from '@/components/ui/button'
 
 export default function ErrorPage({
   error,
@@ -23,12 +24,9 @@ export default function ErrorPage({
           An unexpected error occurred. Your data is safe - try again, and if
           the problem continues, come back in a few minutes.
         </p>
-        <button
-          onClick={reset}
-          className="inline-flex h-11 items-center justify-center rounded-xl bg-accent px-6 font-semibold text-accent-foreground hover:bg-accent/80"
-        >
+        <Button onClick={reset} size="lg" className="rounded-xl">
           Try again
-        </button>
+        </Button>
       </div>
     </main>
   )

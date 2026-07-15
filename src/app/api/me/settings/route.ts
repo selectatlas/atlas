@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { getPlatformAdminRole } from '@/lib/platform-admin'
+import { resolveCallerAccess } from '@/lib/access-core'
 import { parseJsonBody } from '@/lib/validation'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import {
@@ -17,6 +19,8 @@ type CallerContext = {
   supabase: Awaited<ReturnType<typeof createClient>>
   accountType: AccountType
   profileVisibility: ProfileVisibility
+  canHirer: boolean
+  canTalent: boolean
 }
 
 type CallerResult =
@@ -34,15 +38,20 @@ async function getCaller(): Promise<CallerResult> {
     .eq('id', user.id)
     .single()
 
-  if (!profile || (profile.account_type !== 'hirer' && profile.account_type !== 'talent')) {
+  const adminRole = await getPlatformAdminRole(user.id)
+  const access = resolveCallerAccess(user.id, profile?.account_type, adminRole)
+
+  if (!profile || (!access.canHirer && !access.canTalent)) {
     return { response: Response.json({ error: 'Forbidden' }, { status: 403 }) }
   }
 
   return {
     user,
     supabase,
-    accountType: profile.account_type as AccountType,
+    accountType: (profile.account_type as AccountType),
     profileVisibility: (profile.profile_visibility as ProfileVisibility | null) ?? 'public',
+    canHirer: access.canHirer,
+    canTalent: access.canTalent,
   }
 }
 
@@ -93,7 +102,10 @@ export async function PATCH(request: Request): Promise<Response> {
   const parsedBody = await parseJsonBody(request)
   if (!parsedBody.ok) return parsedBody.response
 
-  const parsed = validateSettingsPatch(parsedBody.body, caller.accountType)
+  const parsed = validateSettingsPatch(parsedBody.body, caller.accountType, {
+    canHirer: caller.canHirer,
+    canTalent: caller.canTalent,
+  })
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 })
 
   if (parsed.value.profile_visibility) {

@@ -108,11 +108,17 @@ export type SettingsPatchResult =
   | { ok: true; value: SettingsPatchValue }
   | { ok: false; error: string }
 
-export function validateSettingsPatch(body: Record<string, unknown>, accountType: 'hirer' | 'talent'): SettingsPatchResult {
+export function validateSettingsPatch(
+  body: Record<string, unknown>,
+  accountType: 'hirer' | 'talent',
+  access?: { canHirer?: boolean; canTalent?: boolean },
+): SettingsPatchResult {
+  const canHirer = access?.canHirer ?? accountType === 'hirer'
+  const canTalent = access?.canTalent ?? accountType === 'talent'
   const value: SettingsPatchValue = {}
 
   if ('profile_visibility' in body) {
-    if (accountType !== 'talent') return { ok: false, error: 'Only talent can set profile visibility' }
+    if (!canTalent) return { ok: false, error: 'Only talent can set profile visibility' }
     if (!isProfileVisibility(body.profile_visibility)) {
       return { ok: false, error: 'Invalid profile_visibility' }
     }
@@ -141,7 +147,7 @@ export function validateSettingsPatch(body: Record<string, unknown>, accountType
   }
 
   if ('job_defaults' in body) {
-    if (accountType !== 'hirer') return { ok: false, error: 'Only hirers can set job defaults' }
+    if (!canHirer) return { ok: false, error: 'Only hirers can set job defaults' }
     if (!body.job_defaults || typeof body.job_defaults !== 'object' || Array.isArray(body.job_defaults)) {
       return { ok: false, error: 'Invalid job_defaults' }
     }
@@ -164,7 +170,7 @@ export function validateSettingsPatch(body: Record<string, unknown>, accountType
   }
 
   if ('outreach_defaults' in body) {
-    if (accountType !== 'hirer') return { ok: false, error: 'Only hirers can set outreach defaults' }
+    if (!canHirer) return { ok: false, error: 'Only hirers can set outreach defaults' }
     if (!body.outreach_defaults || typeof body.outreach_defaults !== 'object' || Array.isArray(body.outreach_defaults)) {
       return { ok: false, error: 'Invalid outreach_defaults' }
     }

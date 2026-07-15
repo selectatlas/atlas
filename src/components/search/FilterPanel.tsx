@@ -72,14 +72,16 @@ export function FilterPanel({
             className="h-8 pl-9 pr-8 text-xs"
           />
           {location && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => onLocationChange('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               aria-label="Clear location filter"
             >
               <X className="size-3.5" />
-            </button>
+            </Button>
           )}
         </div>
 
@@ -94,49 +96,42 @@ export function FilterPanel({
             {CATEGORIES.map(cat => {
               const selected = category === cat.value
               return (
-                <button
+                <Button
                   type="button"
                   key={cat.value}
+                  size="sm"
+                  variant={selected ? 'default' : 'outline'}
                   onClick={() => onCategoryChange(cat.value)}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-[background-color,color,border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.98] ${
-                    selected
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                  }`}
                 >
                   {selected && <Check className="size-3.5" />}
                   {cat.label}
-                </button>
+                </Button>
               )
             })}
 
             {onAvailableOnlyChange && (
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={availableOnly ? 'secondary' : 'outline'}
+                className={availableOnly ? 'border-primary/30 bg-primary/10 text-primary' : ''}
                 onClick={() => onAvailableOnlyChange(!availableOnly)}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-[background-color,color,border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.98] ${
-                  availableOnly
-                    ? 'border-primary/30 bg-primary/10 text-primary'
-                    : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                }`}
               >
                 <span className={`size-1.5 rounded-full ${availableOnly ? 'bg-emerald-500' : 'bg-muted-foreground/50'}`} />
                 Available now
-              </button>
+              </Button>
             )}
 
             {onHasShowreelOnlyChange && (
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={hasShowreelOnly ? 'secondary' : 'outline'}
+                className={hasShowreelOnly ? 'border-primary/30 bg-primary/10 text-primary' : ''}
                 onClick={() => onHasShowreelOnlyChange(!hasShowreelOnly)}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-[background-color,color,border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] active:scale-[0.98] ${
-                  hasShowreelOnly
-                    ? 'border-primary/30 bg-primary/10 text-primary'
-                    : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                }`}
               >
                 Has showreel
-              </button>
+              </Button>
             )}
           </div>
         </div>

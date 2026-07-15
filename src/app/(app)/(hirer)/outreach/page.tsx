@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
+import { PageShell } from '@/components/layout/PageShell'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -36,12 +37,8 @@ export default async function OutreachPage() {
   const rows = (outreach ?? []) as unknown as OutreachRow[]
 
   return (
-    <div className="space-y-8 py-2">
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Workspace</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Outreach</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Keep track of every message and response.</p>
-      </div>
+    <div className="space-y-8">
+      <PageShell />
 
       {rows.length === 0 ? (
         <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center">

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedCaller } from '@/lib/access'
 import { embedJob } from '@/lib/job-embedding'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 
@@ -23,18 +24,12 @@ export async function GET() {
 }
 
 export async function POST() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const caller = await getAuthenticatedCaller()
+  if (!caller.ok) return caller.response
+  if (!caller.access.canHirer) return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('account_type')
-    .eq('id', user.id)
-    .single()
-  if (profile?.account_type !== 'hirer') {
-    return Response.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const supabase = caller.supabase
+  const user = caller.user
 
   // Reprocessing spends OpenAI credits - limit and meter it
   const limited =

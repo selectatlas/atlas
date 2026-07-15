@@ -3,6 +3,7 @@ import { BriefcaseBusiness, FilePlus2, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { CATEGORY_LABELS } from '@/lib/skills'
+import { PageShell } from '@/components/layout/PageShell'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -36,20 +37,17 @@ export default async function JobsPage() {
   const jobList = (jobs ?? []) as Job[]
 
   return (
-    <div className="space-y-8 py-2">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Workspace</p>
-          <h1 className="text-2xl font-semibold tracking-tight">My jobs</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage your briefs and keep great talent moving.</p>
-        </div>
-        <Link href="/jobs/new">
-          <Button className="gap-2 rounded-lg bg-primary font-semibold text-primary-foreground hover:bg-primary/90">
-            <Plus className="size-4" />
-            Post a job
-          </Button>
-        </Link>
-      </div>
+    <div className="space-y-8">
+      <PageShell
+        actions={(
+          <Link href="/jobs/new">
+            <Button className="gap-2 rounded-lg bg-primary font-semibold text-primary-foreground hover:bg-primary/90">
+              <Plus className="size-4" />
+              Post a job
+            </Button>
+          </Link>
+        )}
+      />
 
       {jobList.length === 0 ? (
         <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center">

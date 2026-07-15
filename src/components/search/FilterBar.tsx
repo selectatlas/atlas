@@ -27,8 +27,12 @@ export function FilterBar({ filters, onChange, resultCount, previewCount }: Filt
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => onChange(pruneFiltersForCategory(filters, 'all'))} className={`h-8 rounded-full border px-3 text-xs font-medium ${category === 'all' ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground'}`}>All</button>
-        {SEARCH_CATEGORIES.map(item => <button key={item} type="button" onClick={() => onChange(pruneFiltersForCategory(filters, item))} className={`h-8 rounded-full border px-3 text-xs font-medium ${category === item ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground hover:text-foreground'}`}>{CATEGORY_LABELS[item]}</button>)}
+        <Button type="button" size="sm" variant={category === 'all' ? 'default' : 'outline'} className="rounded-full" onClick={() => onChange(pruneFiltersForCategory(filters, 'all'))}>All</Button>
+        {SEARCH_CATEGORIES.map(item => (
+          <Button key={item} type="button" size="sm" variant={category === item ? 'default' : 'outline'} className="rounded-full" onClick={() => onChange(pruneFiltersForCategory(filters, item))}>
+            {CATEGORY_LABELS[item]}
+          </Button>
+        ))}
         <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
         {pills.map(definition => <FilterPill key={`${definition.key}:${JSON.stringify(filters[definition.key as keyof SearchFilters])}`} definition={definition} filters={filters} onChange={onChange} />)}
         <Button type="button" variant={count > 0 ? 'secondary' : 'outline'} size="sm" className="rounded-full" onClick={() => setSheetOpen(true)}><SlidersHorizontal className="size-3.5" />All filters{count > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">{count}</span>}</Button>

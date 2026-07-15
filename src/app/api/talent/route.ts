@@ -1,4 +1,6 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getPlatformAdminRole } from '@/lib/platform-admin'
+import { canActAsHirer } from '@/lib/access-core'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import { filtersToDatabase, parseSearchFilterParams } from '@/lib/search-filters'
 import { enforceRateLimit } from '@/lib/rate-limit'
@@ -8,13 +10,19 @@ import type { Profile, TalentSkill } from '@/types'
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const isLocalDemo = process.env.NODE_ENV === 'development' &&
+  const hasDemoCookie = process.env.NODE_ENV === 'development' &&
     /(?:^|;\s*)atlas_demo=1(?:;|$)/.test(request.headers.get('cookie') ?? '')
+  const isLocalDemo = hasDemoCookie && !user
   if (!user && !isLocalDemo) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   if (!isLocalDemo) {
-    const { data: caller } = await supabase.from('profiles').select('account_type').eq('id', user!.id).single()
-    if (caller?.account_type !== 'hirer') return Response.json({ error: 'Forbidden' }, { status: 403 })
+    const [{ data: caller }, adminRole] = await Promise.all([
+      supabase.from('profiles').select('account_type').eq('id', user!.id).single(),
+      getPlatformAdminRole(user!.id),
+    ])
+    if (!canActAsHirer(caller?.account_type, adminRole !== null)) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 })
+    }
   }
 
   const limited = await enforceRateLimit(`talent-browse:${user?.id ?? 'local-demo'}`, 60, 60)

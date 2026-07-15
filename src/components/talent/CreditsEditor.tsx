@@ -95,8 +95,8 @@ export function CreditsEditor({ profileId, credits, onUpdate, onError }: Credits
                   </p>
                 </div>
                 <div className="flex gap-1 ml-3 shrink-0">
-                  <button onClick={() => editCredit(credit)} className="text-xs text-primary hover:underline">Edit</button>
-                  <button onClick={() => deleteCredit(credit.id)} className="text-xs text-destructive hover:underline ml-1">✕</button>
+                  <Button type="button" variant="link" size="xs" className="h-auto p-0" onClick={() => editCredit(credit)}>Edit</Button>
+                  <Button type="button" variant="link" size="xs" className="h-auto p-0 text-destructive" onClick={() => deleteCredit(credit.id)}>✕</Button>
                 </div>
               </div>
             ))}

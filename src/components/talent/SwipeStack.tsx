@@ -6,6 +6,7 @@ import type { Profile, TalentSkill } from '@/types'
 import { nameInitial } from '@/lib/display'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 type TalentResult = { profile: Profile & { talent_skills: TalentSkill[] }; match_score: number }
 
@@ -185,42 +186,53 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
 
       {/* Action buttons */}
       <div className="absolute -bottom-16 left-0 right-0 flex items-center justify-center gap-6 z-10">
-        <button
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-lg"
           onClick={() => { setLastAction({ type: 'pass', talentId: current.profile.id, talent: current.profile }); onPass(current.profile.id); advance() }}
           aria-label="Pass"
-          className="w-14 h-14 bg-muted border rounded-full flex items-center justify-center text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground transition-colors shadow-lg text-xl"
+          className="size-14 rounded-full bg-muted text-xl text-muted-foreground shadow-lg hover:text-foreground"
         >
           ✕
-        </button>
+        </Button>
         {lastAction && (
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
             onClick={undo}
             aria-label="Undo last action"
-            className="w-10 h-10 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center text-amber-600 hover:bg-amber-100 transition-colors text-sm"
             title="Undo last action"
+            className="size-10 rounded-full border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
             </svg>
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
           onClick={() => onViewProfile(current.profile.id)}
           aria-label="View profile"
-          className="w-10 h-10 bg-card border rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-sm"
+          className="size-10 rounded-full bg-card text-muted-foreground hover:text-foreground"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
           </svg>
-        </button>
-        <button
+        </Button>
+        <Button
+          type="button"
+          size="icon-lg"
           onClick={() => { setLastAction({ type: 'contact', talentId: current.profile.id, talent: current.profile }); onContact(current.profile); advance() }}
           aria-label="Contact"
-          className="w-14 h-14 bg-accent hover:bg-accent/80 rounded-full flex items-center justify-center text-accent-foreground transition-colors shadow-lg text-xl"
+          className="size-14 rounded-full bg-accent text-xl text-accent-foreground shadow-lg hover:bg-accent/80"
         >
           ✓
-        </button>
+        </Button>
       </div>
 
       {/* Progress */}

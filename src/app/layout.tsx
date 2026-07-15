@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from 'next'
 import { SITE_URL } from '@/lib/site'
 import './globals.css'
 import { PostHogAuthSync } from '@/components/analytics/PostHogAuthSync'
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -43,7 +47,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className={cn("h-full antialiased", "font-sans", geist.variable)}>
       <body className="min-h-full">
         <PostHogAuthSync />
         {children}

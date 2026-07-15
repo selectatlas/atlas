@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { LogOut, UserRound } from 'lucide-react'
 import { signOut } from '@/app/actions/auth'
 import { isLocalDemoMode } from '@/lib/demo-mode'
+import { PageShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { TalentAttributesEditor } from '@/components/talent/TalentAttributesEditor'
 import { EMPTY_TALENT_ATTRIBUTES, type TalentAttributesPayload } from '@/lib/talent-profile-attributes'
 import { CATEGORY_LABELS, SKILLS_BY_CATEGORY } from '@/lib/skills'
@@ -62,24 +65,24 @@ function Toggle({
   label: string
 }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
+    <Switch
+      checked={checked}
+      onCheckedChange={onChange}
       aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-muted'}`}
-    >
-      <span
-        className={`absolute top-0.5 size-5 rounded-full bg-background shadow transition-transform ${
-          checked ? 'left-5' : 'left-0.5'
-        }`}
-      />
-    </button>
+    />
   )
 }
 
+function isSettingsSection(value: string | null): value is SettingsSection {
+  return value === 'account'
+    || value === 'notifications'
+    || value === 'privacy'
+    || value === 'matching'
+    || value === 'workspace'
+}
+
 export function SettingsPage() {
+  const searchParams = useSearchParams()
   const [accountType, setAccountType] = useState<AccountType | null>(null)
   const [email, setEmail] = useState<string | null>(null)
   const [section, setSection] = useState<SettingsSection>('account')
@@ -173,6 +176,14 @@ export function SettingsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load settings on mount
     void loadSettings()
   }, [loadSettings])
+
+  useEffect(() => {
+    const requested = searchParams.get('section')
+    if (!isSettingsSection(requested)) return
+    if (!accountType) return
+    const allowed = SECTIONS.find(item => item.id === requested && item.roles.includes(accountType))
+    if (allowed) setSection(requested)
+  }, [searchParams, accountType])
 
   const activeSection = availableSections.some(item => item.id === section)
     ? section
@@ -395,31 +406,26 @@ export function SettingsPage() {
   const skillSuggestions = jobDefaults.category ? SKILLS_BY_CATEGORY[jobDefaults.category] : []
 
   return (
-    <div className="space-y-6 py-6 pb-28">
-      <div>
-        <h1 className="text-xl font-bold">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage account, notifications, and {accountType === 'hirer' ? 'workspace defaults' : 'discoverability'}.
-        </p>
-      </div>
+    <div className="space-y-6 pb-28">
+      <PageShell
+        description={`Manage account, notifications, and ${accountType === 'hirer' ? 'workspace defaults' : 'discoverability'}.`}
+      />
 
       <div className="flex flex-wrap gap-2">
         {availableSections.map(item => (
-          <button
+          <Button
             key={item.id}
             type="button"
+            size="sm"
+            variant={activeSection === item.id ? 'default' : 'secondary'}
+            className="rounded-full"
             onClick={() => {
               setSection(item.id)
               if (item.id === 'account') void loadBlocks()
             }}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeSection === item.id
-                ? 'bg-foreground text-background'
-                : 'bg-muted text-muted-foreground hover:text-foreground'
-            }`}
           >
             {item.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -522,13 +528,10 @@ export function SettingsPage() {
           <Card>
             <CardContent className="p-5">
               <form action={signOut}>
-                <button
-                  type="submit"
-                  className="flex w-full items-center gap-3 rounded-lg px-1 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
+                <Button type="submit" variant="ghost" className="w-full justify-start gap-3 px-1 py-2 text-muted-foreground hover:text-foreground">
                   <LogOut className="size-4" />
                   Sign out
-                </button>
+                </Button>
               </form>
             </CardContent>
           </Card>
@@ -586,19 +589,18 @@ export function SettingsPage() {
             </div>
             <div className="space-y-2">
               {PROFILE_VISIBILITY_OPTIONS.map(option => (
-                <button
+                <Button
                   key={option.value}
                   type="button"
+                  variant="outline"
                   onClick={() => setVisibility(option.value)}
-                  className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
-                    visibility === option.value
-                      ? 'border-foreground bg-muted/60'
-                      : 'border-border hover:bg-muted/40'
+                  className={`h-auto w-full flex-col items-start rounded-xl px-4 py-3 text-left ${
+                    visibility === option.value ? 'border-foreground bg-muted/60' : ''
                   }`}
                 >
                   <p className="text-sm font-medium">{option.label}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
-                </button>
+                  <p className="mt-1 text-xs font-normal text-muted-foreground">{option.description}</p>
+                </Button>
               ))}
             </div>
             <Button onClick={saveVisibility} disabled={saving}>
@@ -643,22 +645,20 @@ export function SettingsPage() {
                 <label className="mb-2 block text-xs font-medium text-muted-foreground">Category</label>
                 <div className="flex flex-wrap gap-2">
                   {(Object.keys(CATEGORY_LABELS) as Category[]).map(cat => (
-                    <button
+                    <Button
                       key={cat}
                       type="button"
+                      size="sm"
+                      variant={jobDefaults.category === cat ? 'default' : 'secondary'}
+                      className="rounded-full"
                       onClick={() => setJobDefaults(prev => ({
                         ...prev,
                         category: prev.category === cat ? null : cat,
                         skills_required: prev.category === cat ? prev.skills_required : [],
                       }))}
-                      className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-                        jobDefaults.category === cat
-                          ? 'bg-foreground text-background'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
                     >
                       {CATEGORY_LABELS[cat]}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -684,17 +684,19 @@ export function SettingsPage() {
                 <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Default skills</label>
                 <div className="mb-2 flex flex-wrap gap-2">
                   {jobDefaults.skills_required.map(skill => (
-                    <button
+                    <Button
                       key={skill}
                       type="button"
+                      size="xs"
+                      variant="secondary"
+                      className="rounded-full"
                       onClick={() => setJobDefaults(prev => ({
                         ...prev,
                         skills_required: prev.skills_required.filter(item => item !== skill),
                       }))}
-                      className="rounded-full bg-muted px-3 py-1 text-xs"
                     >
                       {skill} ×
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 <Input
@@ -711,14 +713,16 @@ export function SettingsPage() {
                 {skillSuggestions.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {skillSuggestions.slice(0, 8).map(skill => (
-                      <button
+                      <Button
                         key={skill}
                         type="button"
+                        size="xs"
+                        variant="outline"
+                        className="rounded-full"
                         onClick={() => addSkill(skill)}
-                        className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
                       >
                         + {skill}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}

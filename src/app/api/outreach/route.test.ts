@@ -1,6 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(),
+  createServiceClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () => Promise.resolve({ data: null }),
+        }),
+      }),
+    })),
+  })),
+}))
 vi.mock('@/lib/openai', () => ({
   generateOutreachMessage: vi.fn().mockResolvedValue('Hi Asha, loved your work.'),
 }))
@@ -25,14 +36,23 @@ function makeClient({
   user,
   accountType,
   talent,
-  insertError,
+  outreachInsertError,
+  messageInsertError,
+  rpcError,
 }: {
   user: { id: string } | null
   accountType: string | null
   talent?: Record<string, unknown> | null
-  insertError?: { code: string } | null
+  outreachInsertError?: { code: string } | null
+  messageInsertError?: { code: string } | null
+  rpcError?: { code: string } | null
 }) {
-  const insert = vi.fn().mockResolvedValue({ error: insertError ?? null })
+  const outreachInsert = vi.fn().mockResolvedValue({ error: outreachInsertError ?? null })
+  const messageInsert = vi.fn().mockResolvedValue({ error: messageInsertError ?? null })
+  const rpc = vi.fn().mockResolvedValue({
+    data: rpcError ? null : 'thread-1',
+    error: rpcError ?? null,
+  })
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
     from: vi.fn((table: string) => {
@@ -41,8 +61,6 @@ function makeClient({
           select: (fields: string) => ({
             eq: (column: string) => {
               if (fields.includes('account_type') && column === 'id') {
-                // Caller profile lookup vs talent lookup are distinguished by
-                // the chained .eq('account_type', 'talent') on the second one.
                 return {
                   single: () => Promise.resolve({ data: accountType ? { account_type: accountType, full_name: 'Hirer Name' } : null }),
                   eq: () => ({ single: () => Promise.resolve({ data: talent ?? null }) }),
@@ -53,10 +71,13 @@ function makeClient({
           }),
         }
       }
-      // outreach table
-      return { insert }
+      if (table === 'messages') {
+        return { insert: messageInsert }
+      }
+      return { insert: outreachInsert }
     }),
-    _insert: insert,
+    rpc,
+    _outreachInsert: outreachInsert,
   }
 }
 
@@ -137,8 +158,27 @@ describe('POST /api/outreach', () => {
     expect(res.status).toBe(503)
   })
 
-  it('sends a message and never leaks raw database errors', async () => {
-    const client = makeClient({ user: { id: 'u1' }, accountType: 'hirer', talent: talentProfile, insertError: { code: '23503' } })
+  it('returns 500 when thread creation fails without leaking database errors', async () => {
+    const client = makeClient({
+      user: { id: 'u1' },
+      accountType: 'hirer',
+      talent: talentProfile,
+      rpcError: { code: '42501' },
+    })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makeRequest({ talent_id: TALENT_ID, action: 'send', message: 'Hello!' }))
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.error).toBe('Failed to start conversation')
+  })
+
+  it('returns 500 when outreach insert fails without leaking database errors', async () => {
+    const client = makeClient({
+      user: { id: 'u1' },
+      accountType: 'hirer',
+      talent: talentProfile,
+      outreachInsertError: { code: '23503' },
+    })
     mockCreateClient.mockResolvedValue(client)
     const res = await POST(makeRequest({ talent_id: TALENT_ID, action: 'send', message: 'Hello!' }))
     expect(res.status).toBe(500)

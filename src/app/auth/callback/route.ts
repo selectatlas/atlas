@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { enforceRateLimit, getClientIp } from '@/lib/rate-limit'
 import { getPostHogClient } from '@/lib/posthog-server'
 import { logEvent } from '@/lib/log'
+import { ensurePlatformAdmin } from '@/lib/platform-admin'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import type { AccountType } from '@/types'
 
@@ -75,7 +76,10 @@ export async function GET(request: Request) {
     // Analytics must never block sign-in.
   }
 
-  const response = NextResponse.redirect(new URL('/home', url.origin))
+  const adminRole = user.email ? await ensurePlatformAdmin(user.id, user.email) : null
+  const landingPath = '/home'
+
+  const response = NextResponse.redirect(new URL(landingPath, url.origin))
   // A leftover local-demo cookie must never mask a real session.
   response.cookies.delete('atlas_demo')
   response.cookies.delete('atlas_demo_role')

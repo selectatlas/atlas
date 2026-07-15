@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { Award, Banknote, CalendarDays, Clapperboard, Eye, Heart, MapPin } from 'lucide-react'
 import { CATEGORY_LABELS } from '@/lib/skills'
+import { TalentProfileShell } from '@/components/layout/TalentProfileShell'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { CoverPhoto } from '@/components/talent/CoverPhoto'
@@ -57,6 +58,7 @@ export default async function TalentProfilePage({
   return (
     <div className="pb-24">
       <ViewTracker talentId={id} />
+      <TalentProfileShell name={profile.full_name} />
 
       {/* Hero Section */}
       <CoverPhoto coverUrl={profile.cover_url}>

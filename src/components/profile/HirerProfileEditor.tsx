@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { isLocalDemoMode } from '@/lib/demo-mode'
+import { PageShell } from '@/components/layout/PageShell'
 import { PhotoUpload } from '@/components/talent/PhotoUpload'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -125,13 +126,11 @@ export function HirerProfileEditor() {
   if (!profile) return null
 
   return (
-    <div className="py-6 space-y-6 pb-32">
-      <div>
-        <h1 className="text-xl font-bold">My Profile</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          This is how your name and details appear on jobs and outreach.
-        </p>
-      </div>
+    <div className="space-y-6 pb-32">
+      <PageShell
+        title="My profile"
+        description="This is how your name and details appear on jobs and outreach."
+      />
 
       <div className="flex items-center gap-4">
         <PhotoUpload

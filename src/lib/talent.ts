@@ -23,7 +23,11 @@ function displayDetails(attributes: Record<string, unknown> | null | undefined, 
 
 export async function getTalentProfile(id: string) {
   const cookieStore = await cookies()
-  const isLocalDemo = process.env.NODE_ENV === 'development' && cookieStore.get('atlas_demo')?.value === '1'
+  const hasDemoCookie = process.env.NODE_ENV === 'development' && cookieStore.get('atlas_demo')?.value === '1'
+  const authClient = await createClient()
+  const { data: claimsData } = await authClient.auth.getClaims()
+  const userId = claimsData?.claims?.sub ?? null
+  const isLocalDemo = hasDemoCookie && !userId
 
   if (isLocalDemo) {
     const demoProfile = DEMO_TALENT_RESULTS.find(profile => profile.id === id)
@@ -48,27 +52,19 @@ export async function getTalentProfile(id: string) {
   }
 
   const service = createServiceClient()
-  // Local demo bypasses Supabase Auth; use the service client so profile reads
-  // match /api/talent (which already loads seeded talent without a session).
-  const supabase = isLocalDemo ? service : await createClient()
+  const supabase = isLocalDemo ? service : authClient
 
-  let userId: string | null = null
   let callerAccountType: string | null = null
 
   if (isLocalDemo) {
     callerAccountType = cookieStore.get('atlas_demo_role')?.value ?? 'talent'
-  } else {
-    // Local JWT verification - no network round-trip to the Auth server.
-    const { data: claimsData } = await supabase.auth.getClaims()
-    userId = claimsData?.claims?.sub ?? null
-    if (userId) {
-      const { data: callerProfile } = await service
-        .from('profiles')
-        .select('account_type')
-        .eq('id', userId)
-        .maybeSingle()
-      callerAccountType = callerProfile?.account_type ?? null
-    }
+  } else if (userId) {
+    const { data: callerProfile } = await service
+      .from('profiles')
+      .select('account_type')
+      .eq('id', userId)
+      .maybeSingle()
+    callerAccountType = callerProfile?.account_type ?? null
   }
 
   const [{ data: profile }, { data: attributes }] = await Promise.all([

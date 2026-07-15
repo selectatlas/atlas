@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedCaller } from '@/lib/access'
 import { embedJob } from '@/lib/job-embedding'
 import { parseJsonBody, cleanString, cleanOptionalString, cleanStringArray, badRequest } from '@/lib/validation'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
@@ -8,19 +8,12 @@ import { getPostHogClient } from '@/lib/posthog-server'
 const CATEGORIES = ['dancer', 'actor', 'photographer_videographer', 'content_creator'] as const
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const caller = await getAuthenticatedCaller()
+  if (!caller.ok) return caller.response
+  if (!caller.access.canHirer) return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('account_type')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.account_type !== 'hirer') {
-    return Response.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const supabase = caller.supabase
+  const user = caller.user
 
   const parsedBody = await parseJsonBody(request)
   if (!parsedBody.ok) return parsedBody.response
