@@ -61,7 +61,8 @@ export default function SignupPage() {
         return
       }
 
-      router.push('/home')
+      // Fresh talent accounts go straight into profile onboarding.
+      router.push(accountType === 'talent' ? '/onboarding' : '/home')
       router.refresh()
     } catch {
       setError('Unable to reach the sign-up service. Please try again.')

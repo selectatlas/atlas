@@ -45,7 +45,6 @@ export async function POST(request: Request) {
   if (!caller.ok) return caller.response
   if (!caller.access.canHirer) return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  const supabase = caller.supabase
   const user = caller.user
 
   const parsedBody = await parseJsonBody(request)

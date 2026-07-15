@@ -31,9 +31,11 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
 
   useEffect(() => {
     if (!talent) return
+    /* eslint-disable react-hooks/set-state-in-effect -- reset the composer when the outreach target changes */
     setMessage('')
     setSent(false)
     setError(null)
+    /* eslint-enable react-hooks/set-state-in-effect */
     void refreshDemoModeAndGenerate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [talent?.id])

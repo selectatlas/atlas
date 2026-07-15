@@ -9,13 +9,14 @@ interface PhotoUploadProps {
   initials: string
   onUploaded: (url: string) => void
   bucket?: 'avatars' | 'covers'
+  variant?: 'avatar' | 'cover'
 }
 
 // Convenience pre-check only - the server route re-verifies type, size, and
 // actual file content before anything reaches storage.
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
-export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatars' }: PhotoUploadProps) {
+export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatars', variant = 'avatar' }: PhotoUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -67,25 +68,30 @@ export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatar
   }
 
   const displayUrl = preview ?? currentUrl
+  const isCover = variant === 'cover'
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className={`flex flex-col gap-3 ${isCover ? 'w-full items-stretch' : 'items-center'}`}>
       <Button
         type="button"
         variant="outline"
         onClick={() => fileRef.current?.click()}
         disabled={uploading}
-        className="relative size-20 overflow-hidden rounded-2xl border-2 border-dashed bg-muted p-0 hover:border-primary disabled:opacity-60"
-        aria-label="Upload profile photo"
+        className={`relative overflow-hidden rounded-2xl border-2 border-dashed bg-muted p-0 hover:border-primary disabled:opacity-60 ${
+          isCover ? 'aspect-[3/1] h-auto w-full' : 'size-20'
+        }`}
+        aria-label={isCover ? 'Upload cover photo' : 'Upload profile photo'}
       >
         {displayUrl ? (
           <Image
             src={displayUrl}
-            alt="Profile photo"
+            alt={isCover ? 'Cover photo' : 'Profile photo'}
             fill
             className="object-cover"
-            sizes="80px"
+            sizes={isCover ? '(max-width: 640px) 100vw, 672px' : '80px'}
           />
+        ) : isCover ? (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-muted to-secondary/30" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-muted-foreground/30 group-hover:text-muted-foreground/50 transition-colors">
             {initials}
@@ -111,7 +117,9 @@ export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatar
         className="hidden"
       />
 
-      <p className="text-muted-foreground text-xs">Tap to upload photo (max 5MB)</p>
+      <p className={`text-muted-foreground text-xs ${isCover ? '' : 'text-center'}`}>
+        {isCover ? 'Tap to upload a cover photo (max 5MB, wide images work best)' : 'Tap to upload photo (max 5MB)'}
+      </p>
 
       {error && (
         <p className="text-destructive text-xs bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-1.5">{error}</p>

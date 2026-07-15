@@ -34,6 +34,7 @@ interface NavbarProps {
   bottomLinks?: NavLink[]
   primaryAction?: NavLink
   badgeCounts?: Record<string, number>
+  accountSwitcher?: React.ReactNode
 }
 
 const iconByHref: Record<string, typeof Search> = {
@@ -54,7 +55,7 @@ const iconByHref: Record<string, typeof Search> = {
   '/admin/talent': UserRound,
 }
 
-export function Navbar({ links, bottomLinks = [], primaryAction, badgeCounts = {} }: NavbarProps) {
+export function Navbar({ links, bottomLinks = [], primaryAction, badgeCounts = {}, accountSwitcher }: NavbarProps) {
   const pathname = usePathname()
 
   // Move the active highlight the moment a link is clicked, instead of
@@ -132,6 +133,9 @@ export function Navbar({ links, bottomLinks = [], primaryAction, badgeCounts = {
         </div>
 
         <div className="border-t border-sidebar-border p-3">
+          {accountSwitcher && (
+            <div className="mb-3 border-b border-sidebar-border pb-3">{accountSwitcher}</div>
+          )}
           {bottomLinks.length > 0 && (
             <nav className="mb-3 space-y-1 border-b border-sidebar-border pb-3" aria-label="Account navigation">
               {bottomLinks.map(link => renderLink(link))}
@@ -156,6 +160,7 @@ export function Navbar({ links, bottomLinks = [], primaryAction, badgeCounts = {
           Atlas
         </Link>
         <div className="flex items-center gap-1">
+          {accountSwitcher && <div className="mr-1 w-40">{accountSwitcher}</div>}
           {bottomLinks.map(link => {
             const Icon = iconByHref[link.href] ?? LayoutGrid
             const active = isActive(link.href)

@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
+import { getPlatformAdminRole } from '@/lib/platform-admin'
 import { DEMO_PROFILE, DEMO_TALENT_ATTRIBUTES, DEMO_TALENT_RESULTS } from '@/lib/demo-data'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
@@ -81,8 +82,14 @@ export async function getTalentProfile(id: string) {
 
   const visibility = (profile as { profile_visibility?: string }).profile_visibility ?? 'public'
   const isOwner = Boolean(userId && userId === id)
-  if (visibility === 'private' && !isOwner) return null
-  if (visibility === 'members' && !isOwner && callerAccountType !== 'hirer') return null
+  if (!isOwner && visibility !== 'public') {
+    // Platform admins can review any profile regardless of visibility.
+    const isPlatformAdmin = userId ? (await getPlatformAdminRole(userId)) !== null : false
+    if (!isPlatformAdmin) {
+      if (visibility === 'private') return null
+      if (visibility === 'members' && callerAccountType !== 'hirer') return null
+    }
+  }
 
   const skills = profile.talent_skills as TalentSkill[]
   const primaryCategory = skills[0]?.category ?? null

@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
+import { Eye } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isLocalDemoMode } from '@/lib/demo-mode'
 import { DEMO_PROFILE, DEMO_TALENT_ATTRIBUTES } from '@/lib/demo-data'
 import { PhotoUpload } from '@/components/talent/PhotoUpload'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
@@ -34,6 +37,26 @@ export function TalentProfileEditor() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [talentAttributes, setTalentAttributes] = useState<TalentAttributesPayload>(EMPTY_TALENT_ATTRIBUTES)
+  const embedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Skills feed the AI-search embedding directly, so edits must re-embed even
+  // if the user never presses "Save Profile". Debounced to batch rapid edits
+  // and stay inside the embed route's rate limit.
+  const scheduleEmbedRefresh = useCallback((profileId: string) => {
+    if (isLocalDemoMode()) return
+    if (embedTimer.current) clearTimeout(embedTimer.current)
+    embedTimer.current = setTimeout(() => {
+      void fetch('/api/embed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile_id: profileId }),
+      }).catch(() => console.warn('Embedding regeneration failed'))
+    }, 1500)
+  }, [])
+
+  useEffect(() => () => {
+    if (embedTimer.current) clearTimeout(embedTimer.current)
+  }, [])
 
   const loadProfile = useCallback(async () => {
     if (isLocalDemoMode()) {
@@ -145,7 +168,18 @@ export function TalentProfileEditor() {
 
   return (
     <div className="space-y-6 pb-32">
-      <PageShell title="My profile" />
+      <PageShell
+        title="My profile"
+        actions={
+          <Link
+            href={`/talent/${profile.id}`}
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'rounded-xl')}
+          >
+            <Eye className="size-4" />
+            Preview public profile
+          </Link>
+        }
+      />
 
       <ProfileCompletenessCard profile={profile} attributes={talentAttributes} />
 
@@ -163,6 +197,23 @@ export function TalentProfileEditor() {
           <p className="text-muted-foreground text-sm">{profile.email}</p>
         </div>
       </div>
+
+      <Card>
+        <CardContent className="p-5 space-y-3">
+          <h2 className="text-sm font-semibold">Cover photo</h2>
+          <PhotoUpload
+            variant="cover"
+            bucket="covers"
+            currentUrl={profile.cover_url}
+            initials={profile.full_name[0]}
+            onUploaded={async (url) => {
+              update('cover_url', url)
+              const supabase = createClient()
+              await supabase.from('profiles').update({ cover_url: url }).eq('id', profile.id)
+            }}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-5 space-y-4">
@@ -201,7 +252,10 @@ export function TalentProfileEditor() {
       <SkillsEditor
         profileId={profile.id}
         skills={profile.talent_skills}
-        onUpdate={skills => setProfile(p => p ? { ...p, talent_skills: skills } : p)}
+        onUpdate={skills => {
+          setProfile(p => p ? { ...p, talent_skills: skills } : p)
+          scheduleEmbedRefresh(profile.id)
+        }}
         onError={setError}
       />
 

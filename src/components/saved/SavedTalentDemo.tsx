@@ -19,6 +19,7 @@ export function SavedTalentDemo() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- hydrate demo shortlist from sessionStorage on mount */
     if (!isLocalDemoMode()) {
       setReady(true)
       return
@@ -34,6 +35,7 @@ export function SavedTalentDemo() {
 
     setShortlisted(saved)
     setReady(true)
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
   if (!ready) {

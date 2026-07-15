@@ -20,7 +20,7 @@ test.describe('app chrome', () => {
     await page.goto('/home')
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+KeyK' : 'Control+KeyK')
     await expect(page.getByRole('dialog')).toBeVisible()
-    await expect(page.getByText('Command palette')).toBeVisible()
+    await expect(page.getByPlaceholder('Search pages or talent…')).toBeVisible()
   })
 
   test('notifications page loads for signed-in user', async ({ page }) => {

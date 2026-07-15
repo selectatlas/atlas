@@ -39,7 +39,6 @@ export function AppTopBar() {
   const { summary } = useInbox()
   const [query, setQuery] = useState('')
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const [commandHintOpen, setCommandHintOpen] = useState(false)
 
   const meta = useMemo(() => {
     const base = getPageMeta(pathname, accountType)

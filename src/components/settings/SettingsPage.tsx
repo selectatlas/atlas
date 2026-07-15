@@ -182,6 +182,7 @@ export function SettingsPage() {
     if (!isSettingsSection(requested)) return
     if (!accountType) return
     const allowed = SECTIONS.find(item => item.id === requested && item.roles.includes(accountType))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync active section from the URL
     if (allowed) setSection(requested)
   }, [searchParams, accountType])
 

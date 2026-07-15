@@ -30,10 +30,10 @@ export const metadata: Metadata = {
 }
 
 const colorTokens = [
-  { name: 'primary', value: '#6046D8', className: 'bg-primary', on: 'on-primary', foreground: 'text-primary-foreground' },
+  { name: 'primary', value: '#0066CC', className: 'bg-primary', on: 'on-primary', foreground: 'text-primary-foreground' },
   { name: 'brand-lime', value: '#DFFF62', className: 'bg-brand-lime', on: 'on-lime', foreground: 'text-black' },
   { name: 'brand-lavender', value: '#CFA6E8', className: 'bg-brand-lavender', on: 'on-lavender', foreground: 'text-[#252338]' },
-  { name: 'secondary', value: '#EEEAFB', className: 'bg-secondary', on: 'on-secondary', foreground: 'text-secondary-foreground' },
+  { name: 'secondary', value: '#E5F0FB', className: 'bg-secondary', on: 'on-secondary', foreground: 'text-secondary-foreground' },
   { name: 'success', value: '#167A52', className: 'bg-success', on: 'on-success', foreground: 'text-success-foreground' },
   { name: 'warning', value: '#A96108', className: 'bg-warning', on: 'on-warning', foreground: 'text-warning-foreground' },
   { name: 'info', value: '#3566C8', className: 'bg-info', on: 'on-info', foreground: 'text-info-foreground' },
@@ -130,7 +130,7 @@ export default function DesignSystemPage() {
             <div id="principles">
               <div className="grid gap-4 md:grid-cols-3">
                 {[
-                  ['01', 'Make intent obvious', 'Primary actions are indigo, match moments are lime, and secondary actions stay quiet.'],
+                  ['01', 'Make intent obvious', 'Primary actions are blue, match moments are lime, and secondary actions stay quiet.'],
                   ['02', 'Keep the scan light', 'Compact type, predictable spacing, and hairline borders make dense work feel effortless.'],
                   ['03', 'Leave room for people', 'Lavender surfaces and warm accents give a human edge to a data-rich workflow.'],
                 ].map(([number, title, copy]) => (
@@ -146,7 +146,7 @@ export default function DesignSystemPage() {
             </div>
 
             <div id="colors">
-              <Section eyebrow="Colors" title="Expressive accents, quiet foundations" description="Use semantic tokens in UI code. The indigo action colour carries navigation and conversion; lime is intentionally scarce so it keeps its meaning as a match signal.">
+              <Section eyebrow="Colors" title="Expressive accents, quiet foundations" description="Use semantic tokens in UI code. The blue action colour carries navigation and conversion; lime is intentionally scarce so it keeps its meaning as a match signal.">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {colorTokens.map((token) => (
                     <Card key={token.name} className="overflow-hidden border-border/80 py-0 shadow-none">
@@ -227,7 +227,7 @@ export default function DesignSystemPage() {
                   <Card className="border-border/80 shadow-none">
                     <CardHeader>
                       <CardTitle>Buttons</CardTitle>
-                      <CardDescription>Indigo converts, outline supports, ghost navigates.</CardDescription>
+                      <CardDescription>Blue converts, outline supports, ghost navigates.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-wrap gap-2">
                       <Button>Primary action</Button>

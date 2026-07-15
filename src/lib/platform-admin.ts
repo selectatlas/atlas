@@ -30,6 +30,63 @@ async function syncPlatformAdminMetadata(userId: string, role: PlatformAdminRole
   }
 }
 
+export async function clearPlatformAdminMetadata(userId: string): Promise<void> {
+  const service = createServiceClient()
+  const { error } = await service.auth.admin.updateUserById(userId, {
+    user_metadata: { platform_admin: false, platform_admin_role: null },
+  })
+  if (error) {
+    logEvent('warn', 'platform_admin_metadata_clear_failed', { user_id: userId, code: error.code })
+  }
+}
+
+export async function grantPlatformAdmin(
+  service: ReturnType<typeof createServiceClient>,
+  userId: string,
+  role: PlatformAdminRole = 'owner',
+): Promise<boolean> {
+  const { error } = await service
+    .from('platform_admins')
+    .upsert({ user_id: userId, role }, { onConflict: 'user_id' })
+
+  if (error) {
+    logEvent('error', 'platform_admin_grant_failed', { user_id: userId, code: error.code })
+    return false
+  }
+
+  await syncPlatformAdminMetadata(userId, role)
+  return true
+}
+
+export async function revokePlatformAdmin(
+  service: ReturnType<typeof createServiceClient>,
+  userId: string,
+): Promise<boolean> {
+  const { error } = await service.from('platform_admins').delete().eq('user_id', userId)
+  if (error) {
+    logEvent('error', 'platform_admin_revoke_failed', { user_id: userId, code: error.code })
+    return false
+  }
+
+  await clearPlatformAdminMetadata(userId)
+  return true
+}
+
+export async function countPlatformAdmins(
+  service: ReturnType<typeof createServiceClient>,
+): Promise<number> {
+  const { count, error } = await service
+    .from('platform_admins')
+    .select('user_id', { count: 'exact', head: true })
+
+  if (error) {
+    logEvent('warn', 'platform_admin_count_failed', { code: error.code })
+    return 1
+  }
+
+  return count ?? 0
+}
+
 // Bootstraps allowlisted emails into platform_admins on first sign-in.
 export async function ensurePlatformAdmin(
   userId: string,

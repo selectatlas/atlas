@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Bell,
@@ -16,22 +15,22 @@ import {
   UserRound,
 } from 'lucide-react'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command'
 import { useAppShell } from '@/components/layout/app-shell-context'
 import { getSearchTarget } from '@/lib/page-meta'
 
-type CommandItem = {
+type CommandEntry = {
   id: string
   label: string
-  href?: string
-  action?: () => void
-  keywords?: string
+  href: string
+  keywords?: string[]
   icon: typeof Home
 }
 
@@ -52,116 +51,105 @@ export function CommandPalette() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  const items = useMemo<CommandItem[]>(() => {
-    const searchTarget = getSearchTarget(accountType)
-    const shared: CommandItem[] = [
-      { id: 'home', label: 'Home', href: '/home', icon: Home, keywords: 'dashboard' },
-      { id: 'messages', label: 'Messages', href: '/messages', icon: MessageSquare },
-      { id: 'notifications', label: 'Notifications', href: '/notifications', icon: Bell },
-      { id: 'settings', label: 'Settings', href: '/settings', icon: Settings },
-      { id: 'profile', label: 'Profile', href: '/profile', icon: UserRound },
-    ]
+  const searchTarget = getSearchTarget(accountType)
 
-    const roleItems: CommandItem[] =
+  const roleItems = useMemo<CommandEntry[]>(
+    () =>
       accountType === 'hirer'
         ? [
-            { id: 'search', label: 'Search talent', href: '/search', icon: Search, keywords: 'find browse' },
+            { id: 'search', label: 'Search talent', href: '/search', icon: Search, keywords: ['find', 'browse'] },
             { id: 'jobs', label: 'My jobs', href: '/jobs', icon: BriefcaseBusiness },
             { id: 'outreach', label: 'Outreach', href: '/outreach', icon: Send },
-            { id: 'shortlists', label: 'Saved talent', href: '/shortlists', icon: Bookmark },
+            { id: 'shortlists', label: 'Saved talent', href: '/shortlists', icon: Bookmark, keywords: ['liked', 'bookmarks'] },
           ]
         : [
-            { id: 'discover', label: 'Discover jobs', href: '/discover', icon: Compass, keywords: 'jobs opportunities' },
-          ]
+            { id: 'discover', label: 'Discover jobs', href: '/discover', icon: Compass, keywords: ['jobs', 'opportunities'] },
+          ],
+    [accountType],
+  )
 
-    const searchAction: CommandItem = {
-      id: 'search-query',
-      label: query.trim() ? `Search for “${query.trim()}”` : 'Open search',
-      action: () => {
-        const trimmed = query.trim()
-        router.push(trimmed ? `${searchTarget}?q=${encodeURIComponent(trimmed)}` : searchTarget)
-        setOpen(false)
-      },
-      icon: Search,
-      keywords: query,
-    }
+  const sharedItems = useMemo<CommandEntry[]>(
+    () => [
+      { id: 'home', label: 'Home', href: '/home', icon: Home, keywords: ['dashboard'] },
+      { id: 'messages', label: 'Messages', href: '/messages', icon: MessageSquare, keywords: ['inbox', 'chat'] },
+      { id: 'notifications', label: 'Notifications', href: '/notifications', icon: Bell },
+      { id: 'profile', label: 'Profile', href: '/profile', icon: UserRound },
+      { id: 'settings', label: 'Settings', href: '/settings', icon: Settings },
+    ],
+    [],
+  )
 
-    return [searchAction, ...roleItems, ...shared]
-  }, [accountType, query, router])
-
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    if (!needle) return items
-    return items.filter(item => {
-      const haystack = `${item.label} ${item.keywords ?? ''}`.toLowerCase()
-      return haystack.includes(needle)
-    })
-  }, [items, query])
-
-  function runItem(item: CommandItem) {
+  function close() {
     setOpen(false)
     setQuery('')
-    if (item.action) {
-      item.action()
-      return
-    }
-    if (item.href) router.push(item.href)
+  }
+
+  function goTo(href: string) {
+    close()
+    router.push(href)
+  }
+
+  function runSearch() {
+    const trimmed = query.trim()
+    goTo(trimmed ? `${searchTarget}?q=${encodeURIComponent(trimmed)}` : searchTarget)
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="border-b px-4 py-3">
-          <DialogTitle>Command palette</DialogTitle>
-          <DialogDescription className="sr-only">
-            Jump to a page or run a search
-          </DialogDescription>
-          <Input
-            autoFocus
-            value={query}
-            onChange={event => setQuery(event.target.value)}
-            placeholder="Search pages or talent…"
-            className="mt-2"
-            aria-label="Command palette search"
-          />
-          <p className="mt-2 text-xs text-muted-foreground">Tip: ⌘K anywhere in the app</p>
-        </DialogHeader>
-        <ul className="max-h-80 overflow-y-auto p-2" role="listbox">
-          {filtered.length === 0 ? (
-            <li className="px-3 py-6 text-center text-sm text-muted-foreground">No matches</li>
-          ) : (
-            filtered.map(item => {
-              const Icon = item.icon
-              return (
-                <li key={item.id}>
-                  {item.href ? (
-                    <Link
-                      href={item.href}
-                      onClick={() => {
-                        setOpen(false)
-                        setQuery('')
-                      }}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-muted"
-                    >
-                      <Icon className="size-4 text-muted-foreground" />
-                      <span>{item.label}</span>
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => runItem(item)}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted"
-                    >
-                      <Icon className="size-4 text-muted-foreground" />
-                      <span>{item.label}</span>
-                    </button>
-                  )}
-                </li>
-              )
-            })
-          )}
-        </ul>
-      </DialogContent>
-    </Dialog>
+    <CommandDialog
+      open={open}
+      onOpenChange={next => {
+        setOpen(next)
+        if (!next) setQuery('')
+      }}
+      title="Command palette"
+      description="Jump to a page or run a search"
+    >
+      <CommandInput
+        placeholder="Search pages or talent…"
+        value={query}
+        onValueChange={setQuery}
+      />
+      <CommandList>
+        <CommandEmpty>No matches</CommandEmpty>
+        <CommandGroup heading="Search">
+          <CommandItem
+            value={`search-query ${query}`.trim()}
+            onSelect={runSearch}
+          >
+            <Search className="text-muted-foreground" />
+            <span>{query.trim() ? `Search for “${query.trim()}”` : 'Open search'}</span>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading={accountType === 'hirer' ? 'Hiring' : 'Discover'}>
+          {roleItems.map(item => {
+            const Icon = item.icon
+            return (
+              <CommandItem key={item.id} value={item.label} keywords={item.keywords} onSelect={() => goTo(item.href)}>
+                <Icon className="text-muted-foreground" />
+                <span>{item.label}</span>
+              </CommandItem>
+            )
+          })}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Navigate">
+          {sharedItems.map(item => {
+            const Icon = item.icon
+            return (
+              <CommandItem key={item.id} value={item.label} keywords={item.keywords} onSelect={() => goTo(item.href)}>
+                <Icon className="text-muted-foreground" />
+                <span>{item.label}</span>
+              </CommandItem>
+            )
+          })}
+        </CommandGroup>
+      </CommandList>
+      <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+        <kbd className="rounded border bg-muted px-1 font-mono">↑↓</kbd> to navigate ·{' '}
+        <kbd className="rounded border bg-muted px-1 font-mono">↵</kbd> to select ·{' '}
+        <kbd className="rounded border bg-muted px-1 font-mono">⌘K</kbd> to toggle
+      </div>
+    </CommandDialog>
   )
 }

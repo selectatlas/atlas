@@ -48,15 +48,27 @@ export function InboxProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load badge counts on mount
     void refresh()
 
+    // The browser Supabase client is a singleton and channel('inbox-summary')
+    // returns an existing channel for the same topic. Under Strict Mode the
+    // first effect run's async work can outlive its cleanup, so without the
+    // cancelled guard it would call .on() on the second run's already
+    // subscribed channel, which throws.
+    let cancelled = false
     let channel: ReturnType<ReturnType<typeof createClient>['channel']> | null = null
+    const supabase = createClient()
 
     void (async () => {
       if (await isActiveLocalDemoMode()) return
-      const supabase = createClient()
+      if (cancelled) return
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user || cancelled) return
+
+      const stale = supabase.getChannels().find(ch => ch.topic === 'realtime:inbox-summary')
+      if (stale) await supabase.removeChannel(stale)
+      if (cancelled) return
 
       channel = supabase
         .channel('inbox-summary')
@@ -67,14 +79,20 @@ export function InboxProvider({ children }: { children: ReactNode }) {
           void refresh()
         })
         .subscribe()
+
+      if (cancelled) {
+        void supabase.removeChannel(channel)
+        channel = null
+      }
     })()
 
     const interval = window.setInterval(() => { void refresh() }, 60_000)
 
     return () => {
+      cancelled = true
       window.clearInterval(interval)
       if (channel) {
-        void createClient().removeChannel(channel)
+        void supabase.removeChannel(channel)
       }
     }
   }, [refresh])

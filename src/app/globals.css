@@ -8,7 +8,7 @@
   --font-sans: var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  /* Brand palette: indigo is the product action colour; lime is reserved for match moments. */
+  /* Brand palette: blue (--brand-indigo, legacy name) is the product action colour; lime is reserved for match moments. */
   --color-brand-lime: var(--brand-lime);
   --color-brand-lavender: var(--brand-lavender);
   --color-brand-indigo: var(--brand-indigo);
@@ -83,8 +83,8 @@
  * Canvas:     soft white
  * Text:       near black
  * Border:     quiet hairline
- * Primary:    indigo — links, focus rings, primary actions
- * Accent:     indigo — legacy accent utilities now share the product action colour
+ * Primary:    blue — links, focus rings, primary actions
+ * Accent:     blue — legacy accent utilities now share the product action colour
  * Brand lime: reserved for match-score moments
  *
  * Motion tokens (CRISP Design Engineering):
@@ -104,19 +104,19 @@
   --card-foreground: #252338;
   --popover: #ffffff;
   --popover-foreground: #252338;
-  --primary: #6046d8;
+  --primary: #0066cc;
   --primary-foreground: #ffffff;
-  --secondary: #eeeafb;
-  --secondary-foreground: #433292;
+  --secondary: #e5f0fb;
+  --secondary-foreground: #004c99;
   --muted: #f2f1f7;
   --muted-foreground: #66627a;
-  --accent: #6046d8;
+  --accent: #0066cc;
   --accent-foreground: #ffffff;
   --destructive: #c93449;
   --destructive-foreground: #ffffff;
   --border: #e2dfea;
   --input: #d1ccd9;
-  --ring: #6046d8;
+  --ring: #0066cc;
   --success: #167a52;
   --success-foreground: #ffffff;
   --warning: #a96108;
@@ -125,8 +125,8 @@
   --info-foreground: #ffffff;
   --brand-lime: #dfff62;
   --brand-lavender: #cfa6e8;
-  --brand-indigo: #6046d8;
-  --chart-1: #6046d8;
+  --brand-indigo: #0066cc;
+  --chart-1: #0066cc;
   --chart-2: #167a52;
   --chart-3: #cfa6e8;
   --chart-4: #66627a;
@@ -152,12 +152,12 @@
   --shadow-float: 0 18px 45px rgb(37 35 56 / 14%);
   --sidebar: #f4f2f9;
   --sidebar-foreground: #252338;
-  --sidebar-primary: #6046d8;
+  --sidebar-primary: #0066cc;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eeeafb;
-  --sidebar-accent-foreground: #433292;
+  --sidebar-accent: #e5f0fb;
+  --sidebar-accent-foreground: #004c99;
   --sidebar-border: #e2dfea;
-  --sidebar-ring: #6046d8;
+  --sidebar-ring: #0066cc;
 
   /* Public landing page tokens. New colours use OKLCH for perceptual control. */
   --landing-paper: oklch(0.985 0.008 90);
@@ -165,7 +165,7 @@
   --landing-ink: oklch(0.19 0.025 285);
   --landing-muted: oklch(0.49 0.025 285);
   --landing-line: oklch(0.87 0.025 285);
-  --landing-indigo: oklch(0.47 0.19 286);
+  --landing-indigo: oklch(0.53 0.16 252);
   --landing-lavender: oklch(0.84 0.1 318);
   --landing-lime: oklch(0.9 0.2 115);
   --landing-sand: oklch(0.93 0.035 90);
@@ -178,19 +178,19 @@
   --card-foreground: #f5f3fa;
   --popover: #211d2d;
   --popover-foreground: #f5f3fa;
-  --primary: #b1a0ff;
+  --primary: #66b2ff;
   --primary-foreground: #211d2d;
-  --secondary: #302a46;
+  --secondary: #2a3446;
   --secondary-foreground: #f5f3fa;
   --muted: #292533;
   --muted-foreground: #aaa4bd;
-  --accent: #b1a0ff;
+  --accent: #66b2ff;
   --accent-foreground: #211d2d;
   --destructive: #f0798b;
   --destructive-foreground: #211d2d;
   --border: #3a3449;
   --input: #49415c;
-  --ring: #b1a0ff;
+  --ring: #66b2ff;
   --success: #65c89d;
   --success-foreground: #17251f;
   --warning: #f3b85e;
@@ -199,20 +199,20 @@
   --info-foreground: #14213d;
   --brand-lime: #dfff62;
   --brand-lavender: #d3b3ec;
-  --brand-indigo: #b1a0ff;
-  --chart-1: #b1a0ff;
+  --brand-indigo: #66b2ff;
+  --chart-1: #66b2ff;
   --chart-2: #65c89d;
   --chart-3: #d3b3ec;
   --chart-4: #aaa4bd;
   --chart-5: #f5f3fa;
   --sidebar: #1c1927;
   --sidebar-foreground: #f5f3fa;
-  --sidebar-primary: #b1a0ff;
+  --sidebar-primary: #66b2ff;
   --sidebar-primary-foreground: #211d2d;
-  --sidebar-accent: #302a46;
+  --sidebar-accent: #2a3446;
   --sidebar-accent-foreground: #f5f3fa;
   --sidebar-border: #3a3449;
-  --sidebar-ring: #b1a0ff;
+  --sidebar-ring: #66b2ff;
 }
 
 @layer base {

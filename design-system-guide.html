@@ -1,4 +1,4 @@
-<title>The Density Discipline — A Design System Guide from Linear, Notion & Apollo.io</title>
+<title>The Density Discipline — A Design System Guide from Linear, Notion, Apollo.io & Attio</title>
 <style>
   :root {
     --paper: #f2f3f5;
@@ -19,6 +19,8 @@
     --tag-notion-soft: #ece9e5;
     --tag-apollo: #9a6b17;
     --tag-apollo-soft: #f5ecd8;
+    --tag-attio: #2563a8;
+    --tag-attio-soft: #e3edf8;
     --shadow: 0 1px 2px rgba(20,22,26,0.04), 0 8px 24px rgba(20,22,26,0.06);
     --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --font-body: Charter, "Iowan Old Style", "Palatino Linotype", "Georgia", "Times New Roman", serif;
@@ -45,6 +47,8 @@
       --tag-notion-soft: #2a2824;
       --tag-apollo: #e0b767;
       --tag-apollo-soft: #332a15;
+      --tag-attio: #85b6e8;
+      --tag-attio-soft: #1c2a3b;
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
     }
   }
@@ -67,6 +71,8 @@
     --tag-notion-soft: #2a2824;
     --tag-apollo: #e0b767;
     --tag-apollo-soft: #332a15;
+    --tag-attio: #85b6e8;
+    --tag-attio-soft: #1c2a3b;
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
   }
   :root[data-theme="light"] {
@@ -88,6 +94,8 @@
     --tag-notion-soft: #ece9e5;
     --tag-apollo: #9a6b17;
     --tag-apollo-soft: #f5ecd8;
+    --tag-attio: #2563a8;
+    --tag-attio-soft: #e3edf8;
     --shadow: 0 1px 2px rgba(20,22,26,0.04), 0 8px 24px rgba(20,22,26,0.06);
   }
 
@@ -215,6 +223,7 @@
   .app-tag.linear { background: var(--tag-linear-soft); color: var(--tag-linear); }
   .app-tag.notion { background: var(--tag-notion-soft); color: var(--tag-notion); }
   .app-tag.apollo { background: var(--tag-apollo-soft); color: var(--tag-apollo); }
+  .app-tag.attio { background: var(--tag-attio-soft); color: var(--tag-attio); }
 
   section { margin-bottom: 64px; scroll-margin-top: 24px; }
   section > .content-col { scroll-margin-top: 24px; }
@@ -328,6 +337,7 @@
   .evidence a.linear:hover { color: var(--tag-linear); }
   .evidence a.notion:hover { color: var(--tag-notion); }
   .evidence a.apollo:hover { color: var(--tag-apollo); }
+  .evidence a.attio:hover { color: var(--tag-attio); }
 
   /* ---- Tables ---- */
   .table-wrap { overflow-x: auto; margin: 18px 0 24px; border: 1px solid var(--line); border-radius: 10px; }
@@ -447,18 +457,20 @@
   <main>
     <header class="hero">
       <p class="eyebrow">Design system guide · Mobbin-sourced pattern research</p>
-      <h1>The Density Discipline: building software with the structural rigour of Linear, Notion &amp; Apollo.io</h1>
+      <h1>The Density Discipline: building software with the structural rigour of Linear, Notion, Apollo.io &amp; Attio</h1>
       <p class="dek">
-        These three products don't share a visual style — Linear is monochrome and terse, Notion is a blank canvas,
-        Apollo is a data-dense CRM. What they share is a set of <em>structural</em> decisions: how a shell is built,
-        how a table earns its density, how a filter differs from a view, how configuration stays in place instead
-        of sending you to a new screen. This guide extracts those decisions so a senior designer can apply the
-        underlying model to a new product, rather than copy the surface of any one of them.
+        These four products don't share a visual style — Linear is monochrome and terse, Notion is a blank canvas,
+        Apollo is a data-dense CRM, Attio a schema-first one. What they share is a set of <em>structural</em>
+        decisions: how a shell is built, how a table earns its density, how a filter differs from a view, how
+        configuration stays in place instead of sending you to a new screen. This guide extracts those decisions
+        so a senior designer can apply the underlying model to a new product, rather than copy the surface of any
+        one of them.
       </p>
       <div class="app-tags">
         <span class="app-tag linear">Linear — keyboard-first issue tracker</span>
         <span class="app-tag notion">Notion — block-based workspace</span>
         <span class="app-tag apollo">Apollo.io — dense sales CRM</span>
+        <span class="app-tag attio">Attio — schema-first CRM</span>
       </div>
     </header>
 
@@ -487,9 +499,9 @@
       <div class="content-col">
         <h2>Cross-cutting philosophy</h2>
         <p class="section-intro">
-          Eight decisions recur across all three products, made independently, in different domains. When the same
-          decision appears in a keyboard-first issue tracker, a freeform notes app, and a sales CRM, treat it as a
-          load-bearing principle rather than a stylistic preference.
+          Nine decisions recur across these products, made independently, in different domains. When the same
+          decision appears in a keyboard-first issue tracker, a freeform notes app, and two very different CRMs,
+          treat it as a load-bearing principle rather than a stylistic preference.
         </p>
 
         <div class="principle">
@@ -591,6 +603,18 @@
           </div>
         </div>
 
+        <div class="principle">
+          <div class="principle-head"><span class="principle-num">09</span><span class="principle-title">Edits to a shared view are provisional until committed</span></div>
+          <p>Changing the sort or filter on a saved view doesn't mutate it silently. The change applies locally
+          and a <strong>Discard changes / Save</strong> bar appears; the shared definition only updates on an
+          explicit commit. Attio applies this to every saved view — it's what makes workspace-scoped views safe
+          to share at all.</p>
+          <div class="why"><b>Why it works:</b> the moment two people rely on the same view by name, one person's
+          ad-hoc sort is a destructive edit for the other. A commit step turns view settings into deliberate
+          changes without adding ceremony to purely personal exploration — you can still fiddle freely, you just
+          can't clobber the team by accident.</div>
+        </div>
+
         <blockquote class="pull">None of these are visual decisions. They're all decisions about where information lives and how it's reached — that's why they transfer across completely different product domains.</blockquote>
       </div>
     </section>
@@ -640,10 +664,14 @@
                 <td>Nav groups are labelled by workflow stage ("Prospect &amp; enrich", "Engage", "Win &amp; close") rather than by object type — the same entity (Deals) sits under whichever stage heading it's relevant to.</td>
                 <td>Users think in stages of a process, not in a flat inventory of object types; the module count is fixed and won't be user-extended.</td>
               </tr>
+              <tr>
+                <td><strong>Records vs. lists split</strong><br><span style="color:var(--ink-500)">Attio</span></td>
+                <td>Two distinct sidebar sections: system objects ("Records" — Companies, People) above user-curated saved segments ("Lists" — Recruiting, Sales). The same table primitive renders both, so only the sidebar position tells you which kind you're in.</td>
+                <td>Your nav count is driven by a growing schema of object types plus user-built segments — and users need to know at a glance whether they're looking at "all of this type" or "a subset someone built."</td>
+              </tr>
             </tbody>
           </table>
         </div>
-        <p style="color:var(--ink-500); font-size:0.92rem;">A fourth model worth naming even though none of these three use it purely: a <strong>records vs. pages split</strong> (fixed product surfaces separated from an open-ended, data-driven list of record types, each expandable to recent items) — the right choice when your primary nav count is driven by a growing schema of object types rather than by teams or workflow stages.</p>
       </div>
     </section>
 
@@ -698,6 +726,13 @@
           of action, not a separate step.</li>
           <li><strong>Column customization is always visible</strong>, not hidden in a settings menu — a bare
           <code>+</code> at the end of the header row opens a reorderable field-manager drawer.</li>
+          <li><strong>Columns can reach across objects.</strong> Attio lets a Companies table show
+          <code>Primary location › Country</code> or <code>Last interaction › When</code> — dot-path columns
+          pulling from related records without leaving the table — and groups the add-column picker by source
+          object, so the picker doubles as a schema browser.</li>
+          <li><strong>Aggregation is a per-column footer, not a summary panel.</strong> Each column carries its
+          own "add calculation" (count, percent, sum, average, min/max), so mixed aggregation types coexist in
+          one footer row instead of a separate reporting surface.</li>
         </ul>
 
         <h3>Board / Kanban</h3>
@@ -744,7 +779,10 @@
         with a "Suggested" section above it inferred from context — reducing the decision from "what are all 17
         types" to "pick from these 3 likely ones, or browse the rest." Editing an existing field combines schema
         actions (change type, formula) and view actions (filter, sort, hide) in one menu anchored to that column's
-        header — because from the user's point of view, both are just "things I can do with this column."</p>
+        header — because from the user's point of view, both are just "things I can do with this column." Attio
+        pushes the same idea one step further: type-aware display formatting (currency symbol, decimals) lives in
+        that same header menu, so "where do I configure this column" has exactly one answer regardless of column
+        type.</p>
 
         <h3>Command palette</h3>
         <ul>
@@ -804,7 +842,9 @@
           on emptiness itself.</li>
           <li><strong>A filtered empty state looks different from a schema-empty state.</strong> Zero rows in a
           brand-new table reads as a blank header; zero rows from an active filter gets its own icon and copy
-          ("No matching tasks") — the two are different situations and should look like it.</li>
+          ("No matching tasks") — the two are different situations and should look like it. Attio adds a third
+          variant: a view with zero <em>columns</em> shows a single centred "add your first attribute column"
+          CTA, not a blank grid.</li>
           <li><strong>Onboarding happens inside the real product surface</strong>, not a separate wizard bolted on
           top — Notion's "Getting Started" page is an ordinary editable page with a checklist that teaches
           mechanics in place; Linear's product tour runs inside a simulated version of the actual shell.</li>
@@ -858,6 +898,8 @@
               <tr><td>Gating advanced features without hiding the product's ceiling</td><td class="app-tag notion" style="display:inline-block;margin:2px 0;">Notion</td><td>Visible-but-disabled with an explicit plan badge, rather than removed entirely.</td></tr>
               <tr><td>Onboarding that teaches interaction, not just theory</td><td class="app-tag linear" style="display:inline-block;margin:2px 0;">Linear</td><td>Simulated shell tour has the user actually perform the action once.</td></tr>
               <tr><td>Onboarding that produces a working artefact immediately</td><td class="app-tag notion" style="display:inline-block;margin:2px 0;">Notion</td><td>"Getting Started" is a real, editable page — not a throwaway tutorial mode.</td></tr>
+              <tr><td>Shared saved views edited by many people</td><td class="app-tag attio" style="display:inline-block;margin:2px 0;">Attio</td><td>Provisional Save/Discard commit bar stops one user's ad-hoc sort from silently clobbering the team's view.</td></tr>
+              <tr><td>Tables that surface data from related records</td><td class="app-tag attio" style="display:inline-block;margin:2px 0;">Attio</td><td>Cross-object dot-path columns plus a source-grouped column picker keep relational data in one flat, scannable table.</td></tr>
             </tbody>
           </table>
         </div>
@@ -893,6 +935,7 @@
         <h3>Customization &amp; configuration</h3>
         <ul class="checklist">
           <li><span class="box"></span><span>Keep Filter, Sort, and Group as separate, independently discoverable controls.</span></li>
+          <li><span class="box"></span><span>If views can be shared, make edits to a shared view provisional — an explicit Save / Discard step, never silent mutation of the team's definition.</span></li>
           <li><span class="box"></span><span>Open configuration (view settings, field editors, note composers) as a panel anchored to its trigger — never a full route change for something the user will do repeatedly.</span></li>
           <li><span class="box"></span><span>Write destructive bulk-action confirmations as consequence sentences, not "are you sure?"</span></li>
         </ul>
@@ -910,7 +953,7 @@
     </section>
 
     <footer class="end">
-      Sources: pattern research conducted via Mobbin (web platform), scoped per-app to Linear, Notion, and Apollo.io — individual screen citations are linked inline throughout this guide.
+      Sources: pattern research conducted via Mobbin (web platform), scoped per-app to Linear, Notion, Apollo.io, and Attio. Screen citations for Linear, Notion, and Apollo.io are linked inline; Attio findings come from a follow-up Mobbin pass over its Companies, People, and Automations table views.
     </footer>
   </main>
 </div>

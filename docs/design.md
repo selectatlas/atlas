@@ -8,11 +8,11 @@ colors:
   foreground: "#252338"
   surface: "#FFFFFF"
   surface-muted: "#F2F1F7"
-  primary: "#6046D8"
+  primary: "#0066CC"
   on-primary: "#FFFFFF"
-  secondary: "#EEEAFB"
-  on-secondary: "#433292"
-  accent: "#6046D8"
+  secondary: "#E5F0FB"
+  on-secondary: "#004C99"
+  accent: "#0066CC"
   on-accent: "#FFFFFF"
   border: "#E2DFEA"
   input: "#D1CCD9"
@@ -96,7 +96,7 @@ components:
     padding: "{spacing.3} {spacing.4}"
     height: 2.25rem
   button-primary-hover:
-    backgroundColor: "#543AC4"
+    backgroundColor: "#3385D6"
     textColor: "{colors.on-primary}"
     typography: "{typography.label}"
     rounded: "{rounded.sm}"
@@ -189,11 +189,11 @@ components:
 
 ## Overview
 
-Atlas is a talent discovery workspace for hirers and creative talent. The visual system is calm and compact so people can scan profiles, compare evidence, and act without losing context. Indigo makes intent obvious, lime marks meaningful match moments, and lavender adds warmth to supporting surfaces. Avoid noisy dashboards, decorative gradients, and one-off controls that make the product feel less trustworthy.
+Atlas is a talent discovery workspace for hirers and creative talent. The visual system is calm and compact so people can scan profiles, compare evidence, and act without losing context. Blue makes intent obvious, lime marks meaningful match moments, and lavender adds warmth to supporting surfaces. Avoid noisy dashboards, decorative gradients, and one-off controls that make the product feel less trustworthy.
 
 ## Colors
 
-The palette is built around a soft near-white canvas, near-black ink, and an indigo action colour with strong contrast. `primary` is used for conversion, navigation, links, and focus; `brand-lime` is deliberately scarce and should mean match confidence, recommendation, or a positive decision. `secondary` and `brand-lavender` create grouped surfaces without competing with the primary action. Text and interactive combinations should meet WCAG AA; the dark theme counterparts live in `src/app/globals.css` and keep the same semantic roles.
+The palette is built around a soft near-white canvas, near-black ink, and a blue action colour with strong contrast. `primary` is used for conversion, navigation, links, and focus; `brand-lime` is deliberately scarce and should mean match confidence, recommendation, or a positive decision. `secondary` and `brand-lavender` create grouped surfaces without competing with the primary action. Text and interactive combinations should meet WCAG AA; the dark theme counterparts live in `src/app/globals.css` and keep the same semantic roles.
 
 ## Typography
 
@@ -205,7 +205,7 @@ Spacing follows a 4px base with named steps from `spacing.1` through `spacing.16
 
 ## Elevation & Depth
 
-Atlas is border-first. Cards use a quiet border and a restrained shadow only when they need to lift above a page, such as a dialog or floating action. Avoid heavy shadows and nested surfaces with competing elevation. Focus states use the indigo ring so keyboard users receive the same hierarchy as pointer users.
+Atlas is border-first. Cards use a quiet border and a restrained shadow only when they need to lift above a page, such as a dialog or floating action. Avoid heavy shadows and nested surfaces with competing elevation. Focus states use the blue ring so keyboard users receive the same hierarchy as pointer users.
 
 ## Shapes
 

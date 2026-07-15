@@ -14,6 +14,7 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { getProfileCompletion } from '@/lib/profile-completion'
+import { needsOnboarding } from '@/lib/onboarding'
 import { findThreadWithOther } from '@/lib/thread-lookup'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import { PageShell } from '@/components/layout/PageShell'
@@ -22,7 +23,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DemoActivity } from '@/components/talent/DemoActivity'
 import { nameInitial } from '@/lib/display'
-import type { Profile, TalentSkill, Job, ApplicationStatus, OutreachStatus, Category } from '@/types'
+import type { Profile, TalentSkill, ApplicationStatus, OutreachStatus, Category } from '@/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const APP_STATUS_VARIANTS: Record<ApplicationStatus, 'outline' | 'secondary' | 'default'> = {
@@ -300,7 +301,24 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
         subtitle="Finish your profile, track applications, and reply to hirers."
       />
 
-      {completion && completion.percent < 100 && (
+      {profile && needsOnboarding(profile) ? (
+        <Card className="border border-primary/20 bg-primary/5 p-5 shadow-none">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold">Set up your profile to get discovered</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                A five-step setup - category, skills, photo, headline, availability - puts you in front of hirers searching right now.
+              </p>
+            </div>
+            <Link
+              href="/onboarding"
+              className="inline-flex h-9 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              Start setup
+            </Link>
+          </div>
+        </Card>
+      ) : completion && completion.percent < 100 && (
         <Card className="border border-primary/20 bg-primary/5 p-5 shadow-none">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>

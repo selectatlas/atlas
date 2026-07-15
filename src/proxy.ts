@@ -93,7 +93,6 @@ export default async function proxy(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (claims && isAuthRoute) {
-    const accountType = (claims.user_metadata as { account_type?: string } | undefined)?.account_type
     const url = request.nextUrl.clone()
     url.pathname = '/home'
     return NextResponse.redirect(url)
@@ -117,9 +116,14 @@ export default async function proxy(request: NextRequest) {
     }
 
     if (accountType === 'talent' && hirerOnlyPrefixes.some(p => pathname.startsWith(p))) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/discover'
-      return NextResponse.redirect(url)
+      // Talent may preview their own public profile page - everything else
+      // behind hirer-only prefixes stays off limits.
+      const isOwnProfilePreview = pathname === `/talent/${claims.sub}`
+      if (!isOwnProfilePreview) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/discover'
+        return NextResponse.redirect(url)
+      }
     }
 
     if (accountType === 'hirer' && talentOnlyPrefixes.some(p => pathname.startsWith(p))) {

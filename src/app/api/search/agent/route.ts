@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedCaller } from '@/lib/access'
 import { runAgentSearch } from '@/lib/agent-search'
 import { parseJsonBody, cleanString, badRequest } from '@/lib/validation'

@@ -3,35 +3,31 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
+import { DataTable } from '@/components/ui/data-table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  reportStatusVariant,
+  useAdminReportColumns,
+  type AdminReportRow,
+} from '@/components/admin/admin-reports-columns'
 import type { ReportStatus } from '@/types'
 
-type AdminReport = {
-  id: string
-  reason: string
-  details: string | null
-  status: ReportStatus
-  admin_notes: string | null
-  created_at: string
-  reporter: { full_name: string; email: string; account_type: string } | null
-  reported_profile: { id: string; full_name: string; email: string; account_type: string } | null
-  reported_job: { id: string; title: string; status: string } | null
-}
-
-const statusVariant: Record<ReportStatus, 'outline' | 'secondary' | 'default' | 'destructive'> = {
-  open: 'destructive',
-  reviewing: 'secondary',
-  resolved: 'default',
-  dismissed: 'outline',
-}
-
 export function AdminReportsPanel() {
-  const [reports, setReports] = useState<AdminReport[]>([])
+  const [reports, setReports] = useState<AdminReportRow[]>([])
   const [filter, setFilter] = useState<'open' | 'all'>('open')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [notes, setNotes] = useState<Record<string, string>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [reviewTarget, setReviewTarget] = useState<AdminReportRow | null>(null)
+  const [reviewNotes, setReviewNotes] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -40,7 +36,7 @@ export function AdminReportsPanel() {
     try {
       const res = await fetch(url)
       if (!res.ok) throw new Error('Failed to load')
-      const data = await res.json() as { reports: AdminReport[] }
+      const data = await res.json() as { reports: AdminReportRow[] }
       setReports(data.reports)
     } catch {
       setError('Could not load reports.')
@@ -49,24 +45,38 @@ export function AdminReportsPanel() {
     }
   }, [filter])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load reports on mount and filter change
   useEffect(() => { void load() }, [load])
 
-  async function updateReport(id: string, status: ReportStatus) {
+  const updateReport = useCallback(async (id: string, status: ReportStatus, notes: string) => {
     setBusyId(id)
+    setError(null)
     try {
       const res = await fetch('/api/admin/reports', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status, admin_notes: notes[id] ?? null }),
+        body: JSON.stringify({ id, status, admin_notes: notes.trim() || null }),
       })
       if (!res.ok) throw new Error('Update failed')
+      setReviewTarget(null)
+      setReviewNotes('')
       await load()
     } catch {
       setError('Failed to update report.')
     } finally {
       setBusyId(null)
     }
-  }
+  }, [load])
+
+  const columns = useAdminReportColumns({
+    busyId,
+    onReview: report => {
+      setReviewTarget(report)
+      setReviewNotes(report.admin_notes ?? '')
+    },
+  })
+
+  const actionable = reviewTarget !== null && (reviewTarget.status === 'open' || reviewTarget.status === 'reviewing')
 
   return (
     <div className="space-y-4">
@@ -82,59 +92,85 @@ export function AdminReportsPanel() {
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {loading ? <p className="text-sm text-muted-foreground">Loading reports…</p> : null}
 
-      {!loading && reports.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No reports in this view.</p>
+      {!loading ? (
+        <DataTable
+          columns={columns}
+          data={reports}
+          filterColumn="reason"
+          filterPlaceholder="Filter reports in view…"
+          emptyMessage="No reports in this view."
+        />
       ) : null}
 
-      <div className="space-y-3">
-        {reports.map(report => (
-          <Card key={report.id}>
-            <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
-              <div className="space-y-1">
-                <CardTitle className="text-base capitalize">{report.reason.replaceAll('_', ' ')}</CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Filed {new Date(report.created_at).toLocaleString()} by {report.reporter?.full_name ?? 'Unknown'}
-                </p>
+      <Dialog open={reviewTarget !== null} onOpenChange={open => { if (!open) setReviewTarget(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="capitalize">
+              {reviewTarget ? reviewTarget.reason.replaceAll('_', ' ') : 'Report'}
+            </DialogTitle>
+            <DialogDescription>
+              {reviewTarget
+                ? `Filed ${new Date(reviewTarget.created_at).toLocaleString()} by ${reviewTarget.reporter?.full_name ?? 'Unknown'}`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+
+          {reviewTarget ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Badge variant={reportStatusVariant[reviewTarget.status]}>{reviewTarget.status}</Badge>
+                {reviewTarget.reported_profile ? (
+                  <span className="text-sm text-muted-foreground">
+                    Profile: <span className="text-foreground">{reviewTarget.reported_profile.full_name}</span> ({reviewTarget.reported_profile.account_type})
+                  </span>
+                ) : null}
+                {reviewTarget.reported_job ? (
+                  <span className="text-sm text-muted-foreground">
+                    Job: <span className="text-foreground">{reviewTarget.reported_job.title}</span>
+                  </span>
+                ) : null}
               </div>
-              <Badge variant={statusVariant[report.status]}>{report.status}</Badge>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {report.details ? <p className="text-sm">{report.details}</p> : null}
-              {report.reported_profile ? (
-                <p className="text-sm text-muted-foreground">
-                  Profile: <span className="text-foreground">{report.reported_profile.full_name}</span> ({report.reported_profile.account_type})
-                </p>
-              ) : null}
-              {report.reported_job ? (
-                <p className="text-sm text-muted-foreground">
-                  Job: <span className="text-foreground">{report.reported_job.title}</span>
-                </p>
-              ) : null}
-              <textarea
-                className="min-h-16 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              {reviewTarget.details ? <p className="text-sm">{reviewTarget.details}</p> : null}
+              <Textarea
                 placeholder="Admin notes (optional)"
-                value={notes[report.id] ?? report.admin_notes ?? ''}
-                onChange={e => setNotes(prev => ({ ...prev, [report.id]: e.target.value }))}
+                value={reviewNotes}
+                onChange={e => setReviewNotes(e.target.value)}
+                disabled={!actionable}
               />
-              {report.status === 'open' || report.status === 'reviewing' ? (
-                <div className="flex flex-wrap gap-2">
-                  {report.status === 'open' ? (
-                    <Button size="sm" variant="outline" disabled={busyId === report.id} onClick={() => updateReport(report.id, 'reviewing')}>
-                      Mark reviewing
-                    </Button>
-                  ) : null}
-                  <Button size="sm" disabled={busyId === report.id} onClick={() => updateReport(report.id, 'resolved')}>
-                    Resolve
-                  </Button>
-                  <Button size="sm" variant="outline" disabled={busyId === report.id} onClick={() => updateReport(report.id, 'dismissed')}>
-                    Dismiss
-                  </Button>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReviewTarget(null)}>Close</Button>
+            {reviewTarget?.status === 'open' ? (
+              <Button
+                variant="outline"
+                disabled={busyId !== null}
+                onClick={() => reviewTarget && void updateReport(reviewTarget.id, 'reviewing', reviewNotes)}
+              >
+                Mark reviewing
+              </Button>
+            ) : null}
+            {actionable ? (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={busyId !== null}
+                  onClick={() => reviewTarget && void updateReport(reviewTarget.id, 'dismissed', reviewNotes)}
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  disabled={busyId !== null}
+                  onClick={() => reviewTarget && void updateReport(reviewTarget.id, 'resolved', reviewNotes)}
+                >
+                  Resolve
+                </Button>
+              </>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

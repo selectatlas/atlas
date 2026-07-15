@@ -43,6 +43,7 @@ export function AdminAddJobPanel({ onCreated }: { onCreated?: () => void }) {
     }
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load hirer list on mount
   useEffect(() => { void loadHirers() }, [loadHirers])
 
   const availableSkills = category ? SKILLS_BY_CATEGORY[category] : []

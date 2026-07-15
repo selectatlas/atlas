@@ -16,7 +16,14 @@ const mockCreateClient = createClient as ReturnType<typeof vi.fn>
 const mockCreateServiceClient = createServiceClient as ReturnType<typeof vi.fn>
 const mockRateLimit = enforceRateLimit as ReturnType<typeof vi.fn>
 
-function authClient(user: { id: string; user_metadata: Record<string, unknown> } | null, exchangeError = false) {
+type ProfileRow = { headline: string | null; talent_skills: Array<{ id: string }> } | null
+
+function authClient(
+  user: { id: string; user_metadata: Record<string, unknown> } | null,
+  exchangeError = false,
+  // Talent landing depends on profile state; default to a fresh, empty profile.
+  profile: ProfileRow = { headline: null, talent_skills: [] },
+) {
   const result = exchangeError
     ? { data: { user: null }, error: { message: 'invalid code' } }
     : { data: { user }, error: null }
@@ -26,6 +33,9 @@ function authClient(user: { id: string; user_metadata: Record<string, unknown> }
       verifyOtp: vi.fn().mockResolvedValue(result),
       updateUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
     },
+    from: vi.fn(() => ({
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: profile }) }) }),
+    })),
   }
 }
 
@@ -62,11 +72,11 @@ describe('GET /auth/callback', () => {
     expect(client.auth.updateUser).not.toHaveBeenCalled()
   })
 
-  it('defaults first-time OAuth users to talent and sends them to discover', async () => {
+  it('defaults first-time OAuth users to talent and sends them to onboarding', async () => {
     const client = authClient({ id: 'u1', user_metadata: {} })
     mockCreateClient.mockResolvedValue(client)
     const response = await GET(new Request('http://localhost/auth/callback?code=ok'))
-    expect(response.headers.get('location')).toBe('http://localhost/home')
+    expect(response.headers.get('location')).toBe('http://localhost/onboarding')
     expect(client.auth.updateUser).toHaveBeenCalledWith({ data: { account_type: 'talent' } })
     expect(mockCreateServiceClient).not.toHaveBeenCalled()
   })
@@ -89,17 +99,28 @@ describe('GET /auth/callback', () => {
     const client = authClient({ id: 'u1', user_metadata: {} })
     mockCreateClient.mockResolvedValue(client)
     const response = await GET(new Request('http://localhost/auth/callback?code=ok&account_type=admin'))
-    expect(response.headers.get('location')).toBe('http://localhost/home')
+    expect(response.headers.get('location')).toBe('http://localhost/onboarding')
     expect(client.auth.updateUser).toHaveBeenCalledWith({ data: { account_type: 'talent' } })
   })
 
-  it('verifies email confirmation links via token_hash and lands on home', async () => {
+  it('verifies email confirmation links via token_hash and sends fresh talent to onboarding', async () => {
     const client = authClient({ id: 'u1', user_metadata: { account_type: 'talent' } })
     mockCreateClient.mockResolvedValue(client)
     const response = await GET(new Request('http://localhost/auth/callback?token_hash=abc&type=signup'))
-    expect(response.headers.get('location')).toBe('http://localhost/home')
+    expect(response.headers.get('location')).toBe('http://localhost/onboarding')
     expect(client.auth.verifyOtp).toHaveBeenCalledWith({ type: 'signup', token_hash: 'abc' })
     expect(client.auth.exchangeCodeForSession).not.toHaveBeenCalled()
+  })
+
+  it('sends returning talent with an established profile to home', async () => {
+    const client = authClient(
+      { id: 'u1', user_metadata: { account_type: 'talent' } },
+      false,
+      { headline: 'Bollywood Dancer', talent_skills: [{ id: 's1' }] },
+    )
+    mockCreateClient.mockResolvedValue(client)
+    const response = await GET(new Request('http://localhost/auth/callback?code=ok'))
+    expect(response.headers.get('location')).toBe('http://localhost/home')
   })
 
   it('redirects expired email links to login with a confirm error', async () => {

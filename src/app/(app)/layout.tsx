@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { HirerNav } from '@/components/layout/HirerNav'
@@ -26,7 +27,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (profile?.suspended_at) redirect('/suspended')
   }
 
-  const isHirer = accountType === 'hirer' || isPlatformAdmin
+  // Platform admins default to the hirer shell but can flip to the talent
+  // shell via the admin sidebar switcher (atlas_admin_view cookie). The
+  // cookie is presentation-only - access is still gated by isPlatformAdmin.
+  const adminView = isPlatformAdmin
+    ? (await cookies()).get('atlas_admin_view')?.value
+    : undefined
+  const isHirer = isPlatformAdmin ? adminView !== 'talent' : accountType === 'hirer'
   if (!isLocalDemo && !isHirer && accountType !== 'talent' && !isPlatformAdmin) redirect('/login')
 
   return (

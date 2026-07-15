@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedCaller } from '@/lib/access'
 import { generateOutreachMessage } from '@/lib/openai'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'

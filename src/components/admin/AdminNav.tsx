@@ -1,6 +1,7 @@
 'use client'
 
 import { Navbar } from '@/components/layout/Navbar'
+import { AdminViewSwitcher } from '@/components/admin/AdminViewSwitcher'
 
 const links = [
   { href: '/admin', label: 'Dashboard' },
@@ -12,5 +13,5 @@ const links = [
 ]
 
 export function AdminNav() {
-  return <Navbar links={links} />
+  return <Navbar links={links} accountSwitcher={<AdminViewSwitcher />} />
 }

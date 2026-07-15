@@ -1,5 +1,4 @@
 import { requirePlatformAdmin } from '@/lib/platform-admin'
-import { logEvent } from '@/lib/log'
 
 export async function GET() {
   const auth = await requirePlatformAdmin()

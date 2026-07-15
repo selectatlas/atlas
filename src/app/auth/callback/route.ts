@@ -4,6 +4,7 @@ import { enforceRateLimit, getClientIp } from '@/lib/rate-limit'
 import { getPostHogClient } from '@/lib/posthog-server'
 import { logEvent } from '@/lib/log'
 import { ensurePlatformAdmin } from '@/lib/platform-admin'
+import { needsOnboarding } from '@/lib/onboarding'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import type { AccountType } from '@/types'
 
@@ -77,7 +78,19 @@ export async function GET(request: Request) {
   }
 
   const adminRole = user.email ? await ensurePlatformAdmin(user.id, user.email) : null
-  const landingPath = '/home'
+
+  // Talent with an untouched profile (no headline, no skills) go through
+  // onboarding instead of an empty dashboard - covers email-confirmation
+  // and OAuth signups, which both land here rather than on the signup page.
+  let landingPath = '/home'
+  if (accountType === 'talent' && !adminRole) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('headline, talent_skills(id)')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (needsOnboarding(profile)) landingPath = '/onboarding'
+  }
 
   const response = NextResponse.redirect(new URL(landingPath, url.origin))
   // A leftover local-demo cookie must never mask a real session.

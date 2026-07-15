@@ -60,6 +60,7 @@ function SearchPageContent() {
 
   useEffect(() => {
     const q = searchParams.get('q')
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync query input from the URL
     if (q) setQuery(q)
   }, [searchParams])
 
@@ -80,6 +81,7 @@ function SearchPageContent() {
     if (filtersChanged) {
       prevFilterSortKey.current = filterSortKey
       if (browsePage !== 1) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination when filters change
         setBrowsePage(1)
         return
       }

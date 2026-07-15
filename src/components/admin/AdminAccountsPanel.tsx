@@ -1,66 +1,97 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import type { AccountType } from '@/types'
+import { Input } from '@/components/ui/input'
+import { DataTable } from '@/components/ui/data-table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  useAdminAccountColumns,
+  type AccountRole,
+  type AdminAccountRow,
+} from '@/components/admin/admin-accounts-columns'
 
-type AdminAccount = {
-  id: string
-  account_type: AccountType
-  full_name: string
-  email: string
-  city: string | null
-  country: string | null
-  suspended_at: string | null
-  suspension_reason: string | null
-  created_at: string
-}
+const ACCOUNT_FILTERS = {
+  all: 'All roles',
+  hirer: 'Hirers',
+  talent: 'Talent',
+  admin: 'Admins',
+  suspended: 'Suspended',
+} as const
+
+type AccountFilter = keyof typeof ACCOUNT_FILTERS
+
+const ROLE_OPTIONS = {
+  hirer: 'Hirer',
+  talent: 'Talent',
+  admin: 'Admin',
+} as const
 
 export function AdminAccountsPanel() {
-  const [accounts, setAccounts] = useState<AdminAccount[]>([])
+  const [accounts, setAccounts] = useState<AdminAccountRow[]>([])
   const [query, setQuery] = useState('')
-  const [roleFilter, setRoleFilter] = useState<'all' | AccountType>('all')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'suspended'>('all')
+  const [filter, setFilter] = useState<AccountFilter>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [reasons, setReasons] = useState<Record<string, string>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [suspendTarget, setSuspendTarget] = useState<AdminAccountRow | null>(null)
+  const [suspendReason, setSuspendReason] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<AdminAccountRow | null>(null)
+  const [bulkDeleteTargets, setBulkDeleteTargets] = useState<AdminAccountRow[]>([])
+  const [addOpen, setAddOpen] = useState(false)
+  const [addName, setAddName] = useState('')
+  const [addEmail, setAddEmail] = useState('')
+  const [addRole, setAddRole] = useState<AccountRole>('hirer')
+  const [addError, setAddError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     const params = new URLSearchParams()
     if (query.trim()) params.set('q', query.trim())
-    if (roleFilter !== 'all') params.set('account_type', roleFilter)
-    if (statusFilter === 'suspended') params.set('suspended', 'true')
+    if (filter === 'admin') params.set('role', 'admin')
+    else if (filter === 'suspended') params.set('suspended', 'true')
+    else if (filter !== 'all') params.set('account_type', filter)
     params.set('limit', '100')
     try {
       const res = await fetch(`/api/admin/users?${params}`)
       if (!res.ok) throw new Error('Failed')
-      const data = await res.json() as { users: AdminAccount[] }
+      const data = await res.json() as { users: AdminAccountRow[] }
       setAccounts(data.users)
     } catch {
       setError('Could not load accounts.')
     } finally {
       setLoading(false)
     }
-  }, [query, roleFilter, statusFilter])
+  }, [query, filter])
 
   useEffect(() => {
     const timer = setTimeout(() => { void load() }, 250)
     return () => clearTimeout(timer)
   }, [load])
 
-  async function changeRole(id: string, accountType: AccountType) {
+  const changeRole = useCallback(async (id: string, role: AccountRole) => {
     setBusyId(id)
     setError(null)
     try {
       const res = await fetch(`/api/admin/users/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'set_account_type', account_type: accountType }),
+        body: JSON.stringify({ action: 'set_role', role }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string }
@@ -72,16 +103,39 @@ export function AdminAccountsPanel() {
     } finally {
       setBusyId(null)
     }
-  }
+  }, [load])
 
-  async function moderate(id: string, action: 'suspend' | 'unsuspend') {
-    setBusyId(id)
+  const suspendAccount = useCallback(async (account: AdminAccountRow, reason: string) => {
+    setBusyId(account.id)
     setError(null)
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await fetch(`/api/admin/users/${account.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, reason: reasons[id] ?? null }),
+        body: JSON.stringify({ action: 'suspend', reason }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? 'Update failed')
+      }
+      setSuspendTarget(null)
+      setSuspendReason('')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to suspend account.')
+    } finally {
+      setBusyId(null)
+    }
+  }, [load])
+
+  const restoreAccount = useCallback(async (account: AdminAccountRow) => {
+    setBusyId(account.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/users/${account.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'unsuspend' }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string }
@@ -89,127 +143,248 @@ export function AdminAccountsPanel() {
       }
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update account.')
+      setError(err instanceof Error ? err.message : 'Failed to restore account.')
     } finally {
       setBusyId(null)
     }
-  }
+  }, [load])
+
+  const deleteAccounts = useCallback(async (targets: AdminAccountRow[]) => {
+    if (targets.length === 0) return
+    setError(null)
+    setBusyId('bulk')
+
+    const failures: string[] = []
+    for (const account of targets) {
+      setBusyId(account.id)
+      try {
+        const res = await fetch(`/api/admin/users/${account.id}`, { method: 'DELETE' })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as { error?: string }
+          failures.push(`${account.email}: ${body.error ?? 'Delete failed'}`)
+        }
+      } catch {
+        failures.push(`${account.email}: Network error`)
+      }
+    }
+
+    setDeleteTarget(null)
+    setBulkDeleteTargets([])
+    setBusyId(null)
+    await load()
+
+    if (failures.length > 0) {
+      setError(failures.join(' · '))
+    }
+  }, [load])
+
+  const createAccount = useCallback(async () => {
+    setBusyId('add')
+    setAddError(null)
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: addName.trim(),
+          email: addEmail.trim(),
+          role: addRole,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? 'Failed to create account')
+      }
+      setAddOpen(false)
+      setAddName('')
+      setAddEmail('')
+      setAddRole('hirer')
+      await load()
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Failed to create account.')
+    } finally {
+      setBusyId(null)
+    }
+  }, [addName, addEmail, addRole, load])
+
+  const columns = useAdminAccountColumns({
+    busyId,
+    onRoleChange: (id, role) => { void changeRole(id, role) },
+    onSuspendRequest: account => {
+      setSuspendTarget(account)
+      setSuspendReason('')
+    },
+    onRestore: account => { void restoreAccount(account) },
+    onDeleteRequest: account => setDeleteTarget(account),
+  })
+
+  const toolbar = (
+    <>
+      <Input
+        className="flex-1 lg:max-w-sm"
+        placeholder="Search by name or email"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+      />
+      <Select value={filter} onValueChange={value => setFilter(value as AccountFilter)} items={ACCOUNT_FILTERS}>
+        <SelectTrigger aria-label="Filter accounts" className="w-[140px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Object.entries(ACCOUNT_FILTERS).map(([value, label]) => (
+            <SelectItem key={value} value={value}>{label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        onClick={() => {
+          setAddError(null)
+          setAddOpen(true)
+        }}
+      >
+        Add account
+      </Button>
+    </>
+  )
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <input
-          className="h-9 flex-1 rounded-lg border border-border bg-background px-3 text-sm"
-          placeholder="Search by name or email"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-        />
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant={roleFilter === 'all' ? 'default' : 'outline'} onClick={() => setRoleFilter('all')}>All roles</Button>
-          <Button size="sm" variant={roleFilter === 'hirer' ? 'default' : 'outline'} onClick={() => setRoleFilter('hirer')}>Hirers</Button>
-          <Button size="sm" variant={roleFilter === 'talent' ? 'default' : 'outline'} onClick={() => setRoleFilter('talent')}>Talent</Button>
-          <Button size="sm" variant={statusFilter === 'suspended' ? 'default' : 'outline'} onClick={() => setStatusFilter(prev => prev === 'suspended' ? 'all' : 'suspended')}>
-            Suspended
-          </Button>
-        </div>
-      </div>
-
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {loading ? <p className="text-sm text-muted-foreground">Loading accounts…</p> : null}
 
-      {!loading && accounts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No accounts match your filters.</p>
-      ) : null}
+      <DataTable
+        columns={columns}
+        data={accounts}
+        toolbar={toolbar}
+        emptyMessage={loading ? 'Loading accounts…' : 'No accounts match your filters.'}
+        bulkActions={selected => {
+          const deletable = selected.filter(a => a.display_role !== 'admin')
+          if (deletable.length === 0) return null
+          return (
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={busyId !== null}
+              onClick={() => setBulkDeleteTargets(deletable)}
+            >
+              Delete selected ({deletable.length})
+            </Button>
+          )
+        }}
+      />
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-muted-foreground">
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Joined</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.map(account => (
-                  <tr key={account.id} className="border-b border-border/60 last:border-0">
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{account.full_name}</div>
-                      {account.city || account.country ? (
-                        <div className="text-xs text-muted-foreground">
-                          {[account.city, account.country].filter(Boolean).join(', ')}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{account.email}</td>
-                    <td className="px-4 py-3">
-                      <select
-                        aria-label={`Role for ${account.full_name}`}
-                        className="h-8 rounded-md border border-border bg-background px-2 text-sm"
-                        value={account.account_type}
-                        disabled={busyId === account.id}
-                        onChange={e => void changeRole(account.id, e.target.value as AccountType)}
-                      >
-                        <option value="hirer">Hirer</option>
-                        <option value="talent">Talent</option>
-                      </select>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(account.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      {account.suspended_at ? (
-                        <Badge variant="destructive">Suspended</Badge>
-                      ) : (
-                        <Badge variant="outline">Active</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {!account.suspended_at ? (
-                        <div className="flex min-w-[220px] flex-col gap-2">
-                          <input
-                            className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                            placeholder="Suspension reason"
-                            value={reasons[account.id] ?? ''}
-                            onChange={e => setReasons(prev => ({ ...prev, [account.id]: e.target.value }))}
-                          />
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            disabled={busyId === account.id}
-                            onClick={() => moderate(account.id, 'suspend')}
-                          >
-                            Suspend
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {account.suspension_reason ? (
-                            <p className="text-xs text-muted-foreground">{account.suspension_reason}</p>
-                          ) : null}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busyId === account.id}
-                            onClick={() => moderate(account.id, 'unsuspend')}
-                          >
-                            Restore
-                          </Button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add account</DialogTitle>
+            <DialogDescription>
+              Create a new account on the platform. The user signs in with this email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Full name"
+              value={addName}
+              onChange={e => setAddName(e.target.value)}
+            />
+            <Input
+              type="email"
+              placeholder="Email address"
+              value={addEmail}
+              onChange={e => setAddEmail(e.target.value)}
+            />
+            <Select value={addRole} onValueChange={value => setAddRole(value as AccountRole)} items={ROLE_OPTIONS}>
+              <SelectTrigger aria-label="Account role" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(ROLE_OPTIONS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
                 ))}
-              </tbody>
-            </table>
+              </SelectContent>
+            </Select>
+            {addError ? <p className="text-sm text-destructive">{addError}</p> : null}
           </div>
-        </CardContent>
-      </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!addName.trim() || !addEmail.trim().includes('@') || busyId !== null}
+              onClick={() => void createAccount()}
+            >
+              Create account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={suspendTarget !== null} onOpenChange={open => { if (!open) setSuspendTarget(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Suspend account</DialogTitle>
+            <DialogDescription>
+              {suspendTarget ? `Suspend ${suspendTarget.full_name} (${suspendTarget.email})?` : null}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="Suspension reason (required)"
+            value={suspendReason}
+            onChange={e => setSuspendReason(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSuspendTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={!suspendReason.trim() || busyId !== null}
+              onClick={() => suspendTarget && void suspendAccount(suspendTarget, suspendReason.trim())}
+            >
+              Suspend
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteTarget !== null} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete account</DialogTitle>
+            <DialogDescription>
+              {deleteTarget
+                ? `Permanently delete ${deleteTarget.full_name} (${deleteTarget.email})? This removes their profile, jobs, messages, and uploads. This cannot be undone.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={busyId !== null}
+              onClick={() => deleteTarget && void deleteAccounts([deleteTarget])}
+            >
+              Delete permanently
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkDeleteTargets.length > 0} onOpenChange={open => { if (!open) setBulkDeleteTargets([]) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {bulkDeleteTargets.length} accounts</DialogTitle>
+            <DialogDescription>
+              Permanently delete the selected accounts? Platform admins in the selection are excluded. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteTargets([])}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={busyId !== null}
+              onClick={() => void deleteAccounts(bulkDeleteTargets)}
+            >
+              Delete {bulkDeleteTargets.length} accounts
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

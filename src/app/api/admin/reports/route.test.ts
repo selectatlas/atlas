@@ -120,7 +120,7 @@ describe('GET /api/admin/reports', () => {
         }
       }
       return { select: () => ({ in: () => Promise.resolve({ data: [], error: null }) }) }
-    })
+    }) as unknown as typeof service.from
 
     mockRequirePlatformAdmin.mockResolvedValue({
       ok: true,
