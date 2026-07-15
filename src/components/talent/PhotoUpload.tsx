@@ -74,6 +74,7 @@ export function PhotoUpload({ currentUrl, initials, onUploaded, bucket = 'avatar
         onClick={() => fileRef.current?.click()}
         disabled={uploading}
         className="relative w-20 h-20 rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border hover:border-primary transition-colors group disabled:opacity-60"
+        aria-label="Upload profile photo"
       >
         {displayUrl ? (
           <Image

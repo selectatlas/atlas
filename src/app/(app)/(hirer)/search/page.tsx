@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { SearchX, Sparkles } from 'lucide-react'
 import { TalentCard, TalentListItem } from '@/components/talent/TalentCard'
@@ -8,13 +8,17 @@ import { SearchHeader } from '@/components/search/SearchHeader'
 import { SwipeStack } from '@/components/talent/SwipeStack'
 import { OutreachModal } from '@/components/outreach/OutreachModal'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DEMO_TALENT_ATTRIBUTES, filterDemoTalent, searchDemoTalent } from '@/lib/demo-data'
+import { Button } from '@/components/ui/button'
+import { isLocalDemoMode } from '@/lib/demo-mode'
+import { searchDemoTalent } from '@/lib/demo-data'
 import { serializeSearchFilters, type SearchFilters } from '@/lib/search-filters'
 import { useSearchFilters } from '@/components/search/useSearchFilters'
+import posthog from 'posthog-js'
 import type { Profile, TalentSkill, TalentSearchResult } from '@/types'
 
 type ViewMode = 'swipe' | 'grid' | 'list'
 type SortMode = 'newest' | 'available'
+const BROWSE_PAGE_SIZE = 48
 
 export default function SearchPage() {
   const router = useRouter()
@@ -23,7 +27,9 @@ export default function SearchPage() {
   const [allTalent, setAllTalent] = useState<TalentSearchResult[]>([])
   const [sortMode, setSortMode] = useState<SortMode>('newest')
   const [browseTotal, setBrowseTotal] = useState(0)
+  const [browsePage, setBrowsePage] = useState(1)
   const [browseLoading, setBrowseLoading] = useState(true)
+  const [browseLoadingMore, setBrowseLoadingMore] = useState(false)
   const [browseError, setBrowseError] = useState<string | null>(null)
   const [browseRetry, setBrowseRetry] = useState(0)
 
@@ -32,6 +38,9 @@ export default function SearchPage() {
   const [searching, setSearching] = useState(false)
   const [searchTime, setSearchTime] = useState<number | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [deepSearching, setDeepSearching] = useState(false)
+  const [deepStatus, setDeepStatus] = useState<string | null>(null)
+  const [agentSummary, setAgentSummary] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const aiAbortRef = useRef<AbortController | null>(null)
 
@@ -41,50 +50,91 @@ export default function SearchPage() {
 
   const [talentStats, setTalentStats] = useState<Record<string, { views: number; likes: number }>>({})
   const [isLocalDemo, setIsLocalDemo] = useState(false)
+  const filterSortKey = useMemo(
+    () => `${sortMode}:${serializeSearchFilters(filters).toString()}`,
+    [filters, sortMode],
+  )
+  const prevFilterSortKey = useRef(filterSortKey)
 
   useEffect(() => {
-    const localDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('atlas_demo=1')
+    const localDemo = isLocalDemoMode()
     // The cookie is the local demo's external session source; hydrate it once on mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLocalDemo(localDemo)
 
-    if (localDemo) {
-      let profiles = filterDemoTalent(filters)
-      if (sortMode === 'available') profiles = [...profiles].sort((a, b) => Number(Boolean(DEMO_TALENT_ATTRIBUTES[b.id]?.available_now)) - Number(Boolean(DEMO_TALENT_ATTRIBUTES[a.id]?.available_now)))
-      setAllTalent(profiles.map(profile => ({ profile, match_score: 0 })))
-      setBrowseTotal(profiles.length)
-      setBrowseLoading(false)
-      return
+    const filtersChanged = prevFilterSortKey.current !== filterSortKey
+    if (filtersChanged) {
+      prevFilterSortKey.current = filterSortKey
+      if (browsePage !== 1) {
+        setBrowsePage(1)
+        return
+      }
     }
 
     const controller = new AbortController()
     const params = serializeSearchFilters(filters)
-    params.set('limit', '48')
+    params.set('limit', String(BROWSE_PAGE_SIZE))
+    params.set('page', String(browsePage))
     params.set('sort', sortMode === 'available' ? 'available' : 'newest')
-    setBrowseLoading(true)
+    if (browsePage === 1) setBrowseLoading(true)
+    else setBrowseLoadingMore(true)
     setBrowseError(null)
     fetch(`/api/talent?${params.toString()}`, { signal: controller.signal })
-      .then(response => response.ok ? response.json() : Promise.reject(new Error('Unable to load talent')))
+      .then(async response => {
+        if (!response.ok) {
+          const body = await response.json().catch(() => null) as { error?: string } | null
+          throw new Error(body?.error ?? `Unable to load talent (${response.status})`)
+        }
+        return response.json()
+      })
       .then(data => {
-        setAllTalent(data.results ?? [])
+        const results = data.results ?? []
+        setAllTalent(prev => browsePage === 1 ? results : (() => {
+          const seen = new Set(prev.map(row => row.profile.id))
+          const merged = [...prev]
+          for (const row of results) {
+            if (!seen.has(row.profile.id)) merged.push(row)
+          }
+          return merged
+        })())
         setBrowseTotal(data.total ?? 0)
       })
-      .catch(error => { if (error.name !== 'AbortError') setBrowseError('Unable to load talent') })
-      .finally(() => { if (!controller.signal.aborted) setBrowseLoading(false) })
+      .catch(error => {
+        if (error instanceof Error && error.name === 'AbortError') return
+        setBrowseError(error instanceof Error ? error.message : 'Unable to load talent')
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setBrowseLoading(false)
+          setBrowseLoadingMore(false)
+        }
+      })
     return () => controller.abort()
-  }, [browseRetry, filters, sortMode])
+  }, [browseRetry, filterSortKey, browsePage, filters, sortMode])
 
   useEffect(() => {
     const results = aiResults ?? allTalent
     if (results.length === 0) return
     const ids = results.map(r => r.profile.id)
-    fetch('/api/talent/batch-stats', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids }),
-    })
-      .then(r => r.json())
-      .then(data => setTalentStats(data.stats ?? {}))
+    const chunks: string[][] = []
+    for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50))
+
+    Promise.all(
+      chunks.map(chunk =>
+        fetch('/api/talent/batch-stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: chunk }),
+        }).then(r => r.ok ? r.json() : { stats: {} }),
+      ),
+    )
+      .then(responses => {
+        const merged: Record<string, { views: number; likes: number }> = {}
+        for (const data of responses) {
+          Object.assign(merged, data.stats ?? {})
+        }
+        setTalentStats(merged)
+      })
       .catch(() => { /* silent */ })
   }, [allTalent, aiResults])
 
@@ -112,10 +162,19 @@ export default function SearchPage() {
         signal: controller.signal,
       })
       const data = await res.json()
-      if (data.error) { setAiError(data.error) }
-      else {
-        setAiResults(data.results ?? [])
-        setSearchTime(Date.now() - t0)
+      if (data.error) {
+        setAiResults(null)
+        setSearchTime(null)
+        setAiError(data.error)
+      } else {
+        const results = data.results ?? []
+        setAiResults(results)
+        const elapsed = Date.now() - t0
+        setSearchTime(elapsed)
+        posthog.capture('ai_search_performed', {
+          result_count: results.length,
+          search_time_ms: elapsed,
+        })
       }
     } catch (error) {
       if (!(error instanceof Error && error.name === 'AbortError')) setAiError('Search failed')
@@ -123,9 +182,77 @@ export default function SearchPage() {
     if (aiAbortRef.current === controller) setSearching(false)
   }, [filters, isLocalDemo])
 
+  // Agentic "deep search": streams NDJSON progress events from the agent
+  // loop, then swaps its curated shortlist into the normal AI results path.
+  const runDeepSearch = useCallback(async () => {
+    const q = query.trim()
+    if (!q || deepSearching) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    aiAbortRef.current?.abort()
+    const controller = new AbortController()
+    aiAbortRef.current = controller
+    setDeepSearching(true)
+    setSearching(false)
+    setAiError(null)
+    setAgentSummary(null)
+    setDeepStatus('Planning the search…')
+    const t0 = Date.now()
+
+    try {
+      const res = await fetch('/api/search/agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q, filters }),
+        signal: controller.signal,
+      })
+      if (!res.ok || !res.body) {
+        const body = await res.json().catch(() => null) as { error?: string } | null
+        throw new Error(body?.error ?? 'Deep search failed')
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          let event: { type?: string; message?: string; error?: string; summary?: string; results?: TalentSearchResult[] }
+          try { event = JSON.parse(line) } catch { continue }
+          if (event.type === 'status' && event.message) setDeepStatus(event.message)
+          else if (event.type === 'error') throw new Error(event.error ?? 'Deep search failed')
+          else if (event.type === 'results') {
+            const results = event.results ?? []
+            setAiResults(results)
+            setAgentSummary(event.summary || null)
+            const elapsed = Date.now() - t0
+            setSearchTime(elapsed)
+            posthog.capture('agent_search_performed', {
+              result_count: results.length,
+              search_time_ms: elapsed,
+            })
+          }
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) {
+        setAiError(error instanceof Error ? error.message : 'Deep search failed')
+      }
+    }
+    if (aiAbortRef.current === controller) {
+      setDeepSearching(false)
+      setDeepStatus(null)
+    }
+  }, [query, filters, deepSearching])
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAgentSummary(null)
     if (!query.trim()) { setAiResults(null); setSearchTime(null); return }
     debounceRef.current = setTimeout(() => runAiSearch(query), 500)
     return () => {
@@ -139,17 +266,16 @@ export default function SearchPage() {
   // Keeping that order is especially important for `available`, which uses
   // the structured `available_now` field that is intentionally not public.
   const displayResults = (isAiMode ? (aiResults ?? []) : allTalent).filter(r => !passed.has(r.profile.id))
-  const loadingResults = searching || (!isAiMode && browseLoading)
+  const loadingResults = searching || deepSearching || (!isAiMode && browseLoading)
 
   const previewCount = useCallback(async (previewFilters: SearchFilters) => {
-    if (isLocalDemo) return filterDemoTalent(previewFilters).length
     const params = serializeSearchFilters(previewFilters)
     params.set('limit', '1')
     const response = await fetch(`/api/talent?${params.toString()}`)
     if (!response.ok) throw new Error('Unable to preview filters')
     const data = await response.json()
     return Number(data.total ?? 0)
-  }, [isLocalDemo])
+  }, [])
 
   function handleContact(talent: Profile & { talent_skills: TalentSkill[] }) {
     setOutreachTalent(talent)
@@ -157,6 +283,14 @@ export default function SearchPage() {
 
   function handlePass(talentId: string) {
     setPassed(s => new Set([...s, talentId]))
+  }
+
+  function handleUndo(talentId: string) {
+    setPassed(s => {
+      const next = new Set(s)
+      next.delete(talentId)
+      return next
+    })
   }
 
   return (
@@ -179,6 +313,33 @@ export default function SearchPage() {
         aiResultCount={aiResults?.length ?? 0}
         searchTime={searchTime}
       />
+
+      {isAiMode && !isLocalDemo && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runDeepSearch}
+            disabled={deepSearching || searching}
+          >
+            <Sparkles className="size-3.5" />
+            {deepSearching ? 'Deep searching…' : 'Deep search'}
+          </Button>
+          {deepSearching && deepStatus && (
+            <p className="text-xs text-muted-foreground animate-pulse">{deepStatus}</p>
+          )}
+          {!deepSearching && !agentSummary && (
+            <p className="text-xs text-muted-foreground">Let the AI agent refine, compare and shortlist for you.</p>
+          )}
+        </div>
+      )}
+
+      {isAiMode && agentSummary && !deepSearching && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-muted/40 px-4 py-3 text-sm">
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p>{agentSummary}</p>
+        </div>
+      )}
 
       {aiError && (
         <div className="text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
@@ -241,6 +402,7 @@ export default function SearchPage() {
                 results={displayResults}
                 onContact={handleContact}
                 onPass={handlePass}
+                onUndo={handleUndo}
                 onViewProfile={id => router.push(`/talent/${id}`)}
               />
             </div>
@@ -278,6 +440,18 @@ export default function SearchPage() {
             </div>
           )}
         </>
+      )}
+
+      {!isAiMode && !browseLoading && allTalent.length < browseTotal && (
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            onClick={() => setBrowsePage(page => page + 1)}
+            disabled={browseLoadingMore}
+          >
+            {browseLoadingMore ? 'Loading…' : `Load more (${allTalent.length} of ${browseTotal})`}
+          </Button>
+        </div>
       )}
 
       <OutreachModal

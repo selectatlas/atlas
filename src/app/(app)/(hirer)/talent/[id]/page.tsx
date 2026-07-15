@@ -14,6 +14,7 @@ import { ShortlistButton } from '@/components/talent/ShortlistButton'
 import { LikeButton } from '@/components/talent/LikeButton'
 import { ViewTracker } from './ViewTracker'
 import { TalentProfileDetails } from '@/components/talent/TalentProfileDetails'
+import { SafetyActions } from '@/components/safety/SafetyActions'
 import { getTalentProfile } from '@/lib/talent'
 import type { Profile, TalentSkill } from '@/types'
 
@@ -97,9 +98,15 @@ export default async function TalentProfilePage({
             )}
           </div>
 
-          <div className="flex flex-col gap-2">
-            <LikeButton talentId={profile.id} showCount={false} />
-            <ShortlistButton talentId={profile.id} />
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col items-center gap-1">
+              <LikeButton talentId={profile.id} showCount={false} />
+              <span className="text-[10px] font-medium text-muted-foreground">Like</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <ShortlistButton talentId={profile.id} />
+              <span className="text-[10px] font-medium text-muted-foreground">Save</span>
+            </div>
           </div>
         </div>
       </CoverPhoto>
@@ -179,6 +186,7 @@ export default async function TalentProfilePage({
             </div>
           </Card>
           <p className="px-1 text-xs leading-relaxed text-muted-foreground">Review their work, then send a tailored outreach message when the fit feels right.</p>
+          <SafetyActions profileId={profile.id} subjectLabel={profile.full_name} />
         </aside>
       </div>
 

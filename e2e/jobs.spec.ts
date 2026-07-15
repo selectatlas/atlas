@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test'
 import { login, seedUser, adminClient } from './helpers'
 
+function expectsEmbeddingFailure() {
+  const key = process.env.OPENAI_API_KEY ?? ''
+  return !key || /placeholder|e2e/i.test(key)
+}
+
 test.describe('two-role job journey', () => {
   test('hirer posts a job, talent applies, hirer reviews the application', async ({ browser }) => {
     const admin = adminClient()
@@ -30,7 +35,7 @@ test.describe('two-role job journey', () => {
       .eq('hirer_id', hirer.id)
       .single()
     expect(job?.title).toBe('E2E: Dancers for showcase')
-    expect(['complete', 'failed']).toContain(job?.embedding_status)
+    expect(job?.embedding_status).toBe(expectsEmbeddingFailure() ? 'failed' : 'complete')
 
     // --- Talent applies (same production API the app uses) ---
     const talentContext = await browser.newContext({ baseURL })

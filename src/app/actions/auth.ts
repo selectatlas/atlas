@@ -5,14 +5,12 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 export async function signOut() {
+  // Always clear both: a user can hold a demo cookie and a real session at once,
+  // and logout must end both.
   const cookieStore = await cookies()
-  const localDemoMode = process.env.NODE_ENV === 'development' && cookieStore.get('atlas_demo')?.value === '1'
-  if (localDemoMode) {
-    cookieStore.delete('atlas_demo')
-    cookieStore.delete('atlas_demo_role')
-  } else {
-    const supabase = await createClient()
-    await supabase.auth.signOut()
-  }
+  cookieStore.delete('atlas_demo')
+  cookieStore.delete('atlas_demo_role')
+  const supabase = await createClient()
+  await supabase.auth.signOut()
   redirect('/login')
 }

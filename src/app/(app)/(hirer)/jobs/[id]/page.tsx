@@ -28,20 +28,30 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<Job | null>(null)
   const [applications, setApplications] = useState<ApplicationRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const res = await fetch(`/api/jobs/${id}`)
-      if (cancelled) return
-      if (!res.ok) { router.push('/jobs'); return }
-      const data = await res.json()
-      if (cancelled) return
-      setJob(data.job)
-      setApplications(data.applications ?? [])
-      setLoading(false)
+      try {
+        const res = await fetch(`/api/jobs/${id}`)
+        if (cancelled) return
+        if (!res.ok) {
+          setLoadError('Unable to load this job')
+          setLoading(false)
+          return
+        }
+        const data = await res.json()
+        if (cancelled) return
+        setJob(data.job)
+        setApplications(data.applications ?? [])
+      } catch {
+        if (!cancelled) setLoadError('Unable to load this job')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
     load()
     return () => { cancelled = true }
@@ -49,8 +59,10 @@ export default function JobDetailPage() {
 
   async function toggleStatus() {
     if (!job) return
+    const closing = job.status === 'open'
+    if (closing && !window.confirm('Close this job? It will stop accepting new applications.')) return
     setToggling(true)
-    const newStatus = job.status === 'open' ? 'closed' : 'open'
+    const newStatus = closing ? 'closed' : 'open'
     const res = await fetch(`/api/jobs/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -86,13 +98,22 @@ export default function JobDetailPage() {
     )
   }
 
+  if (loadError) {
+    return (
+      <div className="py-4 space-y-4">
+        <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{loadError}</p>
+        <Button variant="outline" onClick={() => router.push('/jobs')}>Back to jobs</Button>
+      </div>
+    )
+  }
+
   if (!job) return null
 
   return (
     <div className="py-4 space-y-4 pb-8">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/jobs')}>
+        <Button variant="ghost" size="icon" onClick={() => router.push('/jobs')} aria-label="Back to jobs">
           <ArrowLeft className="size-5" />
         </Button>
         <h1 className="text-lg font-bold flex-1 min-w-0 truncate">{job.title}</h1>
@@ -102,7 +123,7 @@ export default function JobDetailPage() {
           onClick={toggleStatus}
           disabled={toggling}
         >
-          {toggling ? '...' : job.status === 'open' ? 'Open' : 'Closed'}
+          {toggling ? '...' : job.status === 'open' ? 'Close job' : 'Reopen job'}
         </Button>
       </div>
 
@@ -170,6 +191,7 @@ export default function JobDetailPage() {
                     <select
                       value={app.status}
                       disabled={updatingId === app.id}
+                      aria-label={`Status for ${talent.full_name}`}
                       onChange={e => updateApplicationStatus(app.id, e.target.value as ApplicationStatus)}
                       className="shrink-0 text-xs font-medium px-2.5 py-1.5 rounded-full border bg-transparent cursor-pointer transition-colors"
                     >

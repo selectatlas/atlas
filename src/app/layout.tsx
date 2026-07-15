@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { SITE_URL } from '@/lib/site'
 import './globals.css'
+import { PostHogAuthSync } from '@/components/analytics/PostHogAuthSync'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
     default: 'Atlas - AI Talent Discovery',
     template: '%s | Atlas',
   },
-  description: 'Find the right creative talent in seconds with AI-native search.',
+  description: 'Find the right creative talent with AI-native search.',
   alternates: {
     canonical: '/',
   },
@@ -17,12 +18,12 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: 'Atlas',
     title: 'Atlas - AI Talent Discovery',
-    description: 'Find the right creative talent in seconds with AI-native search.',
+    description: 'Find the right creative talent with AI-native search.',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Atlas - AI Talent Discovery',
-    description: 'Find the right creative talent in seconds with AI-native search.',
+    description: 'Find the right creative talent with AI-native search.',
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -43,7 +44,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <PostHogAuthSync />
+        {children}
+      </body>
     </html>
   )
 }

@@ -31,7 +31,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     .select('profiles(full_name, avatar_url)')
     .eq('thread_id', threadId)
     .neq('profile_id', user.id)
-    .single()
+    .maybeSingle()
 
   // Get messages (newest last, limited)
   const { data: messages } = await supabase

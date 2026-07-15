@@ -1,11 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   Activity,
+  Bookmark,
   BriefcaseBusiness,
   Compass,
+  Home,
   LayoutGrid,
   LogOut,
   MessageSquare,
@@ -29,8 +33,10 @@ interface NavbarProps {
 }
 
 const iconByHref: Record<string, typeof Search> = {
+  '/home': Home,
   '/search': Search,
   '/discover': Compass,
+  '/shortlists': Bookmark,
   '/activity': Activity,
   '/jobs': BriefcaseBusiness,
   '/messages': MessageSquare,
@@ -42,7 +48,14 @@ const iconByHref: Record<string, typeof Search> = {
 export function Navbar({ links, bottomLinks = [], primaryAction }: NavbarProps) {
   const pathname = usePathname()
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+  // Move the active highlight the moment a link is clicked, instead of
+  // waiting for the navigation to commit. Cleared via the render-time
+  // "derived state reset" pattern once the pathname actually changes.
+  const [optimistic, setOptimistic] = useState<{ href: string; from: string } | null>(null)
+  if (optimistic && optimistic.from !== pathname) setOptimistic(null)
+  const activePath = optimistic?.href ?? pathname
+
+  const isActive = (href: string) => activePath === href || activePath.startsWith(href + '/')
 
   const renderLink = ({ href, label }: NavLink, mobile = false) => {
     const active = isActive(href)
@@ -53,6 +66,7 @@ export function Navbar({ links, bottomLinks = [], primaryAction }: NavbarProps) 
         key={href}
         href={href}
         prefetch={true}
+        onClick={() => setOptimistic({ href, from: pathname })}
         aria-current={active ? 'page' : undefined}
         title={mobile ? label : undefined}
         className={mobile
@@ -78,7 +92,7 @@ export function Navbar({ links, bottomLinks = [], primaryAction }: NavbarProps) 
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar md:flex">
         <div className="flex h-16 items-center border-b border-sidebar-border px-5">
           <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold tracking-tight text-foreground">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-[11px] font-bold text-primary-foreground">c</span>
+            <Image src="/brand/atlas-mark.svg" alt="Atlas" width={28} height={28} className="rounded-lg" />
             Atlas
           </Link>
         </div>
@@ -120,10 +134,31 @@ export function Navbar({ links, bottomLinks = [], primaryAction }: NavbarProps) 
 
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-sidebar-border bg-background/95 px-4 backdrop-blur-md md:hidden">
         <Link href="/" className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
-          <span className="flex size-6 items-center justify-center rounded-md bg-primary text-[10px] font-bold text-primary-foreground">c</span>
+          <Image src="/brand/atlas-mark.svg" alt="Atlas" width={24} height={24} className="rounded-md" />
           Atlas
         </Link>
-        <span className="text-xs font-medium text-muted-foreground">Workspace</span>
+        <div className="flex items-center gap-1">
+          {bottomLinks.map(link => {
+            const Icon = iconByHref[link.href] ?? LayoutGrid
+            const active = isActive(link.href)
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                prefetch={true}
+                onClick={() => setOptimistic({ href: link.href, from: pathname })}
+                title={link.label}
+                aria-label={link.label}
+                aria-current={active ? 'page' : undefined}
+                className={`rounded-lg p-2 transition-colors ${
+                  active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="size-4" strokeWidth={active ? 2.2 : 1.8} />
+              </Link>
+            )
+          })}
+        </div>
       </header>
 
       <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-sidebar-border bg-background/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-md md:hidden" aria-label="Mobile navigation">

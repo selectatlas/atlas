@@ -44,7 +44,9 @@ function makeServiceClient() {
     from: vi.fn(() => ({
       select: () => ({
         in: () => ({
-          eq: () => Promise.resolve({ data: [] }),
+          eq: () => ({
+            neq: () => Promise.resolve({ data: [] }),
+          }),
         }),
       }),
     })),

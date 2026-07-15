@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ApplicationStatus, Category, JobStatus, JobWorkType, OutreachStatus } from '@/types'
-import { mirrorImageToStorage, seededCoverUrl, seededPortfolioImageUrl } from './images'
+import { mirrorImageToStorage, seededCategoryCoverUrl, seededPortfolioImageUrl } from './images'
 
 // ----------------------------------------------------------------
 // Demo world: one polished hirer (Northstar Studios) plus jobs,
@@ -21,24 +21,6 @@ export const DEMO_HIRER = {
   city: 'London',
   country: 'UK',
   bio: 'Independent production company making music videos, branded content, and short film across London. We cast dancers, actors, and creators for fast-turnaround shoots with major label and brand clients.',
-}
-
-// Served by the Next app, these intentionally replace externally hosted
-// portraits for talent most visible in the demo journey.
-export const DEMO_PROFILE_IMAGES: Record<string, string> = {
-  'priya.singh@atlas-demo.com': '/hero/01.jpg',
-  'ananya.sharma@atlas-demo.com': '/hero/12.jpg',
-  'deepika.nair@atlas-demo.com': '/hero/04.jpg',
-  'kavya.patel@atlas-demo.com': '/hero/06.jpg',
-  'riya.mehta@atlas-demo.com': '/hero/08.jpg',
-  'aisha.khan@atlas-demo.com': '/hero/13.jpg',
-  'james.morrison@atlas-demo.com': '/hero/02.jpg',
-  'marcus.cole@atlas-demo.com': '/hero/05.jpg',
-  'tom.bradley@atlas-demo.com': '/hero/07.jpg',
-  'ryan.fletcher@atlas-demo.com': '/hero/09.jpg',
-  'sophie.clarke@atlas-demo.com': '/hero/03.jpg',
-  'charlotte.kim@atlas-demo.com': '/hero/10.jpg',
-  'sam.nguyen@atlas-demo.com': '/hero/11.jpg',
 }
 
 const now = () => Date.now()
@@ -614,7 +596,7 @@ async function clearDemoWorld(supabase: SupabaseClient, hirerId: string, talentI
   }
 }
 
-export async function seedDemoWorld(supabase: SupabaseClient, ids: ProfileIdByEmail): Promise<void> {
+export async function seedDemoWorld(supabase: SupabaseClient, ids: ProfileIdByEmail, assetOrigin: string): Promise<void> {
   const hirerId = requireId(ids, DEMO_HIRER.email)
   const enrichedTalentIds = [
     ...new Set([
@@ -734,12 +716,13 @@ export async function seedDemoWorld(supabase: SupabaseClient, ids: ProfileIdByEm
 
     const coverUrl = await mirrorImageToStorage(supabase, {
       bucket: 'covers',
-      path: `${profileId}/cover.jpg`,
-      sourceUrl: seededCoverUrl(talent.coverSeed),
+      path: `${profileId}/cover-cinematic.png`,
+      sourceUrl: seededCategoryCoverUrl(assetOrigin, talent.credits[0]!.category),
     })
+    if (!coverUrl) throw new Error(`Could not create cover image in Supabase Storage for ${talent.email}`)
     const { error: headlineError } = await supabase
       .from('profiles')
-      .update({ headline: talent.headline, cover_url: coverUrl ?? seededCoverUrl(talent.coverSeed) })
+      .update({ headline: talent.headline, cover_url: coverUrl })
       .eq('id', profileId)
     if (headlineError) throw new Error(`Failed to update headline for ${talent.email}: ${headlineError.message}`)
 

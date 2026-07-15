@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SafetyActions } from '@/components/safety/SafetyActions'
 import type { Job } from '@/types'
 
 type JobWithHirer = Job & { hirer?: { full_name: string } | null }
@@ -74,6 +75,8 @@ export function JobBriefDialog({ job, matchReasons, applied, onClose, onApply }:
                 )}
                 {meta.deadlineLabel && <MetaItem icon={CalendarDays} label="Apply by" value={meta.deadlineLabel} />}
               </div>
+
+              <SafetyActions jobId={job.id} subjectLabel={job.title} />
 
               <div className="flex flex-col gap-2 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">You can review and edit your application before it is sent.</p>

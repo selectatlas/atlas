@@ -47,78 +47,96 @@ export async function getTalentProfile(id: string) {
     }
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const service = createServiceClient()
+  // Local demo bypasses Supabase Auth; use the service client so profile reads
+  // match /api/talent (which already loads seeded talent without a session).
+  const supabase = isLocalDemo ? service : await createClient()
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select(PUBLIC_PROFILE_WITH_SKILLS)
-    .eq('id', id)
-    .eq('account_type', 'talent')
-    .single()
+  let userId: string | null = null
+  let callerAccountType: string | null = null
+
+  if (isLocalDemo) {
+    callerAccountType = cookieStore.get('atlas_demo_role')?.value ?? 'talent'
+  } else {
+    // Local JWT verification - no network round-trip to the Auth server.
+    const { data: claimsData } = await supabase.auth.getClaims()
+    userId = claimsData?.claims?.sub ?? null
+    if (userId) {
+      const { data: callerProfile } = await service
+        .from('profiles')
+        .select('account_type')
+        .eq('id', userId)
+        .maybeSingle()
+      callerAccountType = callerProfile?.account_type ?? null
+    }
+  }
+
+  const [{ data: profile }, { data: attributes }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select(PUBLIC_PROFILE_WITH_SKILLS)
+      .eq('id', id)
+      .eq('account_type', 'talent')
+      .single(),
+    service.from('talent_profiles').select('*').eq('profile_id', id).maybeSingle(),
+  ])
 
   if (!profile) return null
 
-  const service = createServiceClient()
-  const [{ data: attributes }, { data: callerProfile }] = await Promise.all([
-    service.from('talent_profiles').select('*').eq('profile_id', id).maybeSingle(),
-    user ? service.from('profiles').select('account_type').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null }),
-  ])
-  let sensitivePreferences: Record<string, boolean | null> | undefined
-  if (callerProfile?.account_type === 'hirer') {
-    const { data: sensitive } = await service.from('talent_sensitive_preferences').select('preferences').eq('profile_id', id).maybeSingle()
-    sensitivePreferences = sensitive?.preferences as Record<string, boolean | null> | undefined
-  }
-
-  const { data: creditsData } = await supabase
-    .from('credits')
-    .select('*')
-    .eq('profile_id', id)
-    .order('sort_order', { ascending: true })
-    .order('start_date', { ascending: false })
-  const credits = (creditsData ?? []) as Credit[]
-
-  const { data: portfolioData } = await supabase
-    .from('portfolio_items')
-    .select('*')
-    .eq('profile_id', id)
-    .order('sort_order', { ascending: true })
-  const portfolioItems = (portfolioData ?? []) as PortfolioItem[]
-
-  let likesCount = 0
-  let viewsCount = 0
-  try {
-    const { data: stats } = await supabase
-      .from('talent_stats')
-      .select('*')
-      .eq('profile_id', id)
-      .single()
-    if (stats) {
-      likesCount = (stats as Record<string, number>).likes_count ?? 0
-      viewsCount = (stats as Record<string, number>).views_count ?? 0
-    }
-  } catch {
-    // Stats view may not exist yet
-  }
+  const visibility = (profile as { profile_visibility?: string }).profile_visibility ?? 'public'
+  const isOwner = Boolean(userId && userId === id)
+  if (visibility === 'private' && !isOwner) return null
+  if (visibility === 'members' && !isOwner && callerAccountType !== 'hirer') return null
 
   const skills = profile.talent_skills as TalentSkill[]
   const primaryCategory = skills[0]?.category ?? null
-  
-  let similarTalent: Array<{ profile: Profile & { talent_skills: TalentSkill[] }; match_score: number }> = []
-  if (primaryCategory) {
-    const { data: similar } = await supabase
-      .from('profiles')
-      .select(PUBLIC_PROFILE_WITH_SKILLS)
-      .eq('account_type', 'talent')
-      .neq('id', id)
-      .filter('talent_skills.category', 'eq', primaryCategory)
-      .limit(6)
 
-    similarTalent = (similar ?? []).map(p => ({
-      profile: p as Profile & { talent_skills: TalentSkill[] },
+  const [sensitiveResult, creditsResult, portfolioResult, statsResult, similarResult] = await Promise.all([
+    callerAccountType === 'hirer'
+      ? service.from('talent_sensitive_preferences').select('preferences').eq('profile_id', id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from('credits')
+      .select('*')
+      .eq('profile_id', id)
+      .order('sort_order', { ascending: true })
+      .order('start_date', { ascending: false }),
+    supabase
+      .from('portfolio_items')
+      .select('*')
+      .eq('profile_id', id)
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('talent_stats')
+      .select('*')
+      .eq('profile_id', id)
+      .maybeSingle(),
+    primaryCategory
+      ? supabase
+          .from('profiles')
+          .select(PUBLIC_PROFILE_WITH_SKILLS)
+          .eq('account_type', 'talent')
+          .neq('id', id)
+          .neq('profile_visibility', 'private')
+          .filter('talent_skills.category', 'eq', primaryCategory)
+          .limit(6)
+      : Promise.resolve({ data: null }),
+  ])
+
+  const sensitivePreferences = sensitiveResult.data?.preferences as Record<string, boolean | null> | undefined
+  const credits = (creditsResult.data ?? []) as Credit[]
+  const portfolioItems = (portfolioResult.data ?? []) as PortfolioItem[]
+
+  const stats = statsResult.data as Record<string, number> | null
+  const likesCount = stats?.likes_count ?? 0
+  const viewsCount = stats?.views_count ?? 0
+
+  const similarTalent = ((similarResult.data ?? []) as Array<Record<string, unknown>>)
+    .filter(p => (p as { profile_visibility?: string }).profile_visibility !== 'private')
+    .map(p => ({
+      profile: p as unknown as Profile & { talent_skills: TalentSkill[] },
       match_score: 0,
     }))
-  }
 
   return {
     profile: profile as Profile & { talent_skills: TalentSkill[] },

@@ -3,9 +3,9 @@
 import { Navbar } from './Navbar'
 
 const links = [
+  { href: '/home', label: 'Home' },
   { href: '/discover', label: 'Discover' },
   { href: '/messages', label: 'Messages' },
-  { href: '/activity', label: 'Activity' },
 ]
 
 const bottomLinks = [

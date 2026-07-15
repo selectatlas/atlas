@@ -37,7 +37,7 @@ function getMatchReasons(
     reasons.push(profile.availability ?? 'Availability listed')
   }
 
-  return reasons.length > 0 ? reasons.slice(0, 3) : ['Semantic profile match']
+  return reasons.length > 0 ? reasons.slice(0, 3) : []
 }
 
 export async function POST(request: Request) {
@@ -125,6 +125,7 @@ export async function POST(request: Request) {
     .select(PUBLIC_PROFILE_WITH_SKILLS)
     .in('id', profileIds)
     .eq('account_type', 'talent')
+    .neq('profile_visibility', 'private')
 
   if (!profiles) return Response.json({ results: [] })
 

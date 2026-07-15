@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
   const requestedRole = new URL(request.url).searchParams.get('role')
   const role = requestedRole === 'hirer' ? 'hirer' : 'talent'
-  const response = NextResponse.redirect(new URL(role === 'hirer' ? '/search' : '/discover', request.url))
+  const response = NextResponse.redirect(new URL('/home', request.url))
   response.cookies.set('atlas_demo', '1', {
     path: '/',
     maxAge: 60 * 60 * 24,

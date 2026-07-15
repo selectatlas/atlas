@@ -85,6 +85,29 @@ Only extract what is explicitly stated. Do not infer.`,
   }
 }
 
+export type AgentMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam
+export type AgentTool = OpenAI.Chat.Completions.ChatCompletionTool
+export type AgentToolChoice = OpenAI.Chat.Completions.ChatCompletionToolChoiceOption
+
+// One turn of the agentic search loop. Kept here so the OpenAI client (and its
+// credential handling) never leaves this module.
+export async function agentCompletion(
+  messages: AgentMessage[],
+  tools: AgentTool[],
+  toolChoice: AgentToolChoice = 'auto',
+): Promise<OpenAI.Chat.Completions.ChatCompletionMessage> {
+  const openai = getOpenAI()
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    temperature: 0.2,
+    max_tokens: 1500,
+    messages,
+    tools,
+    tool_choice: toolChoice,
+  })
+  return response.choices[0].message
+}
+
 export async function generateOutreachMessage(params: {
   hirerContext: string
   talentName: string

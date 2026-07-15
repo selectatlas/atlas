@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { parseJsonBody, isUuid, cleanOptionalString, badRequest } from '@/lib/validation'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
+import { getPostHogClient } from '@/lib/posthog-server'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -66,6 +67,17 @@ export async function POST(request: Request) {
     logEvent('error', 'application_insert_error', { user_id: user.id, code: error.code ?? null })
     return Response.json({ error: 'Failed to apply' }, { status: 500 })
   }
+
+  const posthog = getPostHogClient()
+  posthog.capture({
+    distinctId: user.id,
+    event: 'job_application_submitted',
+    properties: {
+      job_id,
+      has_note: Boolean(trimmedNote),
+    },
+  })
+  void posthog.flush()
 
   return Response.json({ application }, { status: 201 })
 }

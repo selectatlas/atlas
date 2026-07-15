@@ -4,15 +4,24 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { clearLocalDemoCookies } from '@/lib/demo-mode'
+import posthog from 'posthog-js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const reason = new URLSearchParams(window.location.search).get('error')
+    if (reason === 'oauth') return 'Google sign-in failed. Please try again.'
+    if (reason === 'confirm') return 'That confirmation link is invalid or has expired. Sign in below, or sign up again to receive a new link.'
+    return null
+  })
   const [loading, setLoading] = useState(false)
   const demoLoginEnabled = process.env.NODE_ENV === 'development'
 
@@ -33,8 +42,15 @@ export default function LoginPage() {
         return
       }
 
+      clearLocalDemoCookies()
       const accountType = data.user?.user_metadata?.account_type
-      router.push(accountType === 'hirer' ? '/search' : '/discover')
+      posthog.identify(data.user!.id, {
+        account_type: accountType,
+      })
+      posthog.capture('user_signed_in', {
+        account_type: accountType,
+      })
+      router.push('/home')
       router.refresh()
     } catch {
       setError('Unable to reach the sign-in service. Check your Supabase configuration and try again.')
@@ -109,6 +125,14 @@ export default function LoginPage() {
                 {loading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
+
+            <div className="my-4 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <GoogleSignInButton onError={setError} />
 
             {demoLoginEnabled && (
               <div className="mt-5 border-t border-border/70 pt-5">

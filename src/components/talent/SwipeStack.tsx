@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import type { Profile, TalentSkill } from '@/types'
+import { nameInitial } from '@/lib/display'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import { Badge } from '@/components/ui/badge'
 
@@ -18,6 +19,7 @@ interface SwipeStackProps {
   results: TalentResult[]
   onContact: (talent: Profile & { talent_skills: TalentSkill[] }) => void
   onPass: (talentId: string) => void
+  onUndo?: (talentId: string) => void
   onViewProfile: (talentId: string) => void
 }
 
@@ -31,7 +33,7 @@ const VELOCITY_THRESHOLD = 0.3 // px/ms — dismiss if velocity exceeds this
  * - Multi-touch protection: ignore additional touch points after drag begins
  */
 
-export function SwipeStack({ results, onContact, onPass, onViewProfile }: SwipeStackProps) {
+export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }: SwipeStackProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -68,10 +70,10 @@ export function SwipeStack({ results, onContact, onPass, onViewProfile }: SwipeS
 
   function undo() {
     if (!lastAction) return
-    if (currentIndex > 0) {
-      setCurrentIndex(i => i - 1)
-      setLastAction(null)
-    }
+    onUndo?.(lastAction.talentId)
+    setCurrentIndex(i => Math.max(0, i - 1))
+    setDragX(0)
+    setLastAction(null)
   }
 
   function handleDragStart(e: React.PointerEvent) {
@@ -185,6 +187,7 @@ export function SwipeStack({ results, onContact, onPass, onViewProfile }: SwipeS
       <div className="absolute -bottom-16 left-0 right-0 flex items-center justify-center gap-6 z-10">
         <button
           onClick={() => { setLastAction({ type: 'pass', talentId: current.profile.id, talent: current.profile }); onPass(current.profile.id); advance() }}
+          aria-label="Pass"
           className="w-14 h-14 bg-muted border rounded-full flex items-center justify-center text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground transition-colors shadow-lg text-xl"
         >
           ✕
@@ -192,6 +195,7 @@ export function SwipeStack({ results, onContact, onPass, onViewProfile }: SwipeS
         {lastAction && (
           <button
             onClick={undo}
+            aria-label="Undo last action"
             className="w-10 h-10 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center text-amber-600 hover:bg-amber-100 transition-colors text-sm"
             title="Undo last action"
           >
@@ -202,6 +206,7 @@ export function SwipeStack({ results, onContact, onPass, onViewProfile }: SwipeS
         )}
         <button
           onClick={() => onViewProfile(current.profile.id)}
+          aria-label="View profile"
           className="w-10 h-10 bg-card border rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-sm"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -211,6 +216,7 @@ export function SwipeStack({ results, onContact, onPass, onViewProfile }: SwipeS
         </button>
         <button
           onClick={() => { setLastAction({ type: 'contact', talentId: current.profile.id, talent: current.profile }); onContact(current.profile); advance() }}
+          aria-label="Contact"
           className="w-14 h-14 bg-accent hover:bg-accent/80 rounded-full flex items-center justify-center text-accent-foreground transition-colors shadow-lg text-xl"
         >
           ✓
@@ -219,7 +225,7 @@ export function SwipeStack({ results, onContact, onPass, onViewProfile }: SwipeS
 
       {/* Progress */}
       <div className="absolute top-3 right-3 z-20 bg-background/70 backdrop-blur-sm text-muted-foreground text-xs px-2.5 py-1 rounded-full">
-        {currentIndex + 1} of {results.length} reviewed
+        Card {currentIndex + 1} of {results.length}
       </div>
     </div>
   )
@@ -242,7 +248,7 @@ function CardContent({ result }: { result: TalentResult }) {
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-5xl font-bold text-muted-foreground/30">
-            {profile.full_name[0]}
+            {nameInitial(profile.full_name)}
           </div>
         )}
         <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-card to-transparent" />

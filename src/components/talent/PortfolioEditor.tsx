@@ -46,6 +46,7 @@ export function PortfolioEditor({ profileId, items, onUpdate, onError }: Portfol
   }
 
   async function deleteItem(itemId: string) {
+    if (!window.confirm('Delete this portfolio item?')) return
     const supabase = createClient()
     const { error: err } = await supabase.from('portfolio_items').delete().eq('id', itemId)
     if (err) { onError(err.message); return }

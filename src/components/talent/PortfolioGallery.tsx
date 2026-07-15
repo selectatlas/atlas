@@ -1,6 +1,7 @@
 import NextImage from 'next/image'
 import { ImageIcon, Link2, Play } from 'lucide-react'
 import type { PortfolioItem } from '@/types'
+import { portfolioImageAlt } from '@/lib/display'
 import { Card } from '@/components/ui/card'
 
 interface PortfolioGalleryProps {
@@ -34,7 +35,7 @@ export function PortfolioGallery({ items }: PortfolioGalleryProps) {
                 {item.thumbnail_url ? (
                   <NextImage
                     src={item.thumbnail_url}
-                    alt={item.title ?? ''}
+                    alt={portfolioImageAlt(item)}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                     sizes="180px"

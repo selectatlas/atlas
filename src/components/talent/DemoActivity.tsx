@@ -25,8 +25,8 @@ export function DemoActivity() {
   return (
     <div className="space-y-8 py-2">
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Your progress</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Dashboard</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Home</h1>
         <p className="mt-1 text-sm text-muted-foreground">Keep track of applications and responses as opportunities move forward.</p>
       </div>
 

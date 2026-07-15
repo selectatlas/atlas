@@ -18,18 +18,18 @@
 
 ## Audit snapshot — 14 July 2026
 
-- `npm test`: **passed**, 6 files and 25 tests.
-- `npm run lint`: **passed with 5 warnings**; two unoptimised `<img>` usages and three unused exports.
+- `npm test`: **passed**, 26 files and 155 tests.
+- `npm run lint`: **passes** with `--max-warnings 0`.
 - `npm run build`: **passed** with Next.js 16.2.7.
-- `npm audit --omit=dev`: **1 high and 2 moderate findings**. The high finding comes through the `shadcn` CLI being installed as a production dependency; Next.js currently brings an affected PostCSS version.
-- Production environment variables used by the app: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`. The last two are missing from `.env.example`.
-- No deployment configuration, CI workflow, error tracking, analytics, legal pages, account deletion, abuse reporting, rate limiter, CAPTCHA, or production runbook was found.
+- `npm audit --omit=dev`: **no unresolved high-severity production advisories** (`shadcn` is in devDependencies).
+- Production environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, and optional `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`. Documented in `.env.example`.
+- CI (`.github/workflows/ci.yml`), PostHog wiring, `/privacy` and `/terms`, account export/delete APIs, blocks/reports APIs, and `src/lib/rate-limit.ts` are present. Sentry is not yet wired.
 
 ## Execution playbook — follow these gates in order
 
 The safest first release is an **invite-only beta**, not an unrestricted public launch. Finish each gate before beginning the next one. Do not put real customer data into Atlas until Gate 1 passes, and do not invite customers until Gate 8 passes.
 
-### [ ] Gate 1 — Make customer data safe — 🤖 Agent — 2–3 days
+### [x] Gate 1 — Make customer data safe — 🤖 Agent — 2–3 days
 
 Complete detailed steps **1–3** below as one workstream: create a reproducible Supabase migration history, repair messaging/RLS, stop exposing private profile fields, and remove authenticated-page caching from the service worker.
 
@@ -209,7 +209,7 @@ In **Supabase → Authentication → URL Configuration**, set the final Site URL
 
 **You’ll know it worked when:** a new external email address receives confirmation and password-reset messages in the inbox, both links land on the production domain, and an unlisted redirect URL is rejected.
 
-### [ ] 🤖 17. Add error monitoring, structured logs, health checks, and product analytics — 4–6 hours *(structured logs and the `/api/health` endpoint are done; Sentry + PostHog wiring waits on the Gate 4 accounts)*
+### [ ] 🤖 17. Add error monitoring, structured logs, health checks, and product analytics — 4–6 hours *(structured logs and `/api/health` are done; PostHog is wired on selected mutation routes; Sentry still waits on Gate 4)*
 
 Capture server and client exceptions in Sentry without sending message content, emails, API keys, or full AI prompts. Add a lightweight health endpoint that checks app health without exposing secrets. Track a small event set in PostHog: signup started/completed, profile completed, search performed, talent contacted, job posted, application submitted, and message sent. Respect consent requirements and document analytics in the privacy policy.
 

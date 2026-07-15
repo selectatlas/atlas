@@ -18,21 +18,26 @@ export default function ForgotPasswordPage() {
     setError(null)
     setLoading(true)
 
-    const supabase = createClient()
-    const siteUrl = typeof window !== 'undefined'
-      ? `${window.location.protocol}//${window.location.host}`
-      : ''
+    try {
+      const supabase = createClient()
+      const siteUrl = typeof window !== 'undefined'
+        ? `${window.location.protocol}//${window.location.host}`
+        : ''
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl}/reset-password`,
-    })
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${siteUrl}/reset-password`,
+      })
 
-    if (error) {
-      setError(error.message)
-    } else {
-      setSent(true)
+      if (error) {
+        setError(error.message)
+      } else {
+        setSent(true)
+      }
+    } catch {
+      setError('Unable to send reset email. Please try again.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (

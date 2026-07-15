@@ -16,6 +16,10 @@ import {
 
 const stackUp = await isStackRunning()
 
+if (process.env.CI === 'true' && !stackUp) {
+  throw new Error('Supabase stack is required in CI but is not running or credentialed')
+}
+
 describe.skipIf(!stackUp)('Row-level security (real database)', () => {
   let admin: SupabaseClient
   let anon: SupabaseClient
@@ -91,6 +95,75 @@ describe.skipIf(!stackUp)('Row-level security (real database)', () => {
         .eq('id', talent2.id)
         .select('id')
       expect(data ?? []).toHaveLength(0)
+    })
+
+    it('talent can update own profile_visibility', async () => {
+      const { error } = await talent.client
+        .from('profiles')
+        .update({ profile_visibility: 'private' })
+        .eq('id', talent.id)
+      expect(error).toBeNull()
+
+      const { data } = await talent.client
+        .from('profiles')
+        .select('profile_visibility')
+        .eq('id', talent.id)
+        .single()
+      expect(data?.profile_visibility).toBe('private')
+
+      await talent.client
+        .from('profiles')
+        .update({ profile_visibility: 'public' })
+        .eq('id', talent.id)
+    })
+
+    it('users can only read and write their own notification preferences', async () => {
+      const { error: upsertError } = await talent.client
+        .from('notification_preferences')
+        .upsert({
+          profile_id: talent.id,
+          preferences: { messages: { in_app: true, email: false } },
+        })
+      expect(upsertError).toBeNull()
+
+      const { data: own, error: ownError } = await talent.client
+        .from('notification_preferences')
+        .select('preferences')
+        .eq('profile_id', talent.id)
+        .single()
+      expect(ownError).toBeNull()
+      expect(own).toBeTruthy()
+
+      const { data: other } = await hirer.client
+        .from('notification_preferences')
+        .select('preferences')
+        .eq('profile_id', talent.id)
+      expect(other ?? []).toHaveLength(0)
+    })
+
+    it('talent cannot create hirer workspace defaults', async () => {
+      const { error } = await talent.client
+        .from('hirer_workspace_defaults')
+        .upsert({
+          profile_id: talent.id,
+          job_defaults: { location: 'London' },
+          outreach_defaults: {},
+        })
+      expect(error).not.toBeNull()
+    })
+
+    it('private talent are excluded from search_talent_filtered', async () => {
+      await admin.from('profiles').update({ profile_visibility: 'private' }).eq('id', talent.id)
+      const { data, error } = await admin.rpc('search_talent_filtered', {
+        filters: {},
+        result_limit: 48,
+        result_offset: 0,
+        result_sort: 'newest',
+      })
+      expect(error).toBeNull()
+      const ids = ((data ?? []) as Array<{ profile_id: string }>).map(row => row.profile_id)
+      expect(ids).not.toContain(talent.id)
+      await admin.from('profiles').update({ profile_visibility: 'public' }).eq('id', talent.id)
     })
   })
 

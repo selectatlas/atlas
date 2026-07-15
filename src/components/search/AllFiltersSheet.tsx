@@ -45,7 +45,10 @@ export function AllFiltersSheet({ open, onOpenChange, filters, onApply, previewC
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={next => {
+      if (next) setDraft(filters)
+      onOpenChange(next)
+    }}>
       <DialogContent className="!inset-y-0 !left-auto !right-0 !top-0 !h-dvh !max-w-xl !translate-x-0 !translate-y-0 !grid-rows-[auto_minmax(0,1fr)_auto] !rounded-none !p-0 sm:!max-w-xl" showCloseButton={false}>
         <DialogHeader className="flex-row items-center justify-between border-b border-border px-5 py-4"><DialogTitle className="text-lg">All filters</DialogTitle><Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Close</Button></DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">

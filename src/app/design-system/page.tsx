@@ -315,7 +315,7 @@ export default function DesignSystemPage() {
                           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Sparkles className="size-4" /></span>
                           <div>
                             <p className="font-medium">Search understood</p>
-                            <p className="mt-1 text-sm text-muted-foreground">We found 18 profiles matching contemporary, aerial, and London.</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Fixture copy: example search result count for the design system reference.</p>
                           </div>
                         </div>
                         <Button variant="outline" size="sm">Refine search</Button>

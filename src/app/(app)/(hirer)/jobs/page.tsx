@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { BriefcaseBusiness, FilePlus2, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { getSession } from '@/lib/auth'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,14 +9,13 @@ import { Button } from '@/components/ui/button'
 import type { Job } from '@/types'
 
 export default async function JobsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [supabase, { userId }] = await Promise.all([createClient(), getSession()])
 
-  const { data: jobs } = user
+  const { data: jobs } = userId
     ? await supabase
         .from('jobs')
         .select('*')
-        .eq('hirer_id', user.id)
+        .eq('hirer_id', userId)
         .order('created_at', { ascending: false })
     : { data: null }
 

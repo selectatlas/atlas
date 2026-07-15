@@ -3,6 +3,7 @@ import { embedJob } from '@/lib/job-embedding'
 import { parseJsonBody, cleanString, cleanOptionalString, cleanStringArray, badRequest } from '@/lib/validation'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
+import { getPostHogClient } from '@/lib/posthog-server'
 
 const CATEGORIES = ['dancer', 'actor', 'photographer_videographer', 'content_creator'] as const
 
@@ -71,6 +72,19 @@ export async function POST(request: Request) {
   // it. On failure the job still posts - status is recorded and retryable
   // via POST /api/jobs/embeddings.
   const embedding = await embedJob(job)
+
+  const posthog = getPostHogClient()
+  posthog.capture({
+    distinctId: user.id,
+    event: 'job_created',
+    properties: {
+      job_id: job.id,
+      category: job.category,
+      has_budget: Boolean(job.budget),
+      skills_count: skillsRequired?.length ?? 0,
+    },
+  })
+  void posthog.flush()
 
   return Response.json({ job: { ...job, embedding_status: embedding.status } }, { status: 201 })
 }

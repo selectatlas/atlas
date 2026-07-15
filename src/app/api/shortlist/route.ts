@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { parseJsonBody, isUuid, badRequest } from '@/lib/validation'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
+import { getPostHogClient } from '@/lib/posthog-server'
 
 // GET /api/shortlist — list my shortlisted talent IDs
 export async function GET() {
@@ -59,12 +60,20 @@ export async function POST(request: Request) {
     .eq('talent_id', talent_id)
     .maybeSingle()
 
+  const posthog = getPostHogClient()
+
   if (existing) {
     // Remove
     await supabase
       .from('shortlists')
       .delete()
       .eq('id', existing.id)
+    posthog.capture({
+      distinctId: user.id,
+      event: 'talent_unshortlisted',
+      properties: { talent_id },
+    })
+    void posthog.flush()
     return Response.json({ shortlisted: false })
   }
 
@@ -78,5 +87,11 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Failed to shortlist' }, { status: 500 })
   }
 
+  posthog.capture({
+    distinctId: user.id,
+    event: 'talent_shortlisted',
+    properties: { talent_id },
+  })
+  void posthog.flush()
   return Response.json({ shortlisted: true })
 }

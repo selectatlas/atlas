@@ -3,7 +3,7 @@ import { login, seedUser, adminClient } from './helpers'
 
 test.describe('role and session isolation', () => {
   test('unauthenticated visitors are redirected to login', async ({ page }) => {
-    for (const path of ['/messages', '/search', '/discover', '/jobs', '/activity']) {
+    for (const path of ['/messages', '/search', '/discover', '/jobs', '/activity', '/profile', '/settings']) {
       await page.goto(path)
       await page.waitForURL(/\/login/)
     }
@@ -44,16 +44,38 @@ test.describe('role and session isolation', () => {
     const hirer = await seedUser(admin, 'hirer', 'isolation-hirer')
     await login(page, hirer.email)
 
-    for (const path of ['/discover', '/profile']) {
-      await page.goto(path)
-      await page.waitForURL(/\/search/)
-    }
+    await page.goto('/discover')
+    await page.waitForURL(/\/search/)
+
+    // Shared account surfaces remain available to hirers
+    await page.goto('/profile')
+    await expect(page).toHaveURL(/\/profile/)
+    await expect(page.getByRole('heading', { name: 'My Profile' })).toBeVisible()
+
+    await page.goto('/settings')
+    await expect(page).toHaveURL(/\/settings/)
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
 
     // A hirer cannot apply to jobs through the API either
     const response = await page.request.post('/api/applications', {
       data: { job_id: '11111111-1111-4111-8111-111111111111' },
     })
     expect(response.status()).toBe(403)
+  })
+
+  test('talent can open shared profile and settings', async ({ page }) => {
+    const admin = adminClient()
+    const talent = await seedUser(admin, 'talent', 'shared-surfaces-talent')
+    await login(page, talent.email)
+
+    await page.goto('/profile')
+    await expect(page).toHaveURL(/\/profile/)
+    await expect(page.getByRole('heading', { name: 'My Profile' })).toBeVisible()
+
+    await page.goto('/settings')
+    await expect(page).toHaveURL(/\/settings/)
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Discoverability' })).toBeVisible()
   })
 
   test('malformed and abusive API payloads fail safely', async ({ page }) => {

@@ -4,6 +4,7 @@ import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import { parseJsonBody, isUuid, cleanString, cleanOptionalString, badRequest } from '@/lib/validation'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
+import { getPostHogClient } from '@/lib/posthog-server'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -55,7 +56,38 @@ export async function POST(request: Request) {
       logEvent('error', 'outreach_insert_error', { user_id: user.id, code: error.code ?? null })
       return Response.json({ error: 'Failed to send outreach' }, { status: 500 })
     }
-    return Response.json({ success: true })
+
+    // Mirror outreach into the direct-message thread so inbox and thread views stay in sync.
+    let threadId: string | null = null
+    const { data: createdThreadId, error: threadError } = await supabase.rpc('create_or_get_thread', {
+      other_profile_id: talent_id,
+    })
+    if (threadError || !createdThreadId) {
+      logEvent('error', 'outreach_thread_error', {
+        user_id: user.id,
+        code: threadError?.code ?? null,
+      })
+    } else {
+      threadId = createdThreadId as string
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert({ thread_id: threadId, sender_id: user.id, content: message })
+      if (messageError) {
+        logEvent('error', 'outreach_message_mirror_error', {
+          user_id: user.id,
+          code: messageError.code ?? null,
+        })
+      }
+    }
+
+    const posthog = getPostHogClient()
+    posthog.capture({
+      distinctId: user.id,
+      event: 'outreach_message_sent',
+      properties: { talent_id, has_thread: Boolean(threadId) },
+    })
+    void posthog.flush()
+    return Response.json({ success: true, thread_id: threadId })
   }
 
   // Generate: rate limit + daily AI quota BEFORE the OpenAI call
@@ -75,6 +107,17 @@ export async function POST(request: Request) {
       talentSkills: skills,
       talentBio: talent.bio ?? '',
     })
+    const posthog = getPostHogClient()
+    posthog.capture({
+      distinctId: user.id,
+      event: 'outreach_message_generated',
+      properties: {
+        talent_id,
+        talent_skills_count: skills.length,
+        has_hirer_context: Boolean(hirerContext.value),
+      },
+    })
+    void posthog.flush()
     return Response.json({ message: generated })
   } catch (err) {
     logEvent('error', 'outreach_openai_error', {

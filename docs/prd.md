@@ -46,7 +46,7 @@ The talent magic moment is the reciprocal experience: after a short onboarding f
 
 The repository already contains a useful P0 foundation: Next.js App Router, Supabase auth/database/storage/pgvector, OpenAI search and outreach helpers, hirer and talent layouts, talent search, swipe/list modes, profiles, jobs, applications, outreach, direct messages, shortlists, activity, PWA assets, and a Atlas token system in `docs/design.md`.
 
-The main gaps are not a lack of isolated screens. They are experience-level gaps: onboarding and role context, a coherent home workspace, visible match explanations, richer evidence and profile structure, persistent relationship state, saved searches and alerts, community/people/company discovery, notification orchestration, and consistent states across the product. Existing routes and database tables should be extended through additive migrations rather than discarded.
+The main gaps are not a lack of isolated screens. They are experience-level gaps: onboarding and role context, a coherent home workspace, richer evidence and profile structure, persistent relationship state, saved searches and alerts, community/people/company discovery, notification orchestration, and consistent states across the product. AI search already returns `match_reasons` chips when structured signals exist; improving reason coverage for weak vector hits remains incremental work. Existing routes and database tables should be extended through additive migrations rather than discarded.
 
 ## 2. Technical Architecture
 
@@ -83,12 +83,12 @@ The current app is server-rendered where possible and uses client components for
 | Storage | Supabase Storage | Store avatars, cover images, portfolio media, and attachments in private or public buckets according to visibility rules |
 | AI | OpenAI embeddings and LLM | Use server-side query parsing, structured output, embeddings, drafting, summarisation, and profile improvement suggestions |
 | Hosting | Vercel | Deploy the Next.js app with preview environments and production environment variables |
-| PWA | Web manifest and service worker | Keep installability and offline shell support; do not promise offline search or messaging |
+| PWA | Web manifest and service worker | Installability via manifest; `public/sw.js` retires legacy workers only (no offline shell) |
 
 ### Stack Integration Guide
 
 1. Keep `src/lib/supabase/server.ts` as the only server-side session entry point and `src/lib/supabase/client.ts` for browser usage.
-2. Add request schemas in a shared `src/lib/validation/` directory using `zod`; parse body, query, and route parameters before database calls.
+2. Add request validation in `src/lib/validation.ts`; parse body, query, and route parameters before database calls.
 3. Keep OpenAI calls in `src/lib/openai.ts` or feature-specific server helpers. Use structured JSON output for search intent and never trust model-generated IDs or permissions.
 4. Use the user-scoped Supabase client for user-visible reads and writes. Use the service client only for embedding generation, indexing jobs, and controlled server-side operations.
 5. Add migrations in `supabase/migrations/` in dependency order. Update `src/types/index.ts` after each migration and keep generated database types if the project adopts them.
@@ -100,12 +100,12 @@ Required environment variables:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 SUPABASE_SERVICE_ROLE_KEY
 OPENAI_API_KEY
-NEXT_PUBLIC_APP_URL
-NEXT_PUBLIC_POSTHOG_KEY          # when analytics is enabled
-NEXT_PUBLIC_POSTHOG_HOST         # when analytics is enabled
+NEXT_PUBLIC_SITE_URL
+NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN   # when analytics is enabled
+NEXT_PUBLIC_POSTHOG_HOST            # when analytics is enabled
 RESEND_API_KEY                   # when transactional email is enabled
 SENTRY_DSN                       # when error tracking is enabled
 ```
@@ -145,8 +145,7 @@ atlas/
 │   └── types/                    # Shared domain and API types
 ├── supabase/
 │   ├── migrations/               # Ordered additive schema changes
-│   ├── schema.sql                # Reference schema for new environments
-│   └── functions.sql             # Search/ranking database functions
+│   └── migrations/               # Canonical database source of truth
 ├── public/                       # PWA assets and static media
 ├── docs/
 │   ├── design.md                 # Visual source of truth
@@ -338,17 +337,13 @@ Keep the current one-click `shortlists` table compatible, then migrate to named 
 
 ### API Design Philosophy
 
-Use REST-style route handlers under `/api` with JSON responses. Supabase session cookies provide authentication; the server derives the current profile and account type. All errors use a stable shape:
+Use REST-style route handlers under `/api` with JSON responses. Supabase session cookies provide authentication; the server derives the current profile and account type. Validation and auth errors return a flat JSON shape:
 
 ```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "A readable explanation",
-    "fields": { "title": "Title is required" }
-  }
-}
+{ "error": "A readable explanation" }
 ```
+
+Field-level validation failures use the same shape with a specific message (for example `"query is required (max 500 characters)"`). Structured `{ code, message, fields }` envelopes are not used in the current API.
 
 List endpoints return `{ data, nextCursor, total }` where practical. Use cursor pagination for feed, jobs, people, messages, notifications, and profile results; use page numbers only where a stable page count is meaningful. Never return private fields through a public list endpoint.
 
@@ -1203,7 +1198,7 @@ These items may be supported by the data model later but are not required for th
 - A fully self-serve moderation/admin console; store moderation primitives and operate manually until volume requires tooling.
 - Algorithmic feed ranking based on opaque engagement optimisation; begin with deterministic, explainable ordering.
 - Large events, courses, and editorial catalogues without committed content supply.
-- Broad category expansion beyond the initial dancer, actor, and content creator taxonomy until the matching experience is reliable.
+- Broad category expansion beyond the initial dancer, actor, photographer/videographer, and content creator taxonomy until the matching experience is reliable.
 
 ## 13. Open Questions
 

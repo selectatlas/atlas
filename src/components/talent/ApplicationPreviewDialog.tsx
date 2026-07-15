@@ -24,6 +24,9 @@ export function ApplicationPreviewDialog({ job, profile, note, submitting, error
   return (
     <Dialog open={Boolean(job)} onOpenChange={open => { if (!open) onClose() }}>
       <DialogContent className="max-w-lg">
+        {job && !profile && (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading your profile...</div>
+        )}
         {job && profile && (
           <>
             <DialogHeader className="pr-8">

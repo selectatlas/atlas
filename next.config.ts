@@ -14,7 +14,7 @@ const contentSecurityPolicy = [
   // Next.js requires inline scripts for hydration; dev additionally needs eval.
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://randomuser.me ${supabaseOrigin}`.trim(),
+  `img-src 'self' data: blob: ${supabaseOrigin}`.trim(),
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin} ${supabaseWsOrigin}`.trim(),
   "object-src 'none'",
@@ -38,9 +38,12 @@ const NOINDEX_PATHS = [
   '/search',
   '/discover',
   '/profile',
+  '/settings',
   '/messages',
+  '/home',
   '/activity',
   '/jobs',
+  '/shortlists',
   '/outreach',
   '/talent',
   '/design-system',
@@ -51,9 +54,25 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/array/:path*',
+        destination: 'https://us-assets.i.posthog.com/array/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
+      },
+    ]
+  },
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'randomuser.me' },
       // Supabase storage (avatars/covers). Hostname derived from the project URL.
       ...(supabaseOrigin.startsWith('https://')
         ? [{ protocol: 'https' as const, hostname: new URL(supabaseOrigin).hostname }]

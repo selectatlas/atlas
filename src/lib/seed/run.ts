@@ -2,8 +2,8 @@ import * as dotenv from 'dotenv'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { SEED_PROFILES } from './data'
-import { DEMO_HIRER, DEMO_PASSWORD, DEMO_PROFILE_IMAGES, seedDemoWorld } from './demo-world'
-import { mirrorImageToStorage } from './images'
+import { DEMO_HIRER, DEMO_PASSWORD, seedDemoWorld } from './demo-world'
+import { mirrorImageToStorage, seededCategoryCoverUrl, seededPortraitUrl } from './images'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
@@ -17,6 +17,7 @@ if (!supabaseUrl || !serviceRoleKey) {
 
 const RESET = process.argv.includes('--reset')
 const RESET_ONLY = process.argv.includes('--reset-only')
+const REFRESH_MEDIA = process.argv.includes('--refresh-media')
 const DEMO_EMAIL_DOMAIN = '@atlas-demo.com'
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -71,20 +72,54 @@ async function upsertFilterData(profileId: string, profile: (typeof SEED_PROFILE
   return supabase.from('talent_profiles').upsert({ profile_id: profileId, ...filterData(profile) }, { onConflict: 'profile_id' })
 }
 
-// External source images are mirrored into the Supabase avatars bucket so the
-// app never depends on third-party image hosts at demo time.
-async function ensureStorageAvatar(profileId: string, sourceUrl: string): Promise<void> {
-  const { data: current } = await supabase.from('profiles').select('avatar_url').eq('id', profileId).single()
-  if (current?.avatar_url?.includes('/storage/v1/object/public/avatars/')) return
+// Every seeded image is persisted in Supabase Storage. The source URLs are
+// used only while seeding; they are never saved on a profile.
+async function ensureStorageImage({
+  profileId,
+  bucket,
+  path,
+  sourceUrl,
+  profileField,
+}: {
+  profileId: string
+  bucket: 'avatars' | 'covers'
+  path: string
+  sourceUrl: string
+  profileField: 'avatar_url' | 'cover_url'
+}): Promise<void> {
+  const { data: current } = await supabase.from('profiles').select('avatar_url, cover_url').eq('id', profileId).single()
+  const currentUrl = current?.[profileField]
+  if (!REFRESH_MEDIA && currentUrl?.includes(`/storage/v1/object/public/${bucket}/`)) return
 
   const mirrored = await mirrorImageToStorage(supabase, {
-    bucket: 'avatars',
-    path: `${profileId}/avatar.jpg`,
+    bucket,
+    path,
     sourceUrl,
   })
-  if (mirrored) {
-    await supabase.from('profiles').update({ avatar_url: mirrored }).eq('id', profileId)
-  }
+  if (!mirrored) throw new Error(`Could not create ${profileField} in Supabase Storage`)
+
+  const { error } = await supabase.from('profiles').update({ [profileField]: mirrored }).eq('id', profileId)
+  if (error) throw new Error(`Could not save ${profileField}: ${error.message}`)
+}
+
+async function ensureStorageAvatar(profileId: string, sourceUrl: string): Promise<void> {
+  await ensureStorageImage({
+    profileId,
+    bucket: 'avatars',
+    path: `${profileId}/avatar-cinematic-v4.png`,
+    sourceUrl,
+    profileField: 'avatar_url',
+  })
+}
+
+async function ensureStorageCover(profileId: string, category: (typeof SEED_PROFILES)[number]['skills'][number]['category']): Promise<void> {
+  await ensureStorageImage({
+    profileId,
+    bucket: 'covers',
+    path: `${profileId}/cover-cinematic.png`,
+    sourceUrl: seededCategoryCoverUrl(supabaseUrl!, category),
+    profileField: 'cover_url',
+  })
 }
 
 // Database cascades handle table rows; storage objects need explicit cleanup.
@@ -163,8 +198,13 @@ async function seedTalent(idsByEmail: Map<string, string>): Promise<number> {
     idsByEmail.set(profile.email, user.id)
 
     if (user.existed) {
-      const { error: attributesError } = await upsertFilterData(user.id, profile)
-      await ensureStorageAvatar(user.id, profile.avatar_url)
+      const [{ error: attributesError }] = await Promise.all([
+        upsertFilterData(user.id, profile),
+        Promise.all([
+          ensureStorageAvatar(user.id, seededPortraitUrl(supabaseUrl!, profile.email)),
+          ensureStorageCover(user.id, profile.skills[0]!.category),
+        ]),
+      ])
       console.log(attributesError ? `already exists; filter data FAILED: ${attributesError.message}` : 'already exists; filter data updated')
       if (attributesError) failed++
       skipped++
@@ -215,7 +255,10 @@ async function seedTalent(idsByEmail: Map<string, string>): Promise<number> {
       continue
     }
 
-    await ensureStorageAvatar(user.id, profile.avatar_url)
+    await Promise.all([
+      ensureStorageAvatar(user.id, seededPortraitUrl(supabaseUrl!, profile.email)),
+      ensureStorageCover(user.id, profile.skills[0]!.category),
+    ])
 
     console.log('✓')
     created++
@@ -223,25 +266,6 @@ async function seedTalent(idsByEmail: Map<string, string>): Promise<number> {
 
   console.log(`\nTalent done. Created: ${created}  Skipped: ${skipped}  Failed: ${failed}`)
   return failed
-}
-
-async function assignDemoPortraits(idsByEmail: Map<string, string>): Promise<void> {
-  const updates = Object.entries(DEMO_PROFILE_IMAGES).map(([email, avatar_url]) => ({
-    id: idsByEmail.get(email),
-    avatar_url,
-  }))
-  if (updates.some(update => !update.id)) {
-    throw new Error('Could not assign demo portraits because a referenced talent profile is missing')
-  }
-
-  const results = await Promise.all(
-    updates.map(({ id, avatar_url }) =>
-      supabase.from('profiles').update({ avatar_url }).eq('id', id!)
-    )
-  )
-  const failed = results.find(result => result.error)?.error
-  if (failed) throw new Error(`Failed to assign generated demo portraits: ${failed.message}`)
-  console.log(`  Generated portraits assigned: ${updates.length}`)
 }
 
 async function seedHirer(idsByEmail: Map<string, string>): Promise<boolean> {
@@ -284,11 +308,9 @@ async function seed() {
     process.exit(1)
   }
 
-  await assignDemoPortraits(idsByEmail)
-
   // The demo world clears and recreates everything scoped to the demo hirer
   // on every run, so re-running the seed always yields fresh relative dates.
-  await seedDemoWorld(supabase, idsByEmail)
+  await seedDemoWorld(supabase, idsByEmail, supabaseUrl!)
 
   console.log('\nDone. Log in as:')
   console.log(`  Hirer:  ${DEMO_HIRER.email} / ${DEMO_PASSWORD}`)

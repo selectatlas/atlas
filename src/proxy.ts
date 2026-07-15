@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export default async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   if (process.env.NODE_ENV === 'development' && request.nextUrl.pathname === '/api/demo-login') {
@@ -17,7 +17,19 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const isPublicLandingRoute = pathname === '/'
+  if (process.env.NODE_ENV === 'production' && pathname === '/design-system') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    return NextResponse.redirect(url)
+  }
+
+  // OAuth callback: the user has no session yet — the route handler exchanges
+  // the code for one. The handler rate-limits itself and rejects bad codes.
+  if (pathname === '/auth/callback') {
+    return NextResponse.next()
+  }
+
+  const isPublicLandingRoute = pathname === '/' || pathname === '/terms' || pathname === '/privacy'
   const isAuthRoute =
     pathname === '/login' ||
     pathname === '/signup' ||
@@ -55,11 +67,15 @@ export default async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // getClaims() verifies the JWT locally against the project's public keys
+  // (asymmetric signing), so there is no network round-trip to the Auth
+  // server on every navigation - unlike getUser().
+  const { data } = await supabase.auth.getClaims()
+  const claims = data?.claims
 
   // Redirect unauthenticated users to login (except auth routes).
   // API calls get a JSON 401 instead of an HTML redirect.
-  if (!user && !isAuthRoute) {
+  if (!claims && !isAuthRoute) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -69,19 +85,19 @@ export default async function middleware(request: NextRequest) {
   }
 
   // Redirect authenticated users away from auth pages
-  if (user && isAuthRoute) {
-    const accountType = user.user_metadata?.account_type
+  if (claims && isAuthRoute) {
+    const accountType = (claims.user_metadata as { account_type?: string } | undefined)?.account_type
     const url = request.nextUrl.clone()
-    url.pathname = accountType === 'hirer' ? '/search' : '/discover'
+    url.pathname = '/home'
     return NextResponse.redirect(url)
   }
 
   // Role-based route protection
-  if (user) {
-    const accountType = user.user_metadata?.account_type
-    const hirerOnlyPrefixes = ['/search', '/jobs', '/outreach', '/talent']
-    // '/activity' and '/messages' are shared surfaces — both roles have them in their nav
-    const talentOnlyPrefixes = ['/discover', '/profile']
+  if (claims) {
+    const accountType = (claims.user_metadata as { account_type?: string } | undefined)?.account_type
+    const hirerOnlyPrefixes = ['/search', '/jobs', '/outreach', '/talent', '/shortlists']
+    // '/home', '/activity', '/messages', '/profile', and '/settings' are shared surfaces
+    const talentOnlyPrefixes = ['/discover']
 
     if (accountType === 'talent' && hirerOnlyPrefixes.some(p => pathname.startsWith(p))) {
       const url = request.nextUrl.clone()

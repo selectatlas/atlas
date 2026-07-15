@@ -3,8 +3,9 @@
 import { Navbar } from './Navbar'
 
 const links = [
+  { href: '/home', label: 'Home' },
   { href: '/search', label: 'Search' },
-  { href: '/activity', label: 'Activity' },
+  { href: '/shortlists', label: 'Saved' },
   { href: '/jobs', label: 'Jobs' },
   { href: '/messages', label: 'Messages' },
   { href: '/outreach', label: 'Outreach' },

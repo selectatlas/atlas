@@ -1,0 +1,1048 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Production Readiness Playbook - Atlas</title>
+<style>
+  :root{
+    --bg:#0e1116; --surface:#161b22; --surface-2:#1d232c; --border:#2a313c;
+    --text:#e6e9ef; --muted:#8b95a5;
+    --critical:#f0564f; --high:#f28b3b; --medium:#e3b341; --low:#539bf5;
+    --improvement:#a78bfa; --ok:#4ac26b;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--text);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:48px 24px 96px}
+  main{max-width:880px;margin:0 auto}
+  h1{font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .meta{color:var(--muted);font-size:14px;margin-top:4px}
+  .verdict{margin:28px 0 8px;font-size:56px;font-weight:800;letter-spacing:-.02em}
+  .verdict.not-ready{color:var(--critical)} .verdict.fix-first{color:var(--high)} .verdict.ready{color:var(--ok)}
+  .verdict-rule{color:var(--muted);font-size:15px}
+  .note{margin-top:14px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--low);border-radius:8px;padding:12px 14px;color:var(--muted);font-size:14px}
+  section{margin-top:56px}
+  h2{font-size:22px;font-weight:700;margin-bottom:6px}
+  .mission{color:var(--muted);font-size:15px;margin-bottom:18px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:20px}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+  .tile b{display:block;font-size:32px;font-weight:800}
+  .tile span{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .tile.zero b{color:var(--muted);opacity:.5}
+  .areas{margin-top:20px;display:grid;gap:8px}
+  .area-row{display:grid;grid-template-columns:150px 1fr 36px;gap:10px;align-items:center;font-size:13px}
+  .area-row .bar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+  .area-row .bar i{display:block;height:100%;background:var(--low)}
+  table{width:100%;border-collapse:collapse;margin-top:20px;font-size:14px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+  .pass{color:var(--ok);font-weight:700} .fail{color:var(--critical);font-weight:700}
+  details{margin-top:16px;color:var(--muted)} summary{cursor:pointer;font-size:14px}
+  .progress{display:flex;align-items:center;gap:12px;margin-bottom:20px;font-size:13px;color:var(--muted)}
+  .progress .track{flex:1;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+  .progress .fill{display:block;height:100%;width:0;background:var(--ok);transition:width .25s ease}
+  .area-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:22px 0 10px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:12px}
+  .card.done{opacity:.55} .card.done .what b{text-decoration:line-through}
+  .card-head{display:flex;align-items:center;gap:10px;cursor:pointer;flex-wrap:wrap}
+  .card-head input{width:20px;height:20px;accent-color:var(--ok);flex:none}
+  .chip{font-size:11px;font-weight:700;letter-spacing:.05em;padding:3px 9px;border-radius:999px;color:var(--bg)}
+  .chip.critical{background:var(--critical)} .chip.high{background:var(--high)}
+  .chip.medium{background:var(--medium)} .chip.low{background:var(--low)}
+  .chip.improvement{background:var(--improvement)}
+  .chip.area{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+  .loc{font-family:var(--mono);font-size:13px;color:var(--muted);margin-left:auto}
+  .card p{margin-top:12px;font-size:15px}
+  .card p b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+  .card .prove{font-family:var(--mono);font-size:13.5px;background:var(--surface-2);border-radius:8px;padding:10px 12px;margin-top:6px}
+  @media print{
+    body{background:#fff;color:#111;padding:0}
+    .tile,.card,.prove{background:#fff;border-color:#ccc}
+    .verdict.ready{color:#137333}.verdict.not-ready{color:#c5221f}.verdict.fix-first{color:#b45309}
+    .loc,.meta,.mission{color:#555}
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Production Readiness Playbook</h1>
+    <p class="meta">Atlas &middot; Full product &middot; Audited 2026-07-14 &middot; commit c23481c</p>
+    <p class="verdict not-ready">NOT READY</p>
+    <p class="verdict-rule">1 CRITICAL and 34 HIGH findings block launch. READY requires zero CRITICAL and zero HIGH.</p>
+    <p class="note">Consolidated across the gate/backend/DB/config pass plus three parallel finders (claims-vs-code, frontend-UX, test/CI-gates). Two subagent CRITICALs were dropped after live re-check: the search-route test already mocks <code>.neq</code> and the full unit suite is green (155/155), so "unit CI is red" is stale.</p>
+  </header>
+
+  <section>
+    <h2>Scoreboard</h2>
+    <div class="tiles">
+      <div class="tile"><b style="color:var(--critical)">1</b><span>Critical</span></div>
+      <div class="tile"><b style="color:var(--high)">34</b><span>High</span></div>
+      <div class="tile"><b style="color:var(--medium)">27</b><span>Medium</span></div>
+      <div class="tile"><b style="color:var(--low)">10</b><span>Low</span></div>
+      <div class="tile"><b style="color:var(--improvement)">5</b><span>Improvement</span></div>
+    </div>
+    <div class="areas">
+      <div class="area-row"><span>FRONTEND</span><span class="bar"><i style="width:100%"></i></span><span>16</span></div>
+      <div class="area-row"><span>CONTENT / DOCS</span><span class="bar"><i style="width:94%"></i></span><span>15</span></div>
+      <div class="area-row"><span>A11Y</span><span class="bar"><i style="width:75%"></i></span><span>12</span></div>
+      <div class="area-row"><span>UX</span><span class="bar"><i style="width:69%"></i></span><span>11</span></div>
+      <div class="area-row"><span>SECURITY</span><span class="bar"><i style="width:56%"></i></span><span>9</span></div>
+      <div class="area-row"><span>CONFIG</span><span class="bar"><i style="width:50%"></i></span><span>8</span></div>
+      <div class="area-row"><span>RELIABILITY</span><span class="bar"><i style="width:31%"></i></span><span>5</span></div>
+      <div class="area-row"><span>BUILD</span><span class="bar"><i style="width:13%"></i></span><span>2</span></div>
+    </div>
+    <table>
+      <tr><th>Gate</th><th>Status</th><th>Note</th></tr>
+      <tr><td>Install</td><td class="pass">PASS</td><td>npm install clean</td></tr>
+      <tr><td>Build</td><td class="pass">PASS</td><td>next build succeeds; intentionally skips typechecking *.test.* / *.spec.*</td></tr>
+      <tr><td>Typecheck</td><td class="fail">FAIL</td><td>tsc --noEmit: 4 errors in me/settings/route.test.ts; no CI typecheck step exists</td></tr>
+      <tr><td>Lint</td><td class="fail">FAIL</td><td>npm run lint exits 1 (login/page.tsx:27); no --max-warnings 0 so warnings pass</td></tr>
+      <tr><td>Tests</td><td class="pass">PASS</td><td>vitest 155/155, but mocked-only; RLS suite silently skips if stack creds absent</td></tr>
+    </table>
+    <details><summary>Pass ledger</summary>
+      <table><tr><th>Pass</th><th>Lens</th><th>New findings</th></tr>
+      <tr><td>1</td><td>Gates (install/build/typecheck/lint/test)</td><td>2</td></tr>
+      <tr><td>2</td><td>Auth &amp; role isolation (proxy, APIs)</td><td>1</td></tr>
+      <tr><td>3</td><td>Database RLS &amp; PostgREST exposure</td><td>4</td></tr>
+      <tr><td>4</td><td>Config &amp; env drift</td><td>3</td></tr>
+      <tr><td>5</td><td>Reliability / hot-path I/O</td><td>2</td></tr>
+      <tr><td>6</td><td>Docs-vs-code (schema, PRD, checklist)</td><td>15</td></tr>
+      <tr><td>7</td><td>Claims-vs-code (landing, meta, footer)</td><td>8</td></tr>
+      <tr><td>8</td><td>Frontend render / load-state safety</td><td>16</td></tr>
+      <tr><td>9</td><td>UX flows (swipe, dialogs, confirms)</td><td>11</td></tr>
+      <tr><td>10</td><td>Accessibility (labels, names)</td><td>12</td></tr>
+      <tr><td>11</td><td>Test/CI gate integrity</td><td>10</td></tr>
+      </table>
+    </details>
+  </section>
+
+  <section>
+    <h2>How to use this playbook</h2>
+    <p class="mission">Work top to bottom. Finish and verify every card in a wave before starting the next, and re-run your build, typecheck, lint, and tests after each wave. Check off a card only after its Prove-it step passes.</p>
+  </section>
+
+  <section data-wave>
+    <h2>Wave 1 - Make it safe to ship</h2>
+    <p class="mission">All CRITICAL and HIGH findings. Nothing else matters until this section is empty.</p>
+    <div class="progress"><span class="count">0 fixed</span><span class="track"><span class="fill"></span></span></div>
+
+    <p class="area-label">Frontend - broken core flow</p>
+    <div class="card" data-slug="critical-frontend-src-app-messages-page-tsx-97">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip critical">CRITICAL</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/messages/page.tsx:97</span></label>
+      <p class="what"><b>What's wrong</b>Messages is a dead surface for real users. The create-thread endpoint (<code>POST /api/messages/threads</code>, which calls the <code>create_or_get_thread</code> RPC) has no caller anywhere in the UI - the only thread creation path in the code. The empty-state says "Contact a talent to start a conversation", but Contact/OutreachModal only POSTs to <code>/api/outreach</code>, which never creates a message thread. So threads only exist for seeded data; an organic hirer or talent can never open a conversation, and the Messages tab stays permanently empty.</p>
+      <p><b>Do this</b>Wire the Contact action (and/or a dedicated "Message" CTA on talent and outreach surfaces) to <code>POST /api/messages/threads</code> with the other participant id, then navigate to <code>/messages/{id}</code>. Decide whether sending outreach should also open a thread, and if so create one there too.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">As hirer A, contact talent B (both freshly signed up), then open /messages - a thread with B exists and is reachable from both accounts.</p>
+    </div>
+
+    <p class="area-label">Build</p>
+    <div class="card" data-slug="high-build-src-app-auth-login-page-tsx-27">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">BUILD</span>
+        <span class="loc">src/app/(auth)/login/page.tsx:27</span></label>
+      <p class="what"><b>What's wrong</b>An effect calls <code>setError(...)</code> directly with no eslint-disable, tripping <code>react-hooks/set-state-in-effect</code>. <code>npm run lint</code> exits 1, so the CI "Lint, unit tests, build, audit" job fails and blocks every merge and deploy.</p>
+      <p><b>Do this</b>Derive the OAuth-error message from the query param during render/initial state instead of in an effect, or add the same documented disable used in the messages/search pages.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">npm run lint  # exits 0</p>
+    </div>
+    <div class="card" data-slug="high-build-package-json-9">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">BUILD</span>
+        <span class="loc">package.json:9</span></label>
+      <p class="what"><b>What's wrong</b>There is no <code>typecheck</code> script and CI never runs <code>tsc</code>. <code>next build</code> intentionally skips <code>*.test.*</code> / <code>*.spec.*</code>, so type errors in tests and e2e never gate - and <code>tsc --noEmit</code> already fails with 4 errors (TS18048 in <code>src/app/api/me/settings/route.test.ts</code> lines 41, 56, 57, 81).</p>
+      <p><b>Do this</b>Add <code>"typecheck": "tsc --noEmit"</code> and run it in CI before build. Fix the test by narrowing <code>getCaller()</code> into a discriminated union so <code>response</code> is never possibly-undefined.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">npx tsc --noEmit  # exits 0; CI shows a typecheck step</p>
+    </div>
+
+    <p class="area-label">Security</p>
+    <div class="card" data-slug="high-security-supabase-migrations-002-likes-views-sql-73">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">SECURITY</span>
+        <span class="loc">supabase/migrations/002_likes_views.sql:73</span></label>
+      <p class="what"><b>What's wrong</b><code>profile_views_select_all</code> is <code>using (true)</code> and select was never revoked. Any signed-in user can query <code>/rest/v1/profile_views?select=*</code> with the publishable key and read every view record - who viewed whom, platform-wide.</p>
+      <p><b>Do this</b>Scope select to the viewed talent (<code>talent_id = auth.uid()</code>) or revoke select from anon/authenticated and serve counts through the service-role stats route.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">curl "$URL/rest/v1/profile_views?select=*" -H "apikey:$ANON" -H "Authorization:Bearer $JWT"  # only your own talent rows</p>
+    </div>
+    <div class="card" data-slug="high-security-supabase-migrations-002-likes-views-sql-25">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">SECURITY</span>
+        <span class="loc">supabase/migrations/002_likes_views.sql:25</span></label>
+      <p class="what"><b>What's wrong</b><code>profile_likes_select_all</code> is also <code>using (true)</code>, exposing every like row (<code>user_id</code>, <code>talent_id</code>) to any authenticated caller via PostgREST - behavioral data shown in the UI only as aggregate counts.</p>
+      <p><b>Do this</b>Scope select or revoke it and expose counts only server-side.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">curl "$URL/rest/v1/profile_likes?select=*" ...  # no cross-user rows</p>
+    </div>
+    <div class="card" data-slug="high-security-scripts-check-client-bundles-mjs-14">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">SECURITY</span>
+        <span class="loc">scripts/check-client-bundles.mjs:14</span></label>
+      <p class="what"><b>What's wrong</b>The secret-leak checker only walks <code>.next/static</code>. Secrets serialized into RSC/flight payloads or HTML under <code>.next/server</code> that ship to the client are never scanned, so the CI gate can pass while a key leaks.</p>
+      <p><b>Do this</b>Also scan client-bound server artifacts (flight/HTML) or fail if any declared server-only secret appears anywhere under <code>.next</code> except known server-only paths.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Inject OPENAI_API_KEY into a Server Component's rendered output, build, run the checker - it fails.</p>
+    </div>
+    <div class="card" data-slug="high-security-scripts-check-client-bundles-mjs-48">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">SECURITY</span>
+        <span class="loc">scripts/check-client-bundles.mjs:48</span></label>
+      <p class="what"><b>What's wrong</b>The checker only does exact <code>content.includes(value)</code>. A URL-encoded, base64, or string-split secret slips through undetected.</p>
+      <p><b>Do this</b>Also scan URI-decoded and common base64-encoded forms of each secret.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Embed a base64 of the service key in a client bundle, run the checker - it fails.</p>
+    </div>
+    <div class="card" data-slug="high-security-e2e-production-surface-spec-ts-12">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">SECURITY</span>
+        <span class="loc">e2e/production-surface.spec.ts:12</span></label>
+      <p class="what"><b>What's wrong</b>The CSP e2e assertion only checks that the substring <code>connect-src</code> is present. A build with an empty <code>NEXT_PUBLIC_SUPABASE_URL</code> (broken CSP allowlist) still passes the test.</p>
+      <p><b>Do this</b>Assert the CSP header actually contains the built Supabase origin.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Build with SUPABASE_URL blank; the spec fails.</p>
+    </div>
+
+    <p class="area-label">Config</p>
+    <div class="card" data-slug="high-config-src-lib-posthog-server-ts-7">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">CONFIG</span>
+        <span class="loc">src/lib/posthog-server.ts:7</span></label>
+      <p class="what"><b>What's wrong</b>Server and browser clients read <code>NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN</code>, but <code>.env.example:22</code> documents <code>NEXT_PUBLIC_POSTHOG_KEY</code> (in a "Planned" block) and the token is not in <code>REQUIRED_SERVER_ENV</code>. Prod boots with analytics silently dead and the client fires failing <code>/ingest</code> requests.</p>
+      <p><b>Do this</b>Pick one variable name, use it in code, <code>.env.example</code>, and docs, and guard both init sites so a missing token disables PostHog cleanly.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">grep -rn NEXT_PUBLIC_POSTHOG src .env.example  # one name; unset it and confirm no failed /ingest calls</p>
+    </div>
+    <div class="card" data-slug="high-config-docs-prd-md-103">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">CONFIG</span>
+        <span class="loc">docs/prd.md:103</span></label>
+      <p class="what"><b>What's wrong</b>The PRD lists env vars <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> and <code>NEXT_PUBLIC_APP_URL</code>; the app actually uses <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> (src/lib/env.ts) and <code>NEXT_PUBLIC_SITE_URL</code> (src/lib/site.ts). Anyone provisioning from the PRD sets the wrong names.</p>
+      <p><b>Do this</b>Align the PRD env names to the code.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Diff PRD env block against src/lib/env.ts + .env.example - names match.</p>
+    </div>
+
+    <p class="area-label">Reliability - test/CI gate integrity</p>
+    <div class="card" data-slug="high-reliability-tests-integration-rls-test-ts-19">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">RELIABILITY</span>
+        <span class="loc">tests/integration/rls.test.ts:19</span></label>
+      <p class="what"><b>What's wrong</b><code>describe.skipIf(!stackUp)</code> silently skips the entire RLS suite and exits 0 when the Supabase stack/creds are absent. Combined with <code>isStackRunning()</code> returning false on missing creds (helpers.ts:17), CI can go green having run zero tenant-isolation tests - the one gate meant to prove RLS.</p>
+      <p><b>Do this</b>Fail hard in CI when the stack is expected but down: <code>expect(stackUp).toBe(true)</code> before the describe when <code>process.env.CI</code>, and require the anon/service keys.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Run the integration job with the stack down - it fails, not skips.</p>
+    </div>
+
+    <p class="area-label">Frontend - load states that never resolve</p>
+    <div class="card" data-slug="high-frontend-src-components-settings-settingspage-tsx-124">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/components/settings/SettingsPage.tsx:124</span></label>
+      <p class="what"><b>What's wrong</b>Two overlapping defects. <code>loadSettings</code> has no try/catch around <code>fetch</code>, so a network throw leaves <code>loading===true</code> forever. And the render early-return is <code>loading || !accountType</code>: when the fetch returns not-ok, code sets error and clears loading, but <code>accountType</code> stays null, so the skeleton renders forever and the error UI at line 309 is never shown.</p>
+      <p><b>Do this</b>Wrap the load in try/finally that always clears loading, and gate the skeleton on <code>loading</code> only - render the error/retry block when loading is false and there's no data.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Force /api/me/settings to 500 - the page shows an error with retry, not an endless skeleton.</p>
+    </div>
+    <div class="card" data-slug="high-frontend-src-app-talent-discover-page-tsx-59">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/(talent)/discover/page.tsx:59</span></label>
+      <p class="what"><b>What's wrong</b><code>if (!user) return</code> exits <code>load()</code> without ever calling <code>setLoading(false)</code>, leaving an infinite skeleton if the session is missing/expired (e.g. token race after proxy passes).</p>
+      <p><b>Do this</b>Call <code>setLoading(false)</code> or redirect to /login before returning.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Clear the session cookie mid-session, load /discover - it redirects or shows a signed-out state, not a forever skeleton.</p>
+    </div>
+    <div class="card" data-slug="high-frontend-src-components-profile-talentprofileeditor-tsx-57">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/components/profile/TalentProfileEditor.tsx:57</span></label>
+      <p class="what"><b>What's wrong</b>Same pattern: <code>if (!user) return</code> never clears loading, so the editor is a permanent spinner when the session is absent.</p>
+      <p><b>Do this</b><code>setLoading(false)</code> / show a signed-out state before returning.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Load with no session - editor resolves to an error/redirect, not a spinner.</p>
+    </div>
+    <div class="card" data-slug="high-frontend-src-components-profile-hirerprofileeditor-tsx-59">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/components/profile/HirerProfileEditor.tsx:59</span></label>
+      <p class="what"><b>What's wrong</b>Same <code>!user</code> early return without <code>setLoading(false)</code>.</p>
+      <p><b>Do this</b>Clear loading / show error before returning.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Load with no session - resolves instead of spinning.</p>
+    </div>
+    <div class="card" data-slug="high-frontend-src-app-hirer-jobs-id-page-tsx-37">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/(hirer)/jobs/[id]/page.tsx:37</span></label>
+      <p class="what"><b>What's wrong</b><code>load()</code> has no try/catch; a network failure never reaches <code>setLoading(false)</code>, leaving an infinite pulse. Only the <code>!res.ok</code> path redirects.</p>
+      <p><b>Do this</b>Add try/catch/finally with an error UI rather than only redirecting on not-ok.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Kill the network, open a job - error state shows, not a permanent skeleton.</p>
+    </div>
+    <div class="card" data-slug="high-frontend-src-app-auth-signup-page-tsx-28">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/(auth)/signup/page.tsx:28</span></label>
+      <p class="what"><b>What's wrong</b><code>signUp</code> is not wrapped in try/catch; a thrown error leaves <code>loading</code> stuck true and the button spinning with no feedback.</p>
+      <p><b>Do this</b>try/catch/finally that always calls <code>setLoading(false)</code> and surfaces the error.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Trigger a network error on submit - button resets and shows an error.</p>
+    </div>
+    <div class="card" data-slug="high-frontend-src-app-auth-forgot-password-page-tsx-21">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/(auth)/forgot-password/page.tsx:21</span></label>
+      <p class="what"><b>What's wrong</b>Same: no try/catch around <code>resetPasswordForEmail</code>, so a throw leaves the button stuck on "Sending...".</p>
+      <p><b>Do this</b>try/finally that resets state.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Force an error - button recovers.</p>
+    </div>
+    <div class="card" data-slug="high-frontend-src-app-hirer-search-page-tsx-54">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/(hirer)/search/page.tsx:54</span></label>
+      <p class="what"><b>What's wrong</b>Browse fetches <code>limit=100</code> then POSTs all result ids to <code>/api/talent/batch-stats</code>, which rejects <code>ids.length &gt; 50</code> (batch-stats/route.ts:18). The <code>.catch</code> is silent, so views/likes never appear on the browse grid whenever there are more than 50 results.</p>
+      <p><b>Do this</b>Chunk ids into batches of &le;50 (or lower the browse page size to 50) and merge the stats.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Load browse with 60+ results - every card shows view/like counts.</p>
+    </div>
+    <div class="card" data-slug="high-frontend-src-app-activity-page-tsx-49">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/activity/page.tsx:49</span></label>
+      <p class="what"><b>What's wrong</b>The jobs query uses <code>.limit(5)</code> but the "Jobs" stat renders <code>(jobs ?? []).length</code> (line 87), so a hirer with more than 5 jobs always sees "5". The outreach and shortlist tiles correctly use <code>count: 'exact'</code>.</p>
+      <p><b>Do this</b>Fetch a separate <code>count: 'exact', head: true</code> for total jobs instead of counting the capped list.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Seed a hirer with 8 jobs - the Jobs tile shows 8.</p>
+    </div>
+    <div class="card" data-slug="high-frontend-src-app-messages-id-page-tsx-98">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/messages/[id]/page.tsx:98</span></label>
+      <p class="what"><b>What's wrong</b>On send success the UI clears the input but ignores the returned <code>{ message }</code> (route.ts:95) and relies solely on the realtime subscription to render the sent message. If realtime is unavailable or lagging, the sender's own message never appears.</p>
+      <p><b>Do this</b>Append <code>data.message</code> to local state on success (dedupe by id against the realtime event).</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Disable realtime, send a message - it appears immediately in the sender's thread.</p>
+    </div>
+
+    <p class="area-label">Frontend - UX flows</p>
+    <div class="card" data-slug="high-ux-src-app-hirer-jobs-id-page-tsx-99">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">UX</span>
+        <span class="loc">src/app/(hirer)/jobs/[id]/page.tsx:99</span></label>
+      <p class="what"><b>What's wrong</b>The status toggle is labeled "Open"/"Closed" with no confirmation; clicking the button that reads "Open" actually closes the job. It reads as current state, not action, so hirers close jobs by mistake.</p>
+      <p><b>Do this</b>Label by action ("Close job" / "Reopen job") and confirm before closing.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Open a live job - the button says "Close job" and asks to confirm.</p>
+    </div>
+    <div class="card" data-slug="high-ux-src-app-hirer-jobs-new-page-tsx-44">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">UX</span>
+        <span class="loc">src/app/(hirer)/jobs/new/page.tsx:44</span></label>
+      <p class="what"><b>What's wrong</b>Async workspace defaults arrive after mount and overwrite <code>category</code>/<code>skills</code>/<code>location</code>/<code>budget</code> with no "already edited" guard, so a fast typist has their input clobbered when defaults resolve.</p>
+      <p><b>Do this</b>Apply defaults only to fields still empty, or only before first user edit.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Type a category immediately on load - it survives after defaults resolve.</p>
+    </div>
+    <div class="card" data-slug="high-ux-src-components-talent-swipestack-tsx-69">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">UX</span>
+        <span class="loc">src/components/talent/SwipeStack.tsx:69</span></label>
+      <p class="what"><b>What's wrong</b>Undo only decrements the index, but the parent <code>passed</code> Set (search/page.tsx:155) still filters the passed talent out of the list, so Undo after a Pass does nothing visible.</p>
+      <p><b>Do this</b>Expose an <code>onUndo</code> that removes the id from <code>passed</code> and reconcile the index against the now-larger list.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Pass a talent, hit Undo - that talent reappears as the current card.</p>
+    </div>
+    <div class="card" data-slug="high-ux-src-app-talent-discover-page-tsx-232">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">UX</span>
+        <span class="loc">src/app/(talent)/discover/page.tsx:232</span></label>
+      <p class="what"><b>What's wrong</b>Swipe-right opens the apply dialog but returns without resetting <code>dragX</code>; the cancel path (line 461) also doesn't reset it, so the card stays translated off to the side.</p>
+      <p><b>Do this</b>Reset <code>dragX</code> to 0 when opening the dialog and on close/cancel.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Swipe to apply, cancel the dialog - the card snaps back to center.</p>
+    </div>
+    <div class="card" data-slug="high-ux-src-app-hirer-search-page-tsx-107">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">UX</span>
+        <span class="loc">src/app/(hirer)/search/page.tsx:107</span></label>
+      <p class="what"><b>What's wrong</b>When an AI search returns <code>data.error</code>, the previous <code>aiResults</code> are left on screen under the new query, showing stale matches as if they answered the new search.</p>
+      <p><b>Do this</b>Clear <code>aiResults</code> (or hide them) when setting <code>aiError</code>.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Run a search, then a failing one - old results disappear and the error shows.</p>
+    </div>
+    <div class="card" data-slug="high-ux-src-app-talent-discover-page-tsx-338">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">UX</span>
+        <span class="loc">src/app/(talent)/discover/page.tsx:338</span></label>
+      <p class="what"><b>What's wrong</b>The empty state says "You've reviewed all jobs" whenever <code>jobs.length &gt; 0</code>, including when a search or filter simply returned nothing - telling users they finished when they actually filtered everything out.</p>
+      <p><b>Do this</b>Distinguish "no matches for this search/filter" from "reviewed everything".</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Search for a nonsense term - the empty state says no matches, not "reviewed all".</p>
+    </div>
+    <div class="card" data-slug="high-ux-src-components-talent-applicationpreviewdialog-tsx-25">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">UX</span>
+        <span class="loc">src/components/talent/ApplicationPreviewDialog.tsx:25</span></label>
+      <p class="what"><b>What's wrong</b>The dialog opens on <code>job</code> alone; if <code>profile</code> is null the content is empty with no apply UI, so the user sees a blank dialog.</p>
+      <p><b>Do this</b>Require profile before opening, or render a loading/error state inside the dialog.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Open apply before the profile loads - a loading/error state shows, never a blank dialog.</p>
+    </div>
+
+    <p class="area-label">Platform</p>
+    <div class="card" data-slug="high-platform-src-app-messages-id-page-tsx-123">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">PLATFORM</span>
+        <span class="loc">src/app/messages/[id]/page.tsx:123</span></label>
+      <p class="what"><b>What's wrong</b>The thread view uses <code>h-[calc(100vh-3.5rem)]</code>, ignoring the layout's <code>pt-16</code>/<code>pb-24</code> (AuthenticatedLayout.tsx:24), so on mobile the composer sits underneath the bottom nav and can't be tapped.</p>
+      <p><b>Do this</b>Make the thread a flex column that fills main (<code>min-h-0 flex-1</code>) accounting for header and bottom nav instead of a fixed viewport calc.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Open a thread on a phone viewport - the input sits above the bottom nav.</p>
+    </div>
+
+    <p class="area-label">Content - marketing claims vs code</p>
+    <div class="card" data-slug="high-content-src-components-marketing-landingpage-tsx-47">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/marketing/LandingPage.tsx:47</span></label>
+      <p class="what"><b>What's wrong</b>The landing sells "Production crew" / "a gaffer" / "24 available crew", but the taxonomy is only <code>dancer | actor | photographer_videographer | content_creator</code>. There is no crew category anywhere in the product.</p>
+      <p><b>Do this</b>Remove the crew brief/card, or add a real crew category end-to-end (skills enum, seed, filters, search).</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Search the crew brief on the live app - it returns real crew, or the claim is gone from the landing.</p>
+    </div>
+    <div class="card" data-slug="high-content-src-components-marketing-landingpage-tsx-192">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/marketing/LandingPage.tsx:192</span></label>
+      <p class="what"><b>What's wrong</b>"Availability in context" shows a day-level calendar ("5 of 7 shoot days free"), but availability is a free-text field (<code>profiles.availability</code>) with no date model.</p>
+      <p><b>Do this</b>Replace the mock calendar with the text availability the product has, or ship date-level availability.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">The landing's availability visual reflects a real field, or is removed.</p>
+    </div>
+    <div class="card" data-slug="high-content-src-components-marketing-landingpage-tsx-375">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/marketing/LandingPage.tsx:375</span></label>
+      <p class="what"><b>What's wrong</b>"3 relevant briefs this week" implies a talent-facing brief feed that has no product surface or API.</p>
+      <p><b>Do this</b>Delete the mock metric or build the feed.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Either a brief feed exists for talent, or the claim is removed.</p>
+    </div>
+    <div class="card" data-slug="high-content-src-components-marketing-landingpage-tsx-178">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/marketing/LandingPage.tsx:178</span></label>
+      <p class="what"><b>What's wrong</b>Hardcoded "98% match" / "94%" / "89%" are presented as product UI (also line 361). Real scores only come from live search scaling; these are invented numbers.</p>
+      <p><b>Do this</b>Mark the section as an illustrative mockup or drive it from a real search demo.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">The percentages are clearly labeled illustrative, or come from a real query.</p>
+    </div>
+    <div class="card" data-slug="high-content-src-app-layout-tsx-11">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/app/layout.tsx:11</span></label>
+      <p class="what"><b>What's wrong</b>Public meta/OG copy claims results "in seconds"; there is no measured SLA or enforcement on search latency.</p>
+      <p><b>Do this</b>Soften the copy or cite a verified p95.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Copy no longer promises an unmeasured time, or a measured p95 backs it.</p>
+    </div>
+    <div class="card" data-slug="high-content-src-components-marketing-landingpage-tsx-403">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/marketing/LandingPage.tsx:403</span></label>
+      <p class="what"><b>What's wrong</b>The public footer presents a production marketplace but links only Sign in / Create account. There are no <code>/privacy</code> or <code>/terms</code> routes - required before a public launch (Gate 6).</p>
+      <p><b>Do this</b>Add privacy and terms pages and link them in the footer.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">/privacy and /terms render and are linked from the footer.</p>
+    </div>
+
+    <p class="area-label">Docs - claims vs code</p>
+    <div class="card" data-slug="high-docs-docs-prd-md-86">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">DOCS</span>
+        <span class="loc">docs/prd.md:86</span></label>
+      <p class="what"><b>What's wrong</b>The PRD claims PWA "offline shell support" (and atlas-prd.md:174 claims it "installs like a native app"), but <code>public/sw.js</code> is a retirement worker that only unregisters - no fetch/cache handlers.</p>
+      <p><b>Do this</b>Drop the offline-shell claim or restore a static-asset service worker.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Docs match the SW's actual behavior.</p>
+    </div>
+    <div class="card" data-slug="high-docs-docs-launch-checklist-md-24">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">DOCS</span>
+        <span class="loc">docs/launch-checklist.md:24</span></label>
+      <p class="what"><b>What's wrong</b>The audit snapshot claims secrets are missing from <code>.env.example</code> and there is "no CI / analytics / account deletion / abuse reporting / rate limiter", and that <code>shadcn</code> is a prod dependency with a high advisory. All are false now: those systems exist (.github/workflows/ci.yml, PostHog, /api/account/*, /api/blocks, /api/reports, src/lib/rate-limit.ts) and shadcn is in devDependencies with the advisory marked resolved.</p>
+      <p><b>Do this</b>Rewrite the snapshot to current truth.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Each snapshot line matches the repo state.</p>
+    </div>
+    <div class="card" data-slug="high-docs-posthog-setup-report-md-3">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">DOCS</span>
+        <span class="loc">posthog-setup-report.md:3</span></label>
+      <p class="what"><b>What's wrong</b>Claims server PostHog "is used by all API route handlers"; only 5 of ~25 routes import it (shortlist, like, jobs, outreach, and one more).</p>
+      <p><b>Do this</b>Say "selected mutation routes" and list them.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">grep the imports - the report matches the count.</p>
+    </div>
+    <div class="card" data-slug="high-docs-docs-prd-md-91">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">DOCS</span>
+        <span class="loc">docs/prd.md:91</span></label>
+      <p class="what"><b>What's wrong</b>The PRD mandates a <code>src/lib/validation/</code> directory and <code>zod</code>; the repo has a hand-rolled <code>src/lib/validation.ts</code> and no zod dependency.</p>
+      <p><b>Do this</b>Update the stack guidance to match the hand-rolled validation (or adopt zod deliberately).</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">PRD stack section matches package.json + the validation module.</p>
+    </div>
+    <div class="card" data-slug="high-docs-docs-prd-md-1206">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip high">HIGH</span><span class="chip area">DOCS</span>
+        <span class="loc">docs/prd.md:1206</span></label>
+      <p class="what"><b>What's wrong</b>The PRD (and atlas-prd.md:28) still say "three categories"; code and seed include a fourth (<code>photographer_videographer</code>).</p>
+      <p><b>Do this</b>Update the category counts and out-of-scope text to four.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Docs list the four categories the enum defines.</p>
+    </div>
+  </section>
+
+  <section data-wave>
+    <h2>Wave 2 - Make it solid</h2>
+    <p class="mission">All MEDIUM findings. Degraded behavior and edge cases. Ship-blocking only if you promised them.</p>
+    <div class="progress"><span class="count">0 fixed</span><span class="track"><span class="fill"></span></span></div>
+
+    <p class="area-label">Security</p>
+    <div class="card" data-slug="medium-security-supabase-migrations-002-likes-views-sql-85">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">SECURITY</span>
+        <span class="loc">supabase/migrations/002_likes_views.sql:85</span></label>
+      <p class="what"><b>What's wrong</b><code>profile_views_insert_authenticated</code> is <code>with check (true)</code>; any authenticated user can insert view rows with an arbitrary <code>viewer_id</code> and inflate any talent's view count.</p>
+      <p><b>Do this</b>Constrain the check to <code>viewer_id = auth.uid()</code> (or null-and-server-set) and rate-limit per viewer/talent.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">POST a view with someone else's viewer_id - RLS rejects it.</p>
+    </div>
+    <div class="card" data-slug="medium-security-src-app-api-talent-id-like-route-ts-34">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">SECURITY</span>
+        <span class="loc">src/app/api/talent/[id]/like/route.ts:34</span></label>
+      <p class="what"><b>What's wrong</b>The like handler inserts for any existing profile id with no <code>account_type = 'talent'</code> check, so a user can like hirer profiles or their own, unlike the shortlist route.</p>
+      <p><b>Do this</b>Validate the target is a talent profile before inserting; 404 otherwise.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">POST /api/talent/&lt;hirer-id&gt;/like - returns 404.</p>
+    </div>
+    <div class="card" data-slug="medium-security-scripts-check-client-bundles-mjs-23">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">SECURITY</span>
+        <span class="loc">scripts/check-client-bundles.mjs:23</span></label>
+      <p class="what"><b>What's wrong</b>Secrets shorter than 12 chars are dropped from the check set, so short keys are never verified.</p>
+      <p><b>Do this</b>Remove the length filter, or fail when a declared server-only env is set but too short to check.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Set a short server-only secret - the checker still verifies it.</p>
+    </div>
+    <div class="card" data-slug="medium-security-scripts-check-client-bundles-mjs-13">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">SECURITY</span>
+        <span class="loc">scripts/check-client-bundles.mjs:13</span></label>
+      <p class="what"><b>What's wrong</b>The checker only looks for <code>SUPABASE_SERVICE_ROLE_KEY</code> and <code>OPENAI_API_KEY</code>; any other server secret leaks unchecked.</p>
+      <p><b>Do this</b>Drive the list from <code>SERVER_ONLY_ENV</code> in src/lib/env.ts.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Add a new server-only env - the checker picks it up automatically.</p>
+    </div>
+
+    <p class="area-label">Reliability</p>
+    <div class="card" data-slug="medium-reliability-src-app-api-talent-id-like-route-ts-58">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">RELIABILITY</span>
+        <span class="loc">src/app/api/talent/[id]/like/route.ts:58</span></label>
+      <p class="what"><b>What's wrong</b>The PostHog client uses <code>flushAt:1, flushInterval:0</code> and every handler does <code>await posthog.flush()</code> in the request path (also shortlist:76/95, outreach:65/96, jobs), so each like/shortlist/outreach blocks the response on a network round-trip to PostHog.</p>
+      <p><b>Do this</b>Capture without awaiting flush - schedule with <code>after()</code>/<code>waitUntil()</code> or drop the await.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Black-hole the PostHog host and POST a like - it still returns promptly.</p>
+    </div>
+    <div class="card" data-slug="medium-reliability-src-app-api-account-delete-route-ts-36">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">RELIABILITY</span>
+        <span class="loc">src/app/api/account/delete/route.ts:36</span></label>
+      <p class="what"><b>What's wrong</b>Storage cleanup lists <code>storage.from(bucket).list(user.id)</code> once and removes only that page (default cap ~100), so accounts with more files leave orphans.</p>
+      <p><b>Do this</b>Paginate the list/remove loop until a short page returns, or document the cap explicitly.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Seed 150 files, delete the account, list the prefix - zero objects remain.</p>
+    </div>
+    <div class="card" data-slug="medium-reliability-playwright-config-ts-29">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">RELIABILITY</span>
+        <span class="loc">playwright.config.ts:29</span></label>
+      <p class="what"><b>What's wrong</b><code>retries: process.env.CI ? 1 : 0</code> masks flaky e2e tests in CI - a test that fails then passes is reported green.</p>
+      <p><b>Do this</b>Set retries to 0 and quarantine genuinely flaky tests explicitly.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">A test that fails on first run fails the CI job.</p>
+    </div>
+
+    <p class="area-label">Config</p>
+    <div class="card" data-slug="medium-config-github-workflows-ci-yml-24">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONFIG</span>
+        <span class="loc">.github/workflows/ci.yml:24</span></label>
+      <p class="what"><b>What's wrong</b><code>npm run lint</code> has no <code>--max-warnings 0</code>, so eslint warnings exit 0 and pass CI. The lint script is a bare <code>eslint</code> with no explicit path.</p>
+      <p><b>Do this</b>Change the script to <code>eslint . --max-warnings 0</code>.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Introduce a warning - CI lint fails.</p>
+    </div>
+    <div class="card" data-slug="medium-config-instrumentation-client-ts-5">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONFIG</span>
+        <span class="loc">instrumentation-client.ts:5</span></label>
+      <p class="what"><b>What's wrong</b>The client sets <code>ui_host</code>/rewrites to <code>us.posthog.com</code> / <code>us.i.posthog.com</code>, but <code>.env.example:23</code> and launch-checklist recommend EU. A deployment following the docs sends events to the wrong region.</p>
+      <p><b>Do this</b>Decide one region, make the host a single documented env var, use it in rewrites, server host, and client ui_host.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Trigger an event - it lands in the correct region project.</p>
+    </div>
+    <div class="card" data-slug="medium-config-playwright-config-ts-44">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONFIG</span>
+        <span class="loc">playwright.config.ts:44</span></label>
+      <p class="what"><b>What's wrong</b>The webServer sets <code>NEXT_PUBLIC_*</code> at runtime, but Next inlines those at build time, so a build made against the wrong backend can still "pass" e2e while pointing at a different database.</p>
+      <p><b>Do this</b>Assert the built-in public URL matches the stack (via health/CSP) or refuse to start on mismatch.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Build against prod URL then run e2e against the local stack - it refuses instead of silently testing the wrong target.</p>
+    </div>
+    <div class="card" data-slug="medium-config-public-manifest-json-7">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONFIG</span>
+        <span class="loc">public/manifest.json:7</span></label>
+      <p class="what"><b>What's wrong</b>The manifest theme/background is <code>#09090B</code> (dark) while the layout viewport <code>themeColor</code> is <code>#FFFFFF</code> - inconsistent install/splash chrome.</p>
+      <p><b>Do this</b>Sync the PWA colors to the live theme.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Manifest and themeColor agree.</p>
+    </div>
+    <div class="card" data-slug="medium-config-src-app-design-system-page-tsx-27">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONFIG</span>
+        <span class="loc">src/app/design-system/page.tsx:27</span></label>
+      <p class="what"><b>What's wrong</b><code>/design-system</code> is auth-gated but reachable by every logged-in user in production (not excepted in proxy.ts); it's an internal reference surface with staged demo copy.</p>
+      <p><b>Do this</b>Restrict it to non-prod or admins, or remove it from the shipped surface.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">A normal prod user hitting /design-system gets 404/redirect.</p>
+    </div>
+
+    <p class="area-label">Content</p>
+    <div class="card" data-slug="medium-content-src-lib-settings-ts-10">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/lib/settings.ts:10</span></label>
+      <p class="what"><b>What's wrong</b>Settings offers distinct <code>members</code> vs <code>public</code> visibility, but discovery only excludes <code>private</code> (search/page.tsx:128), so members and public behave identically - a promise the code doesn't keep.</p>
+      <p><b>Do this</b>Implement real members-only semantics in search/discovery, or collapse the option to public/private.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Set a profile to members - it's excluded from the surface that should hide it.</p>
+    </div>
+    <div class="card" data-slug="medium-content-src-components-settings-settingspage-tsx-378">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/settings/SettingsPage.tsx:378</span></label>
+      <p class="what"><b>What's wrong</b>Email notification toggles are shown while the copy admits delivery isn't shipped; no email sender exists, so the toggles do nothing.</p>
+      <p><b>Do this</b>Hide the email toggles until delivery (e.g. Resend) exists.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Settings shows no email toggle until an email path ships.</p>
+    </div>
+    <div class="card" data-slug="medium-content-src-components-settings-settingspage-tsx-320">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/settings/SettingsPage.tsx:320</span></label>
+      <p class="what"><b>What's wrong</b>Account settings omit export/delete/block/report controls even though the APIs exist (/api/account/export, /api/account/delete, /api/blocks, /api/reports). Gate 6 readiness can't be claimed with no UI.</p>
+      <p><b>Do this</b>Wire in-app export download, confirmed delete, and block/report management to those routes.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">A user can export and delete their account, and manage blocks/reports, entirely from Settings.</p>
+    </div>
+    <div class="card" data-slug="medium-content-src-components-marketing-landingpage-tsx-253">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/marketing/LandingPage.tsx:253</span></label>
+      <p class="what"><b>What's wrong</b>"No black-box ranking" / "a reason for every result" oversells: weak hits fall back to filler <code>"Semantic profile match"</code> (search/route.ts:40) rather than a specific reason.</p>
+      <p><b>Do this</b>Qualify the copy, or only surface structured reasons and drop the filler.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Every result shown carries a specific reason, or the claim is softened.</p>
+    </div>
+    <div class="card" data-slug="medium-content-src-components-layout-navbar-tsx-81">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/layout/Navbar.tsx:81</span></label>
+      <p class="what"><b>What's wrong</b>The brand mark renders a literal lowercase "c" instead of the Atlas mark or "A", on both the desktop sidebar (line 81) and the mobile header (line 123) - a wrong logo on every authenticated page.</p>
+      <p><b>Do this</b>Use the brand SVG or the correct initial.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">The nav shows the Atlas mark, not "c".</p>
+    </div>
+
+    <p class="area-label">Docs</p>
+    <div class="card" data-slug="medium-docs-supabase-schema-sql">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">DOCS</span>
+        <span class="loc">supabase/schema.sql</span></label>
+      <p class="what"><b>What's wrong</b>The committed schema mirror is stale - missing <code>profile_visibility</code>, <code>blocks</code>/<code>reports</code>, <code>notification_preferences</code>, <code>hirer_workspace_defaults</code>, <code>talent_profiles</code>. <code>supabase/functions.sql</code> has the same drift for the filtered-search and safety functions.</p>
+      <p><b>Do this</b>Regenerate both from the migrations, or delete them and point to <code>supabase/migrations/</code> as source of truth.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">grep -n profile_visibility supabase/schema.sql  # present, or file removed</p>
+    </div>
+    <div class="card" data-slug="medium-docs-docs-prd-md-341">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">DOCS</span>
+        <span class="loc">docs/prd.md:341</span></label>
+      <p class="what"><b>What's wrong</b>The PRD specifies a nested API error shape <code>{ error: { code, message, fields } }</code>; handlers return flat <code>{ error: string }</code> (src/lib/validation.ts).</p>
+      <p><b>Do this</b>Align the API contract docs to the runtime shape (or adopt the nested shape deliberately).</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">PRD error contract matches a real 400 response body.</p>
+    </div>
+    <div class="card" data-slug="medium-docs-docs-prd-md-47">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">DOCS</span>
+        <span class="loc">docs/prd.md:47</span></label>
+      <p class="what"><b>What's wrong</b>The PRD lists "visible match explanations" as a main gap, but AI search already returns <code>match_reasons</code>.</p>
+      <p><b>Do this</b>Remove it from the gap list or scope what's actually still missing.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Gap list reflects shipped reason chips.</p>
+    </div>
+    <div class="card" data-slug="medium-docs-docs-launch-checklist-md-32">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">DOCS</span>
+        <span class="loc">docs/launch-checklist.md:32</span></label>
+      <p class="what"><b>What's wrong</b>Gate 1 is still <code>[ ]</code> while its steps 1-3 are <code>[x]</code> and satisfy the Gate 1 exit criteria - the checklist contradicts itself. Related: step 17 note says "PostHog wiring waits on Gate 4" though it's already wired (only Sentry is absent).</p>
+      <p><b>Do this</b>Mark Gate 1 done (or reopen the incomplete step) and correct the step 17 note.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Gate/step statuses are internally consistent.</p>
+    </div>
+    <div class="card" data-slug="medium-docs-posthog-setup-report-md-35">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">DOCS</span>
+        <span class="loc">posthog-setup-report.md:35</span></label>
+      <p class="what"><b>What's wrong</b>The report's open item "add PostHog vars to .env.example" is done wrong - the example has the wrong key name and no <code>PROJECT_TOKEN</code>.</p>
+      <p><b>Do this</b>Complete the item with the correct variable name (see the Wave 1 config card).</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">.env.example documents the exact token name the code reads.</p>
+    </div>
+    <div class="card" data-slug="medium-docs-docs-launch-checklist-md-21">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">DOCS</span>
+        <span class="loc">docs/launch-checklist.md:21</span></label>
+      <p class="what"><b>What's wrong</b>The checklist claims <code>npm test</code> is 6 files / 25 tests; the unit tree is far larger now (26 files / 155 tests).</p>
+      <p><b>Do this</b>Refresh the counts.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Checklist counts match <code>vitest run</code> output.</p>
+    </div>
+
+    <p class="area-label">Frontend</p>
+    <div class="card" data-slug="medium-frontend-src-app-messages-page-tsx-41">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/messages/page.tsx:41</span></label>
+      <p class="what"><b>What's wrong</b>The threads fetch treats any non-OK JSON (an error body) as empty threads with no error UI, so failures look like "no messages".</p>
+      <p><b>Do this</b>Check <code>res.ok</code> and surface a retry state.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Force /api/messages/threads to 500 - the page shows an error, not the empty state.</p>
+    </div>
+    <div class="card" data-slug="medium-frontend-src-components-talent-shortlistbutton-tsx-26">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/components/talent/ShortlistButton.tsx:26</span></label>
+      <p class="what"><b>What's wrong</b>It reads <code>ids</code> without checking <code>res.ok</code>, so a 401/403 silently renders as "not shortlisted".</p>
+      <p><b>Do this</b>Bail on <code>!r.ok</code> and reflect an error/unknown state.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Return 403 - the button doesn't falsely show unshortlisted.</p>
+    </div>
+    <div class="card" data-slug="medium-frontend-src-components-outreach-outreachmodal-tsx-76">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/components/outreach/OutreachModal.tsx:76</span></label>
+      <p class="what"><b>What's wrong</b>It treats any body without a <code>message</code> as a generate failure even when <code>res.ok</code> is false (e.g. rate-limited), so users see a generic failure instead of the API's real error.</p>
+      <p><b>Do this</b>Check <code>res.ok</code> first and show <code>data.error</code>.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Hit the generate rate limit - the modal shows the rate-limit message.</p>
+    </div>
+
+    <p class="area-label">UX - destructive actions without confirm</p>
+    <div class="card" data-slug="medium-ux-src-components-talent-creditseditor-tsx-98">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">UX</span>
+        <span class="loc">src/components/talent/CreditsEditor.tsx:98</span></label>
+      <p class="what"><b>What's wrong</b>Deleting a credit happens instantly with no confirmation or undo.</p>
+      <p><b>Do this</b>Add a confirm dialog or undo toast before delete.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Delete a credit - it asks to confirm or offers undo.</p>
+    </div>
+    <div class="card" data-slug="medium-ux-src-components-talent-portfolioeditor-tsx-76">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">UX</span>
+        <span class="loc">src/components/talent/PortfolioEditor.tsx:76</span></label>
+      <p class="what"><b>What's wrong</b>Deleting a portfolio item happens instantly with no confirm.</p>
+      <p><b>Do this</b>Same confirm/undo pattern.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Delete an item - confirmation is required.</p>
+    </div>
+    <div class="card" data-slug="medium-ux-src-components-talent-skillseditor-tsx-63">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">UX</span>
+        <span class="loc">src/components/talent/SkillsEditor.tsx:63</span></label>
+      <p class="what"><b>What's wrong</b>Removing a skill happens instantly with no confirm.</p>
+      <p><b>Do this</b>Same confirm/undo pattern.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Remove a skill - confirmation is required.</p>
+    </div>
+
+    <p class="area-label">UX - stale draft state</p>
+    <div class="card" data-slug="medium-ux-src-components-search-allfilterssheet-tsx-20">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">UX</span>
+        <span class="loc">src/components/search/AllFiltersSheet.tsx:20</span></label>
+      <p class="what"><b>What's wrong</b><code>draft</code> is initialized once from <code>filters</code>; reopening after cancel or an external change keeps the stale draft.</p>
+      <p><b>Do this</b>Sync <code>setDraft(filters)</code> when the sheet opens.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Cancel, change a filter elsewhere, reopen - the sheet shows current filters.</p>
+    </div>
+    <div class="card" data-slug="medium-ux-src-components-search-filterpill-tsx-12">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">UX</span>
+        <span class="loc">src/components/search/FilterPill.tsx:12</span></label>
+      <p class="what"><b>What's wrong</b>Same stale-draft issue: <code>draftValue</code> diverges from live <code>filters</code> after Reset.</p>
+      <p><b>Do this</b>Sync draft from <code>filters</code> when the <code>&lt;details&gt;</code> opens.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Reset filters, open a pill - it reflects the reset state.</p>
+    </div>
+
+    <p class="area-label">Platform</p>
+    <div class="card" data-slug="medium-platform-src-components-search-filterpill-tsx-28">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">PLATFORM</span>
+        <span class="loc">src/components/search/FilterPill.tsx:28</span></label>
+      <p class="what"><b>What's wrong</b>The popover is a fixed <code>w-80</code> absolute element that overflows small viewports.</p>
+      <p><b>Do this</b>Cap width with <code>min(20rem, calc(100vw - 2rem))</code> and/or flip positioning near edges.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Open a filter pill on a 360px viewport - it stays on screen.</p>
+    </div>
+
+    <p class="area-label">A11y</p>
+    <div class="card" data-slug="medium-a11y-profile-editors-labels">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">A11Y</span>
+        <span class="loc">TalentProfileEditor.tsx:30 / HirerProfileEditor.tsx:17 / jobs/new/page.tsx:120</span></label>
+      <p class="what"><b>What's wrong</b>Form <code>&lt;label&gt;</code> elements wrap text only, not the inputs, and have no <code>htmlFor</code>, so screen readers and click-to-focus don't associate labels with controls across the profile editors and the new-job form.</p>
+      <p><b>Do this</b>Give each input an <code>id</code> and the label a matching <code>htmlFor</code> (or wrap the control inside the label).</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Tab through each form with a screen reader - every field announces its label; clicking a label focuses its input.</p>
+    </div>
+    <div class="card" data-slug="medium-a11y-icon-buttons-names">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">A11Y</span>
+        <span class="loc">PhotoUpload.tsx:72 / SwipeStack.tsx:186 / messages/[id]:126 / jobs/[id]:95</span></label>
+      <p class="what"><b>What's wrong</b>Icon-only controls have no accessible name: the photo-upload control, the swipe Pass/Contact/View/Undo buttons, and the "Back" buttons on the thread and job pages all announce as unlabeled buttons.</p>
+      <p><b>Do this</b>Add descriptive <code>aria-label</code>s ("Upload profile photo", "Pass", "Contact", "Back to messages", "Back to jobs", etc.).</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Screen reader announces each button's purpose.</p>
+    </div>
+    <div class="card" data-slug="medium-a11y-selects-names">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip medium">MEDIUM</span><span class="chip area">A11Y</span>
+        <span class="loc">discover/page.tsx:324 / jobs/[id]/page.tsx:170 / ActiveFilterChips.tsx:20</span></label>
+      <p class="what"><b>What's wrong</b>The discover Sort <code>&lt;select&gt;</code>, the application-status <code>&lt;select&gt;</code>, and the remove-filter chip control have no accessible name beyond truncated visible text.</p>
+      <p><b>Do this</b>Add <code>aria-label</code>s ("Sort jobs", <code>Status for ${talent.full_name}</code>, <code>Remove ${label} filter</code>).</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Each control announces a clear name.</p>
+    </div>
+  </section>
+
+  <section data-wave>
+    <h2>Wave 3 - Make it polished</h2>
+    <p class="mission">All LOW and IMPROVEMENT findings. Do these in slack time. Do not let them jump the queue.</p>
+    <div class="progress"><span class="count">0 fixed</span><span class="track"><span class="fill"></span></span></div>
+
+    <p class="area-label">Frontend</p>
+    <div class="card" data-slug="low-frontend-src-app-hirer-jobs-new-page-tsx-88">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/(hirer)/jobs/new/page.tsx:88</span></label>
+      <p class="what"><b>What's wrong</b>The success path never resets <code>setPosting(false)</code> (it only navigates), so if navigation fails the submit button stays stuck.</p>
+      <p><b>Do this</b>Reset posting in a finally, or on navigation failure.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Block the push - the button recovers.</p>
+    </div>
+    <div class="card" data-slug="low-frontend-blocks-reports-no-ui">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">FRONTEND</span>
+        <span class="loc">src/app/api/blocks/route.ts / reports/route.ts</span></label>
+      <p class="what"><b>What's wrong</b>The blocks and reports APIs have no UI caller anywhere in <code>src/components</code> or the route trees, so the safety features are shipped as dead endpoints.</p>
+      <p><b>Do this</b>Add report/block actions on talent and job surfaces, or drop the endpoints from the "shipped" surface until wired.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">A user can block/report from the UI, or the APIs are explicitly marked not-yet-shipped.</p>
+    </div>
+
+    <p class="area-label">UX / Content</p>
+    <div class="card" data-slug="low-ux-src-components-talent-swipestack-tsx-222">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">UX</span>
+        <span class="loc">src/components/talent/SwipeStack.tsx:222</span></label>
+      <p class="what"><b>What's wrong</b>"{n} of {total} reviewed" uses the current position, not a reviewed count, so the wording is misleading.</p>
+      <p><b>Do this</b>Use "Card X of Y" phrasing that matches <code>currentIndex</code>/<code>results.length</code>.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">The counter reads correctly at the first and last card.</p>
+    </div>
+    <div class="card" data-slug="low-content-src-components-marketing-landingpage-tsx-374">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/marketing/LandingPage.tsx:374</span></label>
+      <p class="what"><b>What's wrong</b>Hardcoded "Profile strength 86%" while real completeness lives in <code>getProfileCompleteness</code> / <code>ProfileCompletenessCard</code>.</p>
+      <p><b>Do this</b>Use live scoring or clearly label it as a mock.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">The number is illustrative-labeled or real.</p>
+    </div>
+    <div class="card" data-slug="low-content-src-app-design-system-page-tsx-318">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/app/design-system/page.tsx:318</span></label>
+      <p class="what"><b>What's wrong</b>Demo copy "We found 18 profiles matching..." is a staged count on an internal page.</p>
+      <p><b>Do this</b>Mark it as a fixture or remove the number.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">No staged count reads as real product data.</p>
+    </div>
+    <div class="card" data-slug="low-content-src-components-settings-settingspage-copy">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">CONTENT</span>
+        <span class="loc">src/components/settings/SettingsPage.tsx:378</span></label>
+      <p class="what"><b>What's wrong</b>Ships developer-facing copy "Delivery wires up when the notification system ships" in production Settings.</p>
+      <p><b>Do this</b>Remove or gate it until delivery exists.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">No "wires up when ... ships" text in prod Settings.</p>
+    </div>
+
+    <p class="area-label">A11y</p>
+    <div class="card" data-slug="low-a11y-src-app-auth-signup-page-tsx-97">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">A11Y</span>
+        <span class="loc">src/app/(auth)/signup/page.tsx:97</span></label>
+      <p class="what"><b>What's wrong</b>The role toggle buttons don't expose selected state to assistive tech.</p>
+      <p><b>Do this</b>Set <code>aria-pressed={accountType === 'hirer' | 'talent'}</code>.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Screen reader announces which role is selected.</p>
+    </div>
+    <div class="card" data-slug="low-a11y-src-components-talent-portfoliogallery-tsx-37">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">A11Y</span>
+        <span class="loc">src/components/talent/PortfolioGallery.tsx:37</span></label>
+      <p class="what"><b>What's wrong</b><code>alt={item.title ?? ''}</code> is empty for untitled items.</p>
+      <p><b>Do this</b>Fall back to a description derived from type/url.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Untitled portfolio images have meaningful alt text.</p>
+    </div>
+    <div class="card" data-slug="low-ux-name-initial-fallbacks">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">UX</span>
+        <span class="loc">TalentCard.tsx:63 / messages/page.tsx:108</span></label>
+      <p class="what"><b>What's wrong</b>Avatar fallbacks use <code>full_name[0]</code> / <code>otherName[0]</code>, which render blank if the name is an empty string.</p>
+      <p><b>Do this</b>Use a shared safe-initial helper (<code>name?.trim()?.[0]?.toUpperCase() ?? '?'</code>).</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">A profile with an empty name shows a placeholder glyph, not a blank circle.</p>
+    </div>
+
+    <p class="area-label">Reliability</p>
+    <div class="card" data-slug="low-reliability-e2e-jobs-spec-ts-33">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">RELIABILITY</span>
+        <span class="loc">e2e/jobs.spec.ts:33</span></label>
+      <p class="what"><b>What's wrong</b><code>expect(['complete','failed']).toContain(job?.embedding_status)</code> always accepts an embed failure, so it can't catch a regression that leaves embeddings stuck or pending.</p>
+      <p><b>Do this</b>Assert <code>failed</code> when the OpenAI key is a placeholder, else <code>complete</code>.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">With a real key, a job that fails to embed fails the test.</p>
+    </div>
+    <div class="card" data-slug="low-reliability-src-app-api-account-delete-route-ts-14">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip low">LOW</span><span class="chip area">RELIABILITY</span>
+        <span class="loc">src/app/api/account/delete/route.ts:14</span></label>
+      <p class="what"><b>What's wrong</b>Deletion is immediate and irreversible with no grace window; a misclick permanently cascades all data. The code comment already flags this pending cron.</p>
+      <p><b>Do this</b>When cron exists, switch to soft-delete + grace window; until then keep the explicit confirmation string and make irreversibility clear in UI.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Deletion is recoverable within the grace window once implemented.</p>
+    </div>
+
+    <p class="area-label">Config</p>
+    <div class="card" data-slug="improvement-config-vitest-config-ts-9">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip improvement">IMPROVEMENT</span><span class="chip area">CONFIG</span>
+        <span class="loc">vitest.config.ts:9</span></label>
+      <p class="what"><b>What's wrong</b>Unit config excludes <code>tests/integration/**</code> (fine if CI always runs <code>test:integration</code>), but local <code>npm test</code> alone never proves RLS, which is easy to forget.</p>
+      <p><b>Do this</b>Document the split, or add a CI-only assertion that the integration job actually ran.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">CI cannot pass without the integration job running.</p>
+    </div>
+    <div class="card" data-slug="improvement-config-eslint-config-mjs-16">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip improvement">IMPROVEMENT</span><span class="chip area">CONFIG</span>
+        <span class="loc">eslint.config.mjs:16</span></label>
+      <p class="what"><b>What's wrong</b><code>hero-section/**</code> is globally ignored by eslint - intentional, but it means lint never covers that tree.</p>
+      <p><b>Do this</b>Keep the ignore only while that tree stays non-shipped reference code; remove it if it ever ships.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Ignored paths are all genuinely non-shipped.</p>
+    </div>
+    <div class="card" data-slug="improvement-config-tsconfig-json-33">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip improvement">IMPROVEMENT</span><span class="chip area">CONFIG</span>
+        <span class="loc">tsconfig.json:33</span></label>
+      <p class="what"><b>What's wrong</b><code>exclude</code> is only <code>node_modules</code> so tests are in the typecheck graph for the IDE, but nothing runs <code>tsc</code> in CI, so the graph never actually gates.</p>
+      <p><b>Do this</b>Pair the include with the real typecheck script from Wave 1 so the graph gates.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">A type error in a test fails CI.</p>
+    </div>
+
+    <p class="area-label">Security / Perf</p>
+    <div class="card" data-slug="improvement-security-next-config-ts-15">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip improvement">IMPROVEMENT</span><span class="chip area">SECURITY</span>
+        <span class="loc">next.config.ts:15</span></label>
+      <p class="what"><b>What's wrong</b>Production CSP uses <code>script-src 'self' 'unsafe-inline'</code>, weakening XSS defense.</p>
+      <p><b>Do this</b>Move to a nonce-based CSP for Next's inline hydration scripts and drop <code>'unsafe-inline'</code> for scripts.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Header no longer contains script-src 'unsafe-inline'; no CSP violations in the console.</p>
+    </div>
+    <div class="card" data-slug="improvement-perf-src-app-hirer-search-page-tsx-54">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip improvement">IMPROVEMENT</span><span class="chip area">PERF</span>
+        <span class="loc">src/app/(hirer)/search/page.tsx:54</span></label>
+      <p class="what"><b>What's wrong</b>Browse always fetches <code>limit=100</code> with no pagination UI, so the page over-fetches and can't scale past 100 results.</p>
+      <p><b>Do this</b>Add page/cursor pagination or a "Load more" control.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">Browsing 200+ talent works with pagination.</p>
+    </div>
+    <div class="card" data-slug="improvement-security-posthog-identify-on-boot">
+      <label class="card-head"><input type="checkbox">
+        <span class="chip improvement">IMPROVEMENT</span><span class="chip area">SECURITY</span>
+        <span class="loc">posthog-setup-report.md:37</span></label>
+      <p class="what"><b>What's wrong</b>Returning sessions never call <code>posthog.identify</code> (no auth listener), so analytics under-attributes returning users; the setup report's "deep integration complete" oversells this.</p>
+      <p><b>Do this</b>Identify from the session on app boot via an auth-state listener.</p>
+      <p><b>Prove it</b></p>
+      <p class="prove">A returning user's events are attributed to their id, not anonymous.</p>
+    </div>
+  </section>
+
+  <footer>After Wave 1 is clear, run /crisp-production-ready again. A fix is not done until a fresh audit stops finding it.</footer>
+</main>
+<script>
+  document.querySelectorAll('.card').forEach(card => {
+    const box = card.querySelector('input');
+    const key = 'crisp-prod:' + card.dataset.slug;
+    box.checked = localStorage.getItem(key) === '1';
+    card.classList.toggle('done', box.checked);
+    box.addEventListener('change', () => {
+      localStorage.setItem(key, box.checked ? '1' : '0');
+      card.classList.toggle('done', box.checked);
+      update(card.closest('[data-wave]'));
+    });
+  });
+  function update(wave){
+    const boxes = wave.querySelectorAll('.card input');
+    const done = wave.querySelectorAll('.card input:checked').length;
+    wave.querySelector('.count').textContent = done + ' of ' + boxes.length + ' fixed';
+    wave.querySelector('.fill').style.width = boxes.length ? (100 * done / boxes.length) + '%' : '0%';
+  }
+  document.querySelectorAll('[data-wave]').forEach(update);
+</script>
+</body>
+</html>

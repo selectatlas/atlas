@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { SearchX } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { isLocalDemoMode } from '@/lib/demo-mode'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { nameInitial } from '@/lib/display'
 
 interface Thread {
   id: string
@@ -16,13 +18,10 @@ interface Thread {
   lastMessageAt: string
 }
 
-function isLocalDemoMode() {
-  return typeof document !== 'undefined' && document.cookie.split(';').some(cookie => cookie.trim().startsWith('atlas_demo=1'))
-}
-
 export default function MessagesPage() {
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -39,12 +38,18 @@ export default function MessagesPage() {
     })
 
     fetch('/api/messages/threads')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error('Unable to load messages')
+        return r.json()
+      })
       .then(data => {
         setThreads(data.threads ?? [])
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => {
+        setLoadError('Unable to load messages')
+        setLoading(false)
+      })
   }, [])
 
   useEffect(() => {
@@ -82,6 +87,21 @@ export default function MessagesPage() {
     )
   }
 
+  if (loadError) {
+    return (
+      <div className="space-y-4 py-2">
+        <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="text-sm font-medium text-primary hover:text-primary/80"
+        >
+          Try again
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8 py-2">
       <div>
@@ -94,7 +114,7 @@ export default function MessagesPage() {
         <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center">
           <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-muted text-muted-foreground"><SearchX className="size-5" /></div>
           <p className="font-medium">No messages yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Contact a talent to start a conversation.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Start a conversation from search, outreach, or a talent profile.</p>
         </div>
       ) : (
         <div className="space-y-2 card-stagger">
@@ -105,7 +125,7 @@ export default function MessagesPage() {
                   <Avatar className="h-11 w-11 rounded-xl">
                     <AvatarImage src={thread.otherAvatar ?? ''} alt={thread.otherName} />
                     <AvatarFallback className="rounded-xl text-lg font-bold">
-                      {thread.otherName[0]}
+                      {nameInitial(thread.otherName)}
                     </AvatarFallback>
                   </Avatar>
 

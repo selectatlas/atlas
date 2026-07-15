@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { LabeledField } from '@/components/ui/labeled-field'
 import type { TalentSkill, Category, Proficiency } from '@/types'
 
 interface SkillsEditorProps {
@@ -44,6 +45,7 @@ export function SkillsEditor({ profileId, skills, onUpdate, onError }: SkillsEdi
   }
 
   async function removeSkill(skillId: string) {
+    if (!window.confirm('Remove this skill?')) return
     const supabase = createClient()
     const { error } = await supabase.from('talent_skills').delete().eq('id', skillId)
     if (error) { onError(error.message); return }
@@ -66,8 +68,7 @@ export function SkillsEditor({ profileId, skills, onUpdate, onError }: SkillsEdi
           </div>
         )}
         <div className="flex gap-2 items-end">
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Category</label>
+          <LabeledField label="Category" className="flex-1">
             <select
               value={newSkillCategory}
               onChange={e => setNewSkillCategory(e.target.value as Category)}
@@ -77,9 +78,8 @@ export function SkillsEditor({ profileId, skills, onUpdate, onError }: SkillsEdi
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
-          </div>
-          <div className="w-32">
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Proficiency</label>
+          </LabeledField>
+          <LabeledField label="Proficiency" className="w-32">
             <select
               value={newSkillProficiency}
               onChange={e => setNewSkillProficiency(e.target.value as Proficiency)}
@@ -89,16 +89,17 @@ export function SkillsEditor({ profileId, skills, onUpdate, onError }: SkillsEdi
                 <option key={p} value={p}>{PROFICIENCY_LABELS[p]}</option>
               ))}
             </select>
-          </div>
+          </LabeledField>
         </div>
-        <div className="flex gap-2">
-          <Input
-            className="flex-1"
-            value={newSkillName}
-            onChange={e => setNewSkillName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill() } }}
-            placeholder="Skill name (e.g. Hip Hop)"
-          />
+        <div className="flex items-end gap-2">
+          <LabeledField label="Skill name" className="flex-1">
+            <Input
+              value={newSkillName}
+              onChange={e => setNewSkillName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill() } }}
+              placeholder="Skill name (e.g. Hip Hop)"
+            />
+          </LabeledField>
           <Button variant="outline" onClick={addSkill} disabled={!newSkillName.trim()}>Add</Button>
         </div>
       </CardContent>

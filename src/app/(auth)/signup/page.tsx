@@ -4,9 +4,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { clearLocalDemoCookies } from '@/lib/demo-mode'
+import posthog from 'posthog-js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import type { AccountType } from '@/types'
 
 export default function SignupPage() {
@@ -24,29 +27,47 @@ export default function SignupPage() {
     setError(null)
     setLoading(true)
 
-    const supabase = createClient()
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, account_type: accountType },
-      },
-    })
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName, account_type: accountType },
+          // Confirmation emails must land back on the callback so the session
+          // is established and the user reaches the dashboard, not the landing page.
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
 
-    if (error) {
-      setError(error.message)
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      if (data.user) {
+        clearLocalDemoCookies()
+        posthog.identify(data.user.id, {
+          account_type: accountType,
+        })
+        posthog.capture('user_signed_up', {
+          account_type: accountType,
+          requires_email_confirmation: !data.session,
+        })
+      }
+
+      if (!data.session) {
+        setCheckEmail(true)
+        return
+      }
+
+      router.push('/home')
+      router.refresh()
+    } catch {
+      setError('Unable to reach the sign-up service. Please try again.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    if (!data.session) {
-      setCheckEmail(true)
-      setLoading(false)
-      return
-    }
-
-    router.push(accountType === 'hirer' ? '/search' : '/discover')
-    router.refresh()
   }
 
   if (checkEmail) {
@@ -86,6 +107,7 @@ export default function SignupPage() {
               <button
                 type="button"
                 onClick={() => setAccountType('hirer')}
+                aria-pressed={accountType === 'hirer'}
                 className={`rounded-xl border-2 p-4 text-left transition-[border-color,background-color,box-shadow] duration-[var(--duration-fast)] ${
                   accountType === 'hirer'
                     ? 'border-primary bg-primary/5'
@@ -99,6 +121,7 @@ export default function SignupPage() {
               <button
                 type="button"
                 onClick={() => setAccountType('talent')}
+                aria-pressed={accountType === 'talent'}
                 className={`rounded-xl border-2 p-4 text-left transition-[border-color,background-color,box-shadow] duration-[var(--duration-fast)] ${
                   accountType === 'talent'
                     ? 'border-primary bg-primary/5'
@@ -169,6 +192,14 @@ export default function SignupPage() {
                 {loading ? 'Creating account...' : 'Create account'}
               </Button>
             </form>
+
+            <div className="my-4 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <GoogleSignInButton accountType={accountType} onError={setError} />
           </CardContent>
         </Card>
 

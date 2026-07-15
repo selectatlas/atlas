@@ -64,6 +64,7 @@ export function CreditsEditor({ profileId, credits, onUpdate, onError }: Credits
   }
 
   async function deleteCredit(creditId: string) {
+    if (!window.confirm('Delete this credit?')) return
     const supabase = createClient()
     const { error: err } = await supabase.from('credits').delete().eq('id', creditId)
     if (err) { onError(err.message); return }

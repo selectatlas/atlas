@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { getSession } from '@/lib/auth'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -22,14 +23,13 @@ type OutreachRow = {
 }
 
 export default async function OutreachPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [supabase, { userId }] = await Promise.all([createClient(), getSession()])
 
-  const { data: outreach } = user
+  const { data: outreach } = userId
     ? await supabase
         .from('outreach')
         .select('id, message, status, created_at, profiles!talent_id(id, full_name, avatar_url)')
-        .eq('hirer_id', user.id)
+        .eq('hirer_id', userId)
         .order('created_at', { ascending: false })
     : { data: null }
 

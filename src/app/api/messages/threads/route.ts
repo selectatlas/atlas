@@ -28,7 +28,7 @@ export async function GET() {
       id,
       created_at,
       thread_participants(profile_id, profiles(full_name, avatar_url)),
-      messages!inner(id, content, sender_id, created_at)
+      messages(id, content, sender_id, created_at)
     `)
     .in('id', threadIds)
     .order('created_at', { referencedTable: 'messages', ascending: false })
@@ -36,7 +36,8 @@ export async function GET() {
 
   // Flatten and sort by latest message time
   const result = (threads ?? []).map(thread => {
-    const msg = (thread.messages as Array<{ id: string; content: string; sender_id: string; created_at: string }>)[0]
+    const msgs = thread.messages as Array<{ id: string; content: string; sender_id: string; created_at: string }>
+    const msg = msgs?.[0]
     const participants = (thread.thread_participants as unknown as Array<{
       profile_id: string
       profiles: { full_name: string; avatar_url: string | null } | null
@@ -46,7 +47,7 @@ export async function GET() {
       id: thread.id,
       otherName: other?.profiles?.full_name ?? 'Unknown',
       otherAvatar: other?.profiles?.avatar_url ?? null,
-      lastMessage: msg?.content ?? '',
+      lastMessage: msg?.content ?? 'No messages yet',
       lastSenderId: msg?.sender_id ?? '',
       lastMessageAt: msg?.created_at ?? thread.created_at,
     }

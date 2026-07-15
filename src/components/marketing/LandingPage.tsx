@@ -21,7 +21,7 @@ import Hero from '@/components/Hero'
 const briefExamples: Array<{
   category: string
   brief: string
-  visual: 'search' | 'casting' | 'campaign' | 'availability' | 'crew'
+  visual: 'search' | 'casting' | 'campaign' | 'availability' | 'photo_video'
 }> = [
   {
     category: 'Commercial casting',
@@ -44,9 +44,9 @@ const briefExamples: Array<{
     visual: 'availability',
   },
   {
-    category: 'Production crew',
-    brief: 'A gaffer with music-video credits free for a three-day shoot next month.',
-    visual: 'crew',
+    category: 'Photography & video',
+    brief: 'A photographer-videographer with music-video credits available for a three-day shoot next month.',
+    visual: 'photo_video',
   },
 ]
 
@@ -175,7 +175,7 @@ export function LandingPage() {
               <div className="landing-bento-match">
                 <div className="landing-bento-match__person">
                   <span className="landing-mini-avatar"><Image src="/hero/01.jpg" alt="" fill sizes="32px" /></span>
-                  <span><b>Priya Singh</b><small>98% match</small></span>
+                  <span><b>Priya Singh</b><small>Example match score</small></span>
                 </div>
                 <div className="landing-bento-match__reasons">
                   <span><Check aria-hidden="true" />Hindi speaker</span>
@@ -193,18 +193,11 @@ export function LandingPage() {
               <p>See who can actually make the date.</p>
             </div>
             <div className="landing-bento__visual" aria-hidden="true">
+              <p className="landing-bento-availability__label text-xs uppercase tracking-wide text-muted-foreground">Example UI</p>
               <div className="landing-bento-availability">
-                <span className="landing-bento-availability__label">December</span>
-                <div className="landing-bento-availability__week">
-                  <span className="is-free">1</span>
-                  <span className="is-free">2</span>
-                  <span className="is-busy">3</span>
-                  <span className="is-free">4</span>
-                  <span className="is-free">5</span>
-                  <span className="is-busy">6</span>
-                  <span className="is-free">7</span>
-                </div>
-                <small>5 of 7 shoot days free</small>
+                <span className="landing-bento-availability__label">Availability</span>
+                <p className="text-sm">Available December · London · Travel on request</p>
+                <small>Shown from each talent&apos;s profile availability field</small>
               </div>
             </div>
           </article>
@@ -250,8 +243,8 @@ export function LandingPage() {
           <p>Search by the details that make a brief specific — language, movement, look, availability.</p>
         </div>
         <div className="landing-outcome">
-          <h3>No black-box ranking</h3>
-          <p>Understand why each person surfaced before you spend a minute on their profile.</p>
+          <h3>Explainable matches</h3>
+          <p>See why each person surfaced when Atlas has structured signals; weaker hits may show a generic reason.</p>
         </div>
         <div className="landing-outcome">
           <h3>One connected flow</h3>
@@ -299,7 +292,7 @@ export function LandingPage() {
                     <div className="landing-brief-card__campaign-profile">
                       <span className="landing-mini-avatar"><Image src="/hero/06.jpg" alt="" fill sizes="32px" /></span>
                       <span><b>Nia Okafor</b><small>Creator · Host · Director</small></span>
-                      <strong>94%</strong>
+                      <strong>Example</strong>
                     </div>
                     <div className="landing-brief-card__campaign-bars">
                       <span><i /><b>On-camera presence</b></span>
@@ -312,20 +305,17 @@ export function LandingPage() {
                 {example.visual === 'availability' && (
                   <div className="landing-brief-card__availability">
                     <div><CalendarDays /><span>Manchester · March</span></div>
-                    <div className="landing-brief-card__availability-days">
-                      <span>12</span><span className="is-open">13</span><span className="is-open">14</span><span>15</span><span>16</span><span className="is-open">17</span><span className="is-open">18</span>
-                    </div>
-                    <p><i /> 4 performers free for both show dates</p>
+                    <p><i /> Available for both show dates · Bhangra troupe</p>
                   </div>
                 )}
 
-                {example.visual === 'crew' && (
+                {example.visual === 'photo_video' && (
                   <div className="landing-brief-card__crew">
-                    <div className="landing-brief-card__crew-filter"><SlidersHorizontal /><span>Gaffer</span><span>Music videos</span><span>Next month</span></div>
+                    <div className="landing-brief-card__crew-filter"><SlidersHorizontal /><span>Photographer</span><span>Music videos</span><span>Next month</span></div>
                     <div className="landing-brief-card__crew-map">
                       <MapPin /><i /><i /><i /><i />
                     </div>
-                    <div className="landing-brief-card__crew-footer"><span>24 available crew</span><Send /></div>
+                    <div className="landing-brief-card__crew-footer"><span>Photographer &amp; videographer category</span><Send /></div>
                   </div>
                 )}
               </div>
@@ -358,9 +348,9 @@ export function LandingPage() {
                 <span>3 strong matches</span>
               </div>
               <div className="landing-mini-brief"><span className="landing-mini-brief__icon"><Search /></span><span>Hindi-speaking performer<br /><b>in London · available December</b></span></div>
-              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--lime"><Image src="/hero/01.jpg" alt="" fill sizes="32px" /></span><span><b>Priya Singh</b><small>98% match · Bollywood</small></span><strong>98%</strong></div>
-              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--lavender"><Image src="/hero/12.jpg" alt="" fill sizes="32px" /></span><span><b>Aisha Khan</b><small>94% match · Bhangra</small></span><strong>94%</strong></div>
-              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--indigo"><Image src="/hero/02.jpg" alt="" fill sizes="32px" /></span><span><b>Ravi Mehta</b><small>89% match · Movement</small></span><strong>89%</strong></div>
+              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--lime"><Image src="/hero/01.jpg" alt="" fill sizes="32px" /></span><span><b>Priya Singh</b><small>Example · Bollywood</small></span><strong>—</strong></div>
+              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--lavender"><Image src="/hero/12.jpg" alt="" fill sizes="32px" /></span><span><b>Aisha Khan</b><small>Example · Bhangra</small></span><strong>—</strong></div>
+              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--indigo"><Image src="/hero/02.jpg" alt="" fill sizes="32px" /></span><span><b>Ravi Mehta</b><small>Example · Movement</small></span><strong>—</strong></div>
             </div>
           </div>
         </article>
@@ -371,8 +361,8 @@ export function LandingPage() {
               <div className="landing-profile-card__top"><span className="landing-mini-avatar landing-result__avatar--lavender"><Image src="/hero/06.jpg" alt="" fill sizes="32px" /></span><span className="landing-profile-card__status"><i />Profile discoverable</span></div>
               <div className="landing-profile-card__name"><b>Nia Okafor</b><span>Creator · Director · Host</span></div>
               <div className="landing-profile-card__tags"><span>Lifestyle</span><span>Short-form video</span><span>On-camera</span></div>
-              <div className="landing-profile-card__meter"><span><b>Profile strength</b><b>86%</b></span><i><em /></i></div>
-              <div className="landing-profile-card__footer"><span>3 relevant briefs this week</span><ArrowUpRight /></div>
+              <div className="landing-profile-card__meter"><span><b>Profile strength</b><b>Example</b></span><i><em /></i></div>
+              <div className="landing-profile-card__footer"><span>Discover jobs matched to your skills</span><ArrowUpRight /></div>
             </div>
           </div>
           <div className="landing-audience__copy">
@@ -402,7 +392,7 @@ export function LandingPage() {
 
       <footer className="landing-footer">
         <div className="landing-footer__brand"><Link href="/" className="landing-brand"><span>atlas</span><b>.ai</b></Link><p>AI-native talent discovery for the creative industry.</p></div>
-        <div className="landing-footer__links"><Link href="/login">Sign in</Link><Link href="/signup">Create account</Link><a href="#top">Back to top <ArrowUpRight aria-hidden="true" /></a></div>
+        <div className="landing-footer__links"><Link href="/login">Sign in</Link><Link href="/signup">Create account</Link><Link href="/terms">Terms of Service</Link><Link href="/privacy">Privacy Policy</Link><a href="#top">Back to top <ArrowUpRight aria-hidden="true" /></a></div>
         <p className="landing-footer__copyright">© 2026 Atlas</p>
       </footer>
     </main>

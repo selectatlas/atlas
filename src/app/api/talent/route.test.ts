@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(), createServiceClient: vi.fn() }))
 vi.mock('@/lib/rate-limit', () => ({ enforceRateLimit: vi.fn().mockResolvedValue(null) }))
@@ -32,11 +32,27 @@ describe('GET /api/talent', () => {
     mockCreateServiceClient.mockReturnValue(service())
   })
 
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('requires authentication and a hirer account', async () => {
     mockCreateClient.mockResolvedValue(caller(null, null))
     expect((await GET(new Request('http://localhost/api/talent'))).status).toBe(401)
     mockCreateClient.mockResolvedValue(caller({ id: 'u1' }, 'talent'))
     expect((await GET(new Request('http://localhost/api/talent'))).status).toBe(403)
+  })
+
+  it('serves the seeded catalogue to local demo sessions only in development', async () => {
+    vi.stubEnv('NODE_ENV', 'development')
+    mockCreateClient.mockResolvedValue(caller(null, null))
+
+    const response = await GET(new Request('http://localhost/api/talent', {
+      headers: { cookie: 'atlas_demo=1; atlas_demo_role=hirer' },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(enforceRateLimit).toHaveBeenCalledWith('talent-browse:local-demo', 60, 60)
   })
 
   it('rejects malformed or unknown URL filters', async () => {
@@ -49,10 +65,11 @@ describe('GET /api/talent', () => {
     mockCreateClient.mockResolvedValue(caller({ id: 'u1' }, 'hirer'))
     const mockService = service()
     mockCreateServiceClient.mockReturnValue(mockService)
-    const response = await GET(new Request('http://localhost/api/talent?category=actor&hair_type=3b_curly&nudity=false'))
+    const response = await GET(new Request('http://localhost/api/talent?category=actor&hair_type=3b_curly&nudity=false&limit=100'))
     expect(response.status).toBe(200)
     expect(mockService.rpc).toHaveBeenCalledWith('search_talent_filtered', expect.objectContaining({
       filters: { category: 'actor', attributes: { hair_type: ['3b_curly'] }, sensitive: { nudity: false } },
+      result_limit: 100,
     }))
   })
 })

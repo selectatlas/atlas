@@ -5,6 +5,31 @@ export type ApplicationStatus = 'sent' | 'viewed' | 'responded' | 'shortlisted' 
 export type OutreachStatus = 'draft' | 'sent' | 'viewed' | 'responded'
 export type JobStatus = 'open' | 'closed'
 export type JobWorkType = 'in_person' | 'remote' | 'hybrid'
+export type ProfileVisibility = 'public' | 'members' | 'private'
+
+export interface NotificationChannelPrefs {
+  in_app: boolean
+  email: boolean
+}
+
+export interface NotificationPreferences {
+  messages: NotificationChannelPrefs
+  applications: NotificationChannelPrefs
+  outreach: NotificationChannelPrefs
+  job_matches: NotificationChannelPrefs
+  shortlist: NotificationChannelPrefs
+}
+
+export interface HirerJobDefaults {
+  category: Category | null
+  location: string | null
+  budget: string | null
+  skills_required: string[]
+}
+
+export interface HirerOutreachDefaults {
+  tone_context: string | null
+}
 
 export interface Profile {
   id: string
@@ -20,6 +45,7 @@ export interface Profile {
   rates: string | null
   availability: string | null
   showreel_url: string | null
+  profile_visibility?: ProfileVisibility
   created_at: string
 }
 

@@ -1,7 +1,23 @@
 import { test, expect } from '@playwright/test'
-import { login, seedUser, adminClient } from './helpers'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { login, seedUser, adminClient, API_URL } from './helpers'
 
 test.describe('production response surface', () => {
+  test('production build was compiled against the expected Supabase stack', () => {
+    const expectedHost = new URL(API_URL).hostname
+    const chunksDir = join(process.cwd(), '.next/static/chunks')
+    expect(existsSync(chunksDir)).toBe(true)
+
+    const haystack = readdirSync(chunksDir)
+      .filter(name => name.endsWith('.js'))
+      .slice(0, 40)
+      .map(name => readFileSync(join(chunksDir, name), 'utf8'))
+      .join('\n')
+
+    expect(haystack).toContain(expectedHost)
+  })
+
   test('security headers are present on every response', async ({ request }) => {
     const response = await request.get('/login')
     const headers = response.headers()
@@ -9,7 +25,8 @@ test.describe('production response surface', () => {
     expect(headers['content-security-policy']).toContain("default-src 'self'")
     expect(headers['content-security-policy']).toContain("frame-ancestors 'none'")
     // The CSP allowlist must include the Supabase origin the app calls
-    expect(headers['content-security-policy']).toContain('connect-src')
+    const supabaseOrigin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co').origin
+    expect(headers['content-security-policy']).toContain(supabaseOrigin)
     expect(headers['x-content-type-options']).toBe('nosniff')
     expect(headers['x-frame-options']).toBe('DENY')
     expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
@@ -28,6 +45,7 @@ test.describe('production response surface', () => {
     expect(response.headers()['content-type']).toContain('text/plain')
     const body = await response.text()
     expect(body).toContain('Disallow: /search')
+    expect(body).toContain('Disallow: /settings')
     expect(body).toContain('Disallow: /messages')
     expect(body).toContain('Disallow: /design-system')
     expect(body).toContain('Sitemap:')

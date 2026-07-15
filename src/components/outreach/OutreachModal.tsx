@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { isLocalDemoMode } from '@/lib/demo-mode'
 import type { Profile, TalentSkill } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -19,6 +21,7 @@ interface OutreachModalProps {
 }
 
 export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
+  const router = useRouter()
   const [message, setMessage] = useState('')
   const [generating, setGenerating] = useState(false)
   const [sending, setSending] = useState(false)
@@ -42,8 +45,7 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     setGenerating(true)
     setError(null)
 
-    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('atlas_demo=1')
-    if (isLocalDemo) {
+    if (isLocalDemoMode()) {
       const firstName = talent.full_name.split(' ')[0]
       setMessage(`Hi ${firstName}, your work looks like a strong fit for a new creative brief. I’d love to share more about the project and see if you’re available.`)
       setGenerating(false)
@@ -51,15 +53,33 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     }
 
     try {
+      let hirerContext = 'a casting director looking for creative talent'
+      try {
+        const settingsRes = await fetch('/api/me/settings')
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json()
+          if (typeof settings.outreach_defaults?.tone_context === 'string' && settings.outreach_defaults.tone_context.trim()) {
+            hirerContext = settings.outreach_defaults.tone_context.trim()
+          }
+        }
+      } catch {
+        // Fall back to the generic context when settings are unavailable.
+      }
+
       const res = await fetch('/api/outreach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           talent_id: talent.id,
           action: 'generate',
-          hirer_context: 'a casting director looking for creative talent',
+          hirer_context: hirerContext,
         }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        setError(data.error ?? 'Could not generate message')
+        return
+      }
       const data = await res.json()
       if (data.message) setMessage(data.message)
       else setError('Could not generate message')
@@ -74,8 +94,7 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     setSending(true)
     setError(null)
 
-    const isLocalDemo = process.env.NODE_ENV === 'development' && document.cookie.includes('atlas_demo=1')
-    if (isLocalDemo) {
+    if (isLocalDemoMode()) {
       setSent(true)
       setSending(false)
       setTimeout(() => { onSent(); onClose() }, 1200)
@@ -92,10 +111,14 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
           message: message.trim(),
         }),
       })
-      const data = await res.json()
+      const data = await res.json() as { success?: boolean; thread_id?: string | null; error?: string }
       if (data.success) {
         setSent(true)
-        setTimeout(() => { onSent(); onClose() }, 1200)
+        setTimeout(() => {
+          onSent()
+          onClose()
+          if (data.thread_id) router.push(`/messages/${data.thread_id}`)
+        }, 1200)
       } else {
         setError(data.error ?? 'Failed to send')
       }

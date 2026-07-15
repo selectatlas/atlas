@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { BriefcaseBusiness, Check, Grid2X2, List, MapPin, Search, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { isLocalDemoMode } from '@/lib/demo-mode'
 import { DEMO_APPLICATIONS_STORAGE_KEY, DEMO_JOBS, DEMO_PROFILE, type DemoApplication } from '@/lib/demo-data'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import { getJobMatchReasons } from '@/lib/matching'
@@ -14,16 +16,14 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { JobBriefDialog } from '@/components/talent/JobBriefDialog'
 import { ApplicationPreviewDialog } from '@/components/talent/ApplicationPreviewDialog'
+import posthog from 'posthog-js'
 import type { Job, Category, Profile, TalentSkill } from '@/types'
 
 type JobResult = Job & { hirer?: { full_name: string } | null }
 type SortOption = 'newest' | 'rate_high' | 'rate_low'
 
-function isLocalDemoMode() {
-  return typeof document !== 'undefined' && document.cookie.split(';').some(cookie => cookie.trim().startsWith('atlas_demo=1'))
-}
-
 export default function DiscoverPage() {
+  const router = useRouter()
   const [jobs, setJobs] = useState<JobResult[]>([])
   const [talentProfile, setTalentProfile] = useState<(Profile & { talent_skills: TalentSkill[] }) | null>(null)
   const [loading, setLoading] = useState(true)
@@ -55,7 +55,11 @@ export default function DiscoverPage() {
 
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        setLoading(false)
+        router.push('/login')
+        return
+      }
 
       const { data: profile } = await supabase
         .from('profiles')
@@ -84,7 +88,7 @@ export default function DiscoverPage() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [router])
 
   const visibleJobs = useMemo(() => {
     let filtered = jobs.filter(j => !passed.has(j.id))
@@ -130,6 +134,7 @@ export default function DiscoverPage() {
 
   function requestApplication(job: JobResult, shouldAdvance = false) {
     if (applied.has(job.id) || applyingId) return
+    setDragX(0)
     setApplicationError(null)
     setAdvanceAfterApplication(shouldAdvance)
     setApplicationNote(buildApplicationNote(job))
@@ -198,6 +203,7 @@ export default function DiscoverPage() {
   function passJob(jobId: string) {
     setPassed(prev => new Set([...prev, jobId]))
     setDragX(0)
+    posthog.capture('job_passed', { job_id: jobId })
   }
 
   const pointerId = useRef<number | null>(null)
@@ -322,6 +328,7 @@ export default function DiscoverPage() {
         <select
           value={sort}
           onChange={e => setSort(e.target.value as SortOption)}
+          aria-label="Sort jobs"
           className="bg-muted border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer"
         >
           <option value="newest">Newest</option>
@@ -334,7 +341,11 @@ export default function DiscoverPage() {
         <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center">
           <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-muted text-muted-foreground"><BriefcaseBusiness className="size-5" /></div>
           <p className="font-medium">
-            {jobs.length === 0 ? 'No open jobs yet' : "You've reviewed all jobs"}
+            {search.trim()
+              ? 'No jobs match your search'
+              : jobs.length === 0
+                ? 'No open jobs yet'
+                : "You've reviewed all jobs"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">Check back soon for new opportunities.</p>
         </div>
@@ -432,7 +443,7 @@ export default function DiscoverPage() {
       {applicationSuccess && (
         <div role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto flex max-w-lg items-center justify-between gap-4 rounded-xl border border-emerald-500/30 bg-card p-4 shadow-lg md:bottom-6">
           <div className="flex items-start gap-3"><div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700"><Check className="size-4" /></div><div><p className="text-sm font-semibold">Application sent</p><p className="mt-0.5 text-xs text-muted-foreground">{applicationSuccess.title} is now in your Activity.</p></div></div>
-          <a href="/activity" className="shrink-0 text-xs font-semibold text-primary hover:underline">View Activity</a>
+          <a href="/home" className="shrink-0 text-xs font-semibold text-primary hover:underline">View dashboard</a>
         </div>
       )}
 
@@ -456,7 +467,7 @@ export default function DiscoverPage() {
         submitting={Boolean(applicationJob && applyingId === applicationJob.id)}
         error={applicationError}
         onNoteChange={setApplicationNote}
-        onClose={() => { setApplicationJob(null); setApplicationError(null) }}
+        onClose={() => { setApplicationJob(null); setApplicationError(null); setDragX(0) }}
         onConfirm={confirmApplication}
       />
     </div>
