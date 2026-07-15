@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -40,16 +41,18 @@ export function AdminViewSwitcher() {
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuLabel>Switch account</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => switchTo('hirer')}>
-          <BriefcaseBusiness className="size-4" strokeWidth={1.8} />
-          Hirer account
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => switchTo('talent')}>
-          <UserRound className="size-4" strokeWidth={1.8} />
-          Talent account
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Switch account</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => switchTo('hirer')}>
+            <BriefcaseBusiness className="size-4" strokeWidth={1.8} />
+            Hirer account
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => switchTo('talent')}>
+            <UserRound className="size-4" strokeWidth={1.8} />
+            Talent account
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
