@@ -24,6 +24,8 @@ export type OnboardingPayload = {
   country: string | null
   rates: string | null
   availableNow: boolean | null
+  showreelUrl: string | null
+  firstCredit: { title: string; production: string } | null
 }
 
 type OnboardingValidationResult =
@@ -79,5 +81,29 @@ export function validateOnboardingPayload(input: unknown): OnboardingValidationR
     : typeof source.availableNow === 'boolean' ? source.availableNow : undefined
   if (availableNow === undefined) return { ok: false, error: 'Invalid availability' }
 
-  return { ok: true, value: { category, skills, headline, bio, city, country, rates, availableNow } }
+  const showreelUrl = optionalText(source.showreelUrl, 300)
+  if (showreelUrl === undefined) return { ok: false, error: 'Showreel link must be 300 characters or fewer' }
+  if (showreelUrl !== null && !/^https:\/\//.test(showreelUrl)) {
+    return { ok: false, error: 'Showreel link must start with https://' }
+  }
+
+  let firstCredit: OnboardingPayload['firstCredit'] = null
+  if (source.firstCredit !== null && source.firstCredit !== undefined) {
+    const creditSource = typeof source.firstCredit === 'object' && !Array.isArray(source.firstCredit)
+      ? source.firstCredit as Record<string, unknown>
+      : null
+    if (!creditSource) return { ok: false, error: 'Invalid first credit' }
+    const title = optionalText(creditSource.title, 120)
+    const production = optionalText(creditSource.production, 120)
+    if (title === undefined || production === undefined) {
+      return { ok: false, error: 'Credit details must be 120 characters or fewer' }
+    }
+    // Both blank means the step was skipped; one without the other is an error.
+    if (title !== null || production !== null) {
+      if (!title || !production) return { ok: false, error: 'A credit needs both a role and a production' }
+      firstCredit = { title, production }
+    }
+  }
+
+  return { ok: true, value: { category, skills, headline, bio, city, country, rates, availableNow, showreelUrl, firstCredit } }
 }

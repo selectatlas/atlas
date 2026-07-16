@@ -167,6 +167,85 @@ describe.skipIf(!stackUp)('Row-level security (real database)', () => {
     })
   })
 
+  describe('talent reviews and verification', () => {
+    beforeAll(async () => {
+      const { error } = await admin.from('talent_reviews').insert({
+        talent_id: talent.id,
+        reviewer_id: hirer.id,
+        rating: 5,
+        body: 'Fantastic to work with on our integration-test shoot.',
+        project_title: 'Integration test project',
+      })
+      expect(error).toBeNull()
+    })
+
+    it('authenticated users of both roles can read reviews', async () => {
+      const { data: asHirer, error: hirerError } = await hirer2.client
+        .from('talent_reviews')
+        .select('rating, body')
+        .eq('talent_id', talent.id)
+      expect(hirerError).toBeNull()
+      expect(asHirer?.length).toBe(1)
+
+      const { data: asTalent, error: talentError } = await talent2.client
+        .from('talent_reviews')
+        .select('rating')
+        .eq('talent_id', talent.id)
+      expect(talentError).toBeNull()
+      expect(asTalent?.length).toBe(1)
+    })
+
+    it('anonymous clients cannot read reviews', async () => {
+      const { data, error } = await anon.from('talent_reviews').select('id')
+      expect(error !== null || (data ?? []).length === 0).toBe(true)
+    })
+
+    it('authenticated users cannot insert reviews (service role only)', async () => {
+      const { error } = await hirer.client.from('talent_reviews').insert({
+        talent_id: talent.id,
+        reviewer_id: hirer.id,
+        rating: 5,
+        body: 'Self-service insert should be blocked.',
+      })
+      expect(error).not.toBeNull()
+    })
+
+    it('talent_stats exposes review aggregates', async () => {
+      const { data, error } = await hirer.client
+        .from('talent_stats')
+        .select('review_count, avg_rating')
+        .eq('profile_id', talent.id)
+        .single()
+      expect(error).toBeNull()
+      expect(Number(data?.review_count)).toBe(1)
+      expect(Number(data?.avg_rating)).toBe(5)
+    })
+
+    it('talent cannot self-verify', async () => {
+      const { error } = await talent.client
+        .from('profiles')
+        .update({ verified_at: new Date().toISOString() })
+        .eq('id', talent.id)
+      expect(error).not.toBeNull()
+    })
+
+    it('verification fields are readable through the public field list', async () => {
+      await admin.from('profiles').update({
+        verified_at: new Date().toISOString(),
+        verified_categories: ['dancer'],
+      }).eq('id', talent.id)
+
+      const { data, error } = await hirer.client
+        .from('profiles')
+        .select('verified_at, verified_categories')
+        .eq('id', talent.id)
+        .single()
+      expect(error).toBeNull()
+      expect(data?.verified_at).not.toBeNull()
+      expect(data?.verified_categories).toEqual(['dancer'])
+    })
+  })
+
   describe('rate limit storage', () => {
     it('authenticated users cannot read or write rate limit counters', async () => {
       const { error: selectError } = await talent.client.from('rate_limits').select('key')

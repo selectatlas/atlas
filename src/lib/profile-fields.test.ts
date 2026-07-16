@@ -6,4 +6,11 @@ describe('public profile projections', () => {
     expect(PUBLIC_PROFILE_FIELDS.split(',').map(field => field.trim())).not.toContain('email')
     expect(PUBLIC_PROFILE_WITH_SKILLS).not.toContain('*')
   })
+
+  it('includes verification fields granted in migration 015', () => {
+    const fields = PUBLIC_PROFILE_FIELDS.split(',').map(field => field.trim())
+    expect(fields).toContain('verified_at')
+    expect(fields).toContain('verified_categories')
+    expect(PUBLIC_PROFILE_WITH_SKILLS).toContain('verified_at')
+  })
 })

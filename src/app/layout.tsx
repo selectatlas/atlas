@@ -10,10 +10,11 @@ const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Atlas - AI Talent Discovery',
+    default: 'Atlas - AI Talent Search for the Creative Industry',
     template: '%s | Atlas',
   },
-  description: 'Find the right creative talent with AI-native search.',
+  description:
+    'Describe the person your project needs and get a ranked shortlist in seconds. AI talent search for casting directors, producers, and creative teams.',
   alternates: {
     canonical: '/',
   },
@@ -21,13 +22,15 @@ export const metadata: Metadata = {
     type: 'website',
     url: SITE_URL,
     siteName: 'Atlas',
-    title: 'Atlas - AI Talent Discovery',
-    description: 'Find the right creative talent with AI-native search.',
+    title: 'Atlas - AI Talent Search for the Creative Industry',
+    description:
+      'Describe the person your project needs and get a ranked shortlist in seconds. AI talent search for casting directors, producers, and creative teams.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Atlas - AI Talent Discovery',
-    description: 'Find the right creative talent with AI-native search.',
+    title: 'Atlas - AI Talent Search for the Creative Industry',
+    description:
+      'Describe the person your project needs and get a ranked shortlist in seconds. AI talent search for casting directors, producers, and creative teams.',
   },
   manifest: '/manifest.json',
   appleWebApp: {

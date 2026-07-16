@@ -1,11 +1,10 @@
 import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Award, Banknote, CalendarDays, Clapperboard, Eye, Heart, MapPin } from 'lucide-react'
+import { Award, Banknote, CalendarDays, Clapperboard, Eye, Heart, Star } from 'lucide-react'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import { TalentProfileShell } from '@/components/layout/TalentProfileShell'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
 import { CoverPhoto } from '@/components/talent/CoverPhoto'
 import { StatsBar } from '@/components/talent/StatsBar'
 import { CreditsTimeline } from '@/components/talent/CreditsTimeline'
@@ -17,9 +16,17 @@ import { LikeButton } from '@/components/talent/LikeButton'
 import { ViewTracker } from './ViewTracker'
 import { TalentProfileDetails } from '@/components/talent/TalentProfileDetails'
 import { SafetyActions } from '@/components/safety/SafetyActions'
+import { VerifiedBadge } from '@/components/talent/VerifiedBadge'
+import { RatingStars } from '@/components/talent/RatingStars'
+import { ReviewHighlights } from '@/components/talent/ReviewHighlights'
+import { ReviewsSection } from '@/components/talent/ReviewsSection'
+import { InlineShowreel } from '@/components/talent/InlineShowreel'
+import { BookingCard } from '@/components/talent/BookingCard'
 import { getTalentProfile } from '@/lib/talent'
 import { getSession } from '@/lib/auth'
 import { DEMO_PROFILE } from '@/lib/demo-data'
+import { formatDayRate } from '@/lib/display'
+import { formatRating } from '@/lib/reviews'
 import type { Profile, TalentSkill } from '@/types'
 
 const proficiencyVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
@@ -53,11 +60,35 @@ export default async function TalentProfilePage({
 
   if (!data) notFound()
 
-  const { profile, credits, portfolioItems, likesCount, viewsCount, similarTalent, talentDetails } = data
+  const {
+    profile,
+    credits,
+    portfolioItems,
+    likesCount,
+    viewsCount,
+    shortlistCount,
+    reviews,
+    reviewSummary,
+    similarTalent,
+    talentDetails,
+  } = data
   const skills = profile.talent_skills as TalentSkill[]
   const categories = [...new Set(skills.map(s => s.category))]
 
+  const averageRating = formatRating(reviewSummary.average)
+  const dayRate = formatDayRate(talentDetails.rate_min, talentDetails.rate_max)
+
+  // The first embeddable video leads the page as an inline showreel; keep it
+  // out of the gallery grid so it doesn't appear twice.
+  const showreelItem = portfolioItems.find(item => item.type === 'video') ?? null
+  const galleryItems = showreelItem
+    ? portfolioItems.filter(item => item.id !== showreelItem.id)
+    : portfolioItems
+
   const statsItems = []
+  if (reviewSummary.count > 0 && averageRating) {
+    statsItems.push({ icon: Star, label: 'Rating', value: `${averageRating} (${reviewSummary.count})` })
+  }
   if (skills.length > 0) statsItems.push({ icon: Award, label: 'Skills', value: `${skills.length}` })
   if (credits.length > 0) statsItems.push({ icon: Clapperboard, label: 'Credits', value: `${credits.length}` })
   if (likesCount > 0) statsItems.push({ icon: Heart, label: 'Likes', value: `${likesCount}` })
@@ -105,9 +136,19 @@ export default async function TalentProfilePage({
           </div>
 
           <div className="flex-1 min-w-0 pb-1">
-            <h1 className="text-xl font-bold leading-tight">{profile.full_name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold leading-tight">{profile.full_name}</h1>
+              <VerifiedBadge verifiedAt={profile.verified_at} categories={profile.verified_categories} />
+            </div>
             {profile.headline && (
               <p className="text-muted-foreground text-sm mt-0.5">{profile.headline}</p>
+            )}
+            {reviewSummary.count > 0 && reviewSummary.average !== null && (
+              <p className="mt-1 flex items-center gap-1.5 text-xs">
+                <RatingStars rating={reviewSummary.average} />
+                <span className="font-semibold">{averageRating}</span>
+                <span className="text-muted-foreground">({reviewSummary.count} review{reviewSummary.count > 1 ? 's' : ''})</span>
+              </p>
             )}
             {(profile.city || profile.country) && (
               <p className="text-muted-foreground/70 text-xs mt-0.5">
@@ -144,6 +185,14 @@ export default async function TalentProfilePage({
         <div className="min-w-0 space-y-8">
           {statsItems.length > 0 && <StatsBar items={statsItems} />}
 
+          <ReviewHighlights reviews={reviews} />
+
+          {showreelItem ? (
+            <InlineShowreel url={showreelItem.url} title={showreelItem.title} />
+          ) : profile.showreel_url ? (
+            <InlineShowreel url={profile.showreel_url} />
+          ) : null}
+
           {profile.bio && (
             <section>
               <h2 className="mb-2 text-sm font-semibold">About</h2>
@@ -171,49 +220,24 @@ export default async function TalentProfilePage({
             </section>
           )}
 
-          <PortfolioGallery items={portfolioItems} />
+          <PortfolioGallery items={galleryItems} />
 
-          {portfolioItems.length === 0 && profile.showreel_url && (
-            <section>
-              <h2 className="mb-3 text-sm font-semibold">Showreel</h2>
-              <a href={profile.showreel_url} target="_blank" rel="noopener noreferrer">
-                <Card className="flex items-center gap-3 border border-border/80 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <Clapperboard className="size-5" />
-                  </div>
-                  <span className="text-sm font-medium">Watch showreel</span>
-                </Card>
-              </a>
-            </section>
-          )}
+          <ReviewsSection reviews={reviews} summary={reviewSummary} />
 
           {!isOwner && <SimilarTalent talent={similarTalent} />}
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-6 lg:h-fit">
-          <Card className="border border-border/80 p-5 shadow-none">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">At a glance</p>
-            <div className="space-y-4">
-              {(profile.city || profile.country) && (
-                <div className="flex items-start gap-3">
-                  <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div><p className="text-xs text-muted-foreground">Location</p><p className="mt-0.5 text-sm font-medium">{[profile.city, profile.country].filter(Boolean).join(', ')}</p></div>
-                </div>
-              )}
-              {profile.availability && (
-                <div className="flex items-start gap-3">
-                  <CalendarDays className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div><p className="text-xs text-muted-foreground">Availability</p><p className="mt-0.5 text-sm font-medium">{profile.availability}</p></div>
-                </div>
-              )}
-              {profile.rates && (
-                <div className="flex items-start gap-3">
-                  <Banknote className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div><p className="text-xs text-muted-foreground">Rate</p><p className="mt-0.5 text-sm font-medium">{profile.rates}</p></div>
-                </div>
-              )}
-            </div>
-          </Card>
+          <BookingCard
+            talent={profile as Profile & { talent_skills: TalentSkill[] }}
+            rateMin={talentDetails.rate_min}
+            rateMax={talentDetails.rate_max}
+            availableNow={talentDetails.available_now}
+            responseTimeHours={talentDetails.response_time_hours}
+            summary={reviewSummary}
+            shortlistCount={shortlistCount}
+            showActions={!isOwner}
+          />
           {!isOwner && (
             <>
               <p className="px-1 text-xs leading-relaxed text-muted-foreground">Review their work, then send a tailored outreach message when the fit feels right.</p>
@@ -223,7 +247,14 @@ export default async function TalentProfilePage({
         </aside>
       </div>
 
-      {!isOwner && <ContactButton talent={profile as Profile & { talent_skills: TalentSkill[] }} />}
+      {!isOwner && (
+        <ContactButton
+          talent={profile as Profile & { talent_skills: TalentSkill[] }}
+          rateLabel={dayRate}
+          availableNow={talentDetails.available_now}
+          ratingLabel={reviewSummary.count > 0 ? averageRating : null}
+        />
+      )}
     </div>
   )
 }

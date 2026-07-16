@@ -98,4 +98,42 @@ describe('validateOnboardingPayload', () => {
   it('rejects a non-boolean availability flag', () => {
     expect(validateOnboardingPayload({ ...VALID, availableNow: 'yes' }).ok).toBe(false)
   })
+
+  it('defaults showreel and first credit to null when omitted', () => {
+    const result = validateOnboardingPayload(VALID)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.showreelUrl).toBeNull()
+      expect(result.value.firstCredit).toBeNull()
+    }
+  })
+
+  it('accepts a valid https showreel link', () => {
+    const result = validateOnboardingPayload({ ...VALID, showreelUrl: 'https://youtube.com/watch?v=abc12345' })
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value.showreelUrl).toBe('https://youtube.com/watch?v=abc12345')
+  })
+
+  it('rejects non-https or over-long showreel links', () => {
+    expect(validateOnboardingPayload({ ...VALID, showreelUrl: 'http://example.com/reel' }).ok).toBe(false)
+    expect(validateOnboardingPayload({ ...VALID, showreelUrl: 'javascript:alert(1)' }).ok).toBe(false)
+    expect(validateOnboardingPayload({ ...VALID, showreelUrl: `https://${'x'.repeat(300)}` }).ok).toBe(false)
+  })
+
+  it('accepts a complete first credit and treats an all-blank one as skipped', () => {
+    const withCredit = validateOnboardingPayload({ ...VALID, firstCredit: { title: ' Lead dancer ', production: 'The Nutcracker' } })
+    expect(withCredit.ok).toBe(true)
+    if (withCredit.ok) expect(withCredit.value.firstCredit).toEqual({ title: 'Lead dancer', production: 'The Nutcracker' })
+
+    const skipped = validateOnboardingPayload({ ...VALID, firstCredit: { title: '', production: '  ' } })
+    expect(skipped.ok).toBe(true)
+    if (skipped.ok) expect(skipped.value.firstCredit).toBeNull()
+  })
+
+  it('rejects a half-filled or malformed first credit', () => {
+    expect(validateOnboardingPayload({ ...VALID, firstCredit: { title: 'Lead dancer', production: '' } }).ok).toBe(false)
+    expect(validateOnboardingPayload({ ...VALID, firstCredit: { title: '', production: 'The Nutcracker' } }).ok).toBe(false)
+    expect(validateOnboardingPayload({ ...VALID, firstCredit: 'Lead dancer' }).ok).toBe(false)
+    expect(validateOnboardingPayload({ ...VALID, firstCredit: { title: 'x'.repeat(121), production: 'Show' } }).ok).toBe(false)
+  })
 })

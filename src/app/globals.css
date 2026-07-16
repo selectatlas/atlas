@@ -301,6 +301,9 @@
   --paper: #f7f5f1;
   --ink: #171717;
   --reveal: 34%;
+  /* Tile opacity at the centre of the ring mask; lowered on small screens
+     where the taller hero content overlaps more of the orbit. */
+  --tile-veil: 0.5;
   --hero-tile: clamp(52px, 5.4vw, 92px);
   --ar: 1.15;
 
@@ -323,8 +326,8 @@
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.5) var(--reveal), #000 72%);
-  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.5) var(--reveal), #000 72%);
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, var(--tile-veil)) var(--reveal), #000 72%);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, var(--tile-veil)) var(--reveal), #000 72%);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;
@@ -544,15 +547,146 @@
   transform: scale(0.97);
 }
 
+.hero .hero-search {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 620px);
+  gap: 14px;
+}
+
+.hero .hero-search__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 22px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
+}
+
+.hero .hero-search__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  opacity: 0.45;
+}
+
+.hero .hero-search__row input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  /* 16px minimum so iOS Safari doesn't zoom the viewport on focus. */
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.hero .hero-search__row input::placeholder {
+  color: var(--ink);
+  opacity: 0.4;
+}
+
+.hero .hero-search__submit {
+  height: 48px;
+  flex-shrink: 0;
+  padding: 0 24px;
+  font-size: 16px;
+}
+
+.hero .hero-search__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.hero .hero-search__chips button {
+  padding: 7px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: background-color var(--duration-fast, 150ms) var(--ease-out, ease-out),
+    border-color var(--duration-fast, 150ms) var(--ease-out, ease-out);
+}
+
+.hero .hero-search__chips button:hover {
+  border-color: rgba(0, 0, 0, 0.32);
+  background: #fff;
+}
+
+.hero .hero-proof {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+.hero .hero-proof li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.68;
+}
+
+.hero .hero-proof svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.hero .hero-signin {
+  margin: 0;
+  color: var(--ink);
+  opacity: 0.6;
+  font-size: 14px;
+}
+
+.hero .hero-signin a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 680px) {
+  .hero {
+    --tile-veil: 0.18;
+    --reveal: 52%;
+  }
+}
+
 @media (max-width: 520px) {
-  .hero .actions {
-    width: 100%;
-    flex-direction: column;
+  .hero .hero-search__row {
+    flex-wrap: wrap;
+    padding: 10px;
+    border-radius: 28px;
   }
 
-  .hero .btn {
+  .hero .hero-search__row input {
+    flex-basis: calc(100% - 40px);
+  }
+
+  .hero .hero-search__submit {
     justify-content: center;
     width: 100%;
+  }
+
+  .hero .hero-proof {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }
 
@@ -2381,6 +2515,160 @@
   margin: 0;
   color: var(--landing-muted);
   font-size: 0.64rem;
+}
+
+/* Talent roster showcase */
+
+.landing-roster {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  width: min(100% - 2rem, 1180px);
+  margin: 0 auto;
+}
+
+.landing-roster__card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--landing-line);
+  border-radius: var(--ds-radius-lg);
+  background: var(--landing-paper);
+}
+
+.landing-roster__photo {
+  position: relative;
+  aspect-ratio: 4 / 4.4;
+}
+
+.landing-roster__photo img {
+  object-fit: cover;
+}
+
+.landing-roster__photo span {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.7rem;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  background: rgba(23, 23, 23, 0.78);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.landing-roster__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem 1.1rem;
+}
+
+.landing-roster__body h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.landing-roster__role {
+  margin: 0;
+  color: var(--landing-muted);
+  font-size: 0.8rem;
+}
+
+.landing-roster__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  margin: 0;
+  color: var(--landing-muted);
+  font-size: 0.74rem;
+}
+
+.landing-roster__meta svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex-shrink: 0;
+}
+
+.landing-roster__skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.landing-roster__skills span {
+  padding: 0.26rem 0.58rem;
+  border: 1px solid var(--landing-line);
+  border-radius: 999px;
+  font-size: 0.68rem;
+}
+
+.landing-roster__cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+@media (max-width: 920px) {
+  .landing-roster {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* FAQ */
+
+.landing-faq {
+  display: flex;
+  flex-direction: column;
+  width: min(100% - 2rem, 760px);
+  margin: 0 auto;
+  border-top: 1px solid var(--landing-line);
+}
+
+.landing-faq__item {
+  border-bottom: 1px solid var(--landing-line);
+}
+
+.landing-faq__item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 0.2rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  list-style: none;
+}
+
+.landing-faq__item summary::-webkit-details-marker {
+  display: none;
+}
+
+.landing-faq__item summary svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  transition: transform var(--duration-fast, 150ms) var(--ease-out, ease-out);
+}
+
+.landing-faq__item[open] summary svg {
+  transform: rotate(45deg);
+}
+
+.landing-faq__item > p {
+  max-width: 62ch;
+  margin: 0;
+  padding: 0 0.2rem 1.25rem;
+  color: var(--landing-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 @keyframes landing-reveal {

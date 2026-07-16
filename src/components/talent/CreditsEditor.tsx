@@ -4,8 +4,11 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Credit } from '@/types'
+
+const OUTCOME_MAX_LENGTH = 280
 
 interface CreditsEditorProps {
   profileId: string
@@ -18,11 +21,11 @@ export function CreditsEditor({ profileId, credits, onUpdate, onError }: Credits
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState({
-    title: '', production: '', company: '', start_date: '', end_date: '', description: '', media_url: '', category: '',
+    title: '', production: '', company: '', start_date: '', end_date: '', description: '', media_url: '', category: '', outcome: '', client_logo_url: '',
   })
 
   function resetForm() {
-    setForm({ title: '', production: '', company: '', start_date: '', end_date: '', description: '', media_url: '', category: '' })
+    setForm({ title: '', production: '', company: '', start_date: '', end_date: '', description: '', media_url: '', category: '', outcome: '', client_logo_url: '' })
     setEditingId(null)
     setShowForm(false)
   }
@@ -33,6 +36,7 @@ export function CreditsEditor({ profileId, credits, onUpdate, onError }: Credits
       start_date: credit.start_date ?? '', end_date: credit.end_date ?? '',
       description: credit.description ?? '', media_url: credit.media_url ?? '',
       category: credit.category ?? '',
+      outcome: credit.outcome ?? '', client_logo_url: credit.client_logo_url ?? '',
     })
     setEditingId(credit.id)
     setShowForm(true)
@@ -47,7 +51,10 @@ export function CreditsEditor({ profileId, credits, onUpdate, onError }: Credits
       company: form.company.trim() || null,
       start_date: form.start_date || null, end_date: form.end_date || null,
       description: form.description.trim() || null, media_url: form.media_url.trim() || null,
-      category: form.category || null, sort_order: credits.length,
+      category: form.category || null,
+      outcome: form.outcome.trim().slice(0, OUTCOME_MAX_LENGTH) || null,
+      client_logo_url: form.client_logo_url.trim() || null,
+      sort_order: credits.length,
     }
 
     if (editingId) {
@@ -118,6 +125,21 @@ export function CreditsEditor({ profileId, credits, onUpdate, onError }: Credits
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">Company</label>
                 <Input value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} placeholder="Royal Ballet" />
               </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Outcome</label>
+              <Textarea
+                value={form.outcome}
+                maxLength={OUTCOME_MAX_LENGTH}
+                onChange={e => setForm(f => ({ ...f, outcome: e.target.value }))}
+                placeholder="What did this achieve? e.g. 'Sold-out 3-night run' or 'Campaign film reached 2M views'"
+                rows={2}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">Credits with an outcome are featured as case studies on your profile.</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Client logo URL</label>
+              <Input value={form.client_logo_url} onChange={e => setForm(f => ({ ...f, client_logo_url: e.target.value }))} placeholder="https://…" />
             </div>
             <div className="flex gap-2 pt-1">
               <Button onClick={saveCredit} className="bg-accent text-accent-foreground hover:bg-accent/80 rounded-xl font-semibold">

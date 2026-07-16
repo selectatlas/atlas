@@ -2,9 +2,11 @@ import { requirePlatformAdmin, grantPlatformAdmin, revokePlatformAdmin, countPla
 import { deleteAuthUser } from '@/lib/user-deletion'
 import { parseJsonBody, cleanOptionalString, badRequest, isUuid } from '@/lib/validation'
 import { logEvent } from '@/lib/log'
-import type { AccountType } from '@/types'
+import type { AccountType, Category } from '@/types'
 
 type AccountRole = AccountType | 'admin'
+
+const VERIFIABLE_CATEGORIES: Category[] = ['dancer', 'actor', 'photographer_videographer', 'content_creator']
 
 export async function PATCH(
   request: Request,
@@ -20,8 +22,8 @@ export async function PATCH(
   if (!parsedBody.ok) return parsedBody.response
 
   const { action } = parsedBody.body
-  if (action !== 'suspend' && action !== 'unsuspend' && action !== 'set_role' && action !== 'set_account_type') {
-    return badRequest('action must be suspend, unsuspend, set_role, or set_account_type')
+  if (action !== 'suspend' && action !== 'unsuspend' && action !== 'set_role' && action !== 'set_account_type' && action !== 'set_verification') {
+    return badRequest('action must be suspend, unsuspend, set_role, set_account_type, or set_verification')
   }
 
   const { data: target } = await auth.service
@@ -31,6 +33,50 @@ export async function PATCH(
     .maybeSingle()
 
   if (!target) return Response.json({ error: 'Not found' }, { status: 404 })
+
+  if (action === 'set_verification') {
+    if (target.account_type !== 'talent') {
+      return badRequest('Only talent profiles can be verified')
+    }
+
+    const verified = parsedBody.body.verified
+    if (typeof verified !== 'boolean') return badRequest('verified must be a boolean')
+
+    let categories: Category[] = []
+    if (verified) {
+      const input = parsedBody.body.categories
+      if (!Array.isArray(input) || input.length === 0) {
+        return badRequest('categories is required when verifying')
+      }
+      const invalid = input.filter(value => !VERIFIABLE_CATEGORIES.includes(value as Category))
+      if (invalid.length > 0) return badRequest('categories contains an unknown category')
+      categories = [...new Set(input as Category[])]
+    }
+
+    const { data: profile, error } = await auth.service
+      .from('profiles')
+      .update({
+        verified_at: verified ? new Date().toISOString() : null,
+        verified_categories: categories,
+      })
+      .eq('id', id)
+      .select('id, verified_at, verified_categories')
+      .single()
+
+    if (error || !profile) {
+      logEvent('error', 'admin_talent_verification_failed', { target_id: id, code: error?.code ?? null })
+      return Response.json({ error: 'Update failed' }, { status: 500 })
+    }
+
+    logEvent('info', 'admin_talent_verification_changed', {
+      target_id: id,
+      verified,
+      categories: categories.join(','),
+      admin_id: auth.userId,
+    })
+
+    return Response.json({ profile })
+  }
 
   const { data: adminRow } = await auth.service
     .from('platform_admins')

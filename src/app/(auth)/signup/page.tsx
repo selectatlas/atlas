@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { clearLocalDemoCookies } from '@/lib/demo-mode'
 import posthog from 'posthog-js'
@@ -13,7 +13,20 @@ import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import type { AccountType } from '@/types'
 
 export default function SignupPage() {
+  // useSearchParams requires a Suspense boundary during static rendering.
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
+  )
+}
+
+function SignupForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // A brief typed into the landing-page hero arrives as ?q= so a new hirer
+  // lands directly on their first search after signing up.
+  const heroQuery = searchParams.get('q')?.trim() ?? ''
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -61,8 +74,15 @@ export default function SignupPage() {
         return
       }
 
-      // Fresh talent accounts go straight into profile onboarding.
-      router.push(accountType === 'talent' ? '/onboarding' : '/home')
+      // Fresh talent accounts go straight into profile onboarding. Hirers who
+      // arrived with a brief from the landing page land on that search.
+      if (accountType === 'talent') {
+        router.push('/onboarding')
+      } else if (heroQuery) {
+        router.push(`/search?q=${encodeURIComponent(heroQuery)}`)
+      } else {
+        router.push('/home')
+      }
       router.refresh()
     } catch {
       setError('Unable to reach the sign-up service. Please try again.')
@@ -103,6 +123,12 @@ export default function SignupPage() {
             <CardTitle>Create account</CardTitle>
           </CardHeader>
           <CardContent>
+            {heroQuery && accountType === 'hirer' && (
+              <p className="mb-6 rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+                We&apos;ll run your search as soon as you&apos;re in:{' '}
+                <span className="text-foreground font-medium">&ldquo;{heroQuery}&rdquo;</span>
+              </p>
+            )}
             {/* Account type selector */}
             <div className="grid grid-cols-2 gap-3 mb-6">
               <Button

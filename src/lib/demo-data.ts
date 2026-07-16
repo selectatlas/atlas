@@ -1,4 +1,4 @@
-import type { Credit, Job, PortfolioItem, Profile, TalentProfileAttributes, TalentSensitivePreferences, TalentSkill } from '@/types'
+import type { Credit, Job, PortfolioItem, Profile, TalentProfileAttributes, TalentReview, TalentSensitivePreferences, TalentSkill } from '@/types'
 import type { SearchFilters, SearchFilterValue } from '@/lib/search-filters'
 import { FILTER_BY_KEY } from '@/lib/filter-taxonomy'
 
@@ -31,14 +31,94 @@ export const DEMO_PROFILE: Profile & {
   rates: '£300 per day / £180 half day',
   availability: 'Available December and January',
   showreel_url: null,
+  verified_at: '2026-06-01T09:00:00.000Z',
+  verified_categories: ['dancer'],
   created_at: '2026-07-10T08:00:00.000Z',
   talent_skills: [
     { id: 'demo-skill-1', profile_id: 'demo-talent', category: 'dancer', skill: 'Bollywood', proficiency: 'expert', created_at: '2026-07-10T08:00:00.000Z' },
     { id: 'demo-skill-2', profile_id: 'demo-talent', category: 'dancer', skill: 'Kathak', proficiency: 'advanced', created_at: '2026-07-10T08:00:00.000Z' },
     { id: 'demo-skill-3', profile_id: 'demo-talent', category: 'dancer', skill: 'Classical Indian dance', proficiency: 'advanced', created_at: '2026-07-10T08:00:00.000Z' },
   ],
-  credits: [],
-  portfolio_items: [],
+  credits: [
+    {
+      id: 'demo-credit-1',
+      profile_id: 'demo-talent',
+      title: 'Lead dancer',
+      production: 'Diwali on the Square campaign',
+      company: 'Mayor of London',
+      start_date: '2025-09-01',
+      end_date: '2025-10-20',
+      description: 'Led an eight-dancer ensemble across the hero film and live launch performance, working directly with the movement director on choreography.',
+      media_url: null,
+      category: 'dancer',
+      outcome: 'Campaign film reached 2.1M views; invited back to headline the 2026 event',
+      client_logo_url: null,
+      sort_order: 0,
+      created_at: '2026-07-10T08:00:00.000Z',
+    },
+    {
+      id: 'demo-credit-2',
+      profile_id: 'demo-talent',
+      title: 'Featured dancer',
+      production: 'Sona x Riva — music video',
+      company: 'Cobalt Films',
+      start_date: '2025-05-10',
+      end_date: '2025-05-12',
+      description: 'Featured Kathak-fusion solo in the bridge section, choreographed on the day with the artist.',
+      media_url: null,
+      category: 'dancer',
+      outcome: 'Video premiered on Vevo and passed 5M streams in its first month',
+      client_logo_url: null,
+      sort_order: 1,
+      created_at: '2026-07-10T08:00:00.000Z',
+    },
+    {
+      id: 'demo-credit-3',
+      profile_id: 'demo-talent',
+      title: 'Ensemble dancer',
+      production: 'West End Live — summer showcase',
+      company: null,
+      start_date: '2024-06-15',
+      end_date: '2024-06-16',
+      description: 'Two-day live showcase in Trafalgar Square as part of a twelve-dancer Bollywood ensemble.',
+      media_url: null,
+      category: 'dancer',
+      outcome: null,
+      client_logo_url: null,
+      sort_order: 2,
+      created_at: '2026-07-10T08:00:00.000Z',
+    },
+  ],
+  portfolio_items: [
+    {
+      id: 'demo-portfolio-1',
+      profile_id: 'demo-talent',
+      type: 'video',
+      url: 'https://www.youtube.com/watch?v=priya-demo-showreel',
+      title: 'Performance showreel 2026',
+      description: 'Three minutes of recent commercial, music video, and live performance work.',
+      thumbnail_url: null,
+      role: 'Lead dancer & choreographer',
+      project_date: '2026-01-15',
+      outcome: 'Booked four commercial campaigns off this reel',
+      sort_order: 0,
+      created_at: '2026-07-10T08:00:00.000Z',
+    },
+    {
+      id: 'demo-portfolio-2',
+      profile_id: 'demo-talent',
+      type: 'link',
+      url: 'https://example.com/diwali-campaign',
+      title: 'Diwali on the Square — campaign film',
+      description: 'Hero film from the Mayor of London campaign.',
+      thumbnail_url: null,
+      role: 'Lead dancer',
+      project_date: '2025-10-20',
+      outcome: '2.1M views across campaign channels',
+      sort_order: 1,
+      created_at: '2026-07-10T08:00:00.000Z',
+    },
+  ],
 }
 
 function createDemoTalent({
@@ -52,6 +132,7 @@ function createDemoTalent({
   availability,
   bio,
   rates,
+  verified,
 }: {
   id: string
   fullName: string
@@ -63,6 +144,7 @@ function createDemoTalent({
   availability: string
   bio: string
   rates: string
+  verified?: boolean
 }): Profile & { talent_skills: TalentSkill[] } {
   const createdAt = '2026-07-10T08:00:00.000Z'
   return {
@@ -79,6 +161,8 @@ function createDemoTalent({
     rates,
     availability,
     showreel_url: null,
+    verified_at: verified ? '2026-06-01T09:00:00.000Z' : null,
+    verified_categories: verified ? [category] : [],
     created_at: createdAt,
     talent_skills: skills.map((item, index) => ({
       id: `${id}-skill-${index + 1}`,
@@ -99,6 +183,7 @@ export const DEMO_TALENT_RESULTS = [
     headline: 'Bollywood Performer | Movement Director',
     city: 'London',
     category: 'dancer',
+    verified: true,
     skills: [
       { skill: 'Bollywood', proficiency: 'expert' },
       { skill: 'Bhangra', proficiency: 'advanced' },
@@ -129,6 +214,7 @@ export const DEMO_TALENT_RESULTS = [
     headline: 'Actor | Voice Artist | Presenter',
     city: 'London',
     category: 'actor',
+    verified: true,
     skills: [
       { skill: 'Screen acting', proficiency: 'expert' },
       { skill: 'Voiceover', proficiency: 'advanced' },
@@ -215,20 +301,67 @@ const demoAttribute = (overrides: Partial<DemoTalentAttributes> = {}): DemoTalen
   languages: ['english'],
   nationalities: ['british'],
   available_now: false,
+  response_time_hours: null,
   public_attributes: {},
   sensitive_preferences: {},
   ...overrides,
 })
 
 export const DEMO_TALENT_ATTRIBUTES: Record<string, DemoTalentAttributes> = {
-  'demo-talent': demoAttribute({ birth_year: 1993, gender: 'female', height_cm: 165, rate_min: 180, rate_max: 300, languages: ['english', 'hindi'], available_now: true, public_attributes: { overseas_hire: true, own_transport: ['car'], passport: ['uk'], dance_skill_level: ['advanced_or_professional'], experienced_choreographer: true, dance_experience: ['music_videos', 'live_performance', 'choreography'] } }),
-  'demo-talent-2': demoAttribute({ birth_year: 1990, gender: 'female', height_cm: 170, languages: ['english', 'urdu'], available_now: true, public_attributes: { overseas_hire: true, dance_skill_level: ['advanced_or_professional'], experienced_choreographer: true } }),
+  'demo-talent': demoAttribute({ birth_year: 1993, gender: 'female', height_cm: 165, rate_min: 180, rate_max: 300, languages: ['english', 'hindi'], available_now: true, response_time_hours: 2, public_attributes: { overseas_hire: true, own_transport: ['car'], passport: ['uk'], dance_skill_level: ['advanced_or_professional'], experienced_choreographer: true, dance_experience: ['music_videos', 'live_performance', 'choreography'] } }),
+  'demo-talent-2': demoAttribute({ birth_year: 1990, gender: 'female', height_cm: 170, languages: ['english', 'urdu'], available_now: true, response_time_hours: 3, public_attributes: { overseas_hire: true, dance_skill_level: ['advanced_or_professional'], experienced_choreographer: true } }),
   'demo-talent-3': demoAttribute({ birth_year: 1998, gender: 'female', height_cm: 162, languages: ['english', 'gujarati'], public_attributes: { dance_skill_level: ['advanced_or_professional'], dance_experience: ['stage', 'music_videos'] } }),
-  'demo-talent-4': demoAttribute({ birth_year: 1991, gender: 'female', height_cm: 174, available_now: true, public_attributes: { acting_medium: ['screen_acting', 'voice_acting'], acting_technique: ['meisner_technique'], actor_type: ['character_actor'], spact: false, accents: ['cockney'] }, sensitive_preferences: { kissing_scene: true, smoking_scene: false, nudity: false, implied_nudity: true, partial_clothing: true } }),
+  'demo-talent-4': demoAttribute({ birth_year: 1991, gender: 'female', height_cm: 174, available_now: true, response_time_hours: 4, public_attributes: { acting_medium: ['screen_acting', 'voice_acting'], acting_technique: ['meisner_technique'], actor_type: ['character_actor'], spact: false, accents: ['cockney'] }, sensitive_preferences: { kissing_scene: true, smoking_scene: false, nudity: false, implied_nudity: true, partial_clothing: true } }),
   'demo-talent-5': demoAttribute({ birth_year: 1996, gender: 'female', public_attributes: { overseas_hire: true, own_transport: ['car'] } }),
   'demo-talent-6': demoAttribute({ birth_year: 1989, gender: 'male', height_cm: 182, languages: ['english', 'hindi'], available_now: true, public_attributes: { acting_medium: ['screen_acting'], spact: true, spact_types: ['martial_artist'], stunt_register: false, stunt_disciplines: ['martial_arts'] }, sensitive_preferences: { kissing_scene: true, smoking_scene: true, nudity: false, implied_nudity: true, partial_clothing: true } }),
   'demo-talent-7': demoAttribute({ birth_year: 1994, gender: 'female', height_cm: 168, available_now: true, public_attributes: { dance_skill_level: ['advanced_or_professional'], experienced_choreographer: false, dance_experience: ['live_performance', 'teaching'] } }),
   'demo-talent-8': demoAttribute({ birth_year: 1992, gender: 'male', rate_min: 450, rate_max: 900, available_now: true, public_attributes: { photography_camera_format: ['full_frame'], photography_equipment: ['sony', 'leica'], videography_equipment: ['sony', 'blackmagic'], netflix_approved_camera: true, photography_types: ['fashion', 'editorial', 'portrait'], videography_types: ['commercial', 'cinematic'], delivery_time: ['14_days'], overseas_hire: true } }),
+}
+
+function demoReview({
+  id,
+  talentId,
+  rating,
+  body,
+  projectTitle,
+  reviewerName,
+  createdAt,
+}: {
+  id: string
+  talentId: string
+  rating: number
+  body: string
+  projectTitle: string | null
+  reviewerName: string
+  createdAt: string
+}): TalentReview {
+  return {
+    id,
+    talent_id: talentId,
+    reviewer_id: `demo-hirer-${id}`,
+    rating,
+    body,
+    project_title: projectTitle,
+    created_at: createdAt,
+    reviewer: { full_name: reviewerName, avatar_url: null },
+  }
+}
+
+export const DEMO_REVIEWS: Record<string, TalentReview[]> = {
+  'demo-talent': [
+    demoReview({ id: 'r1', talentId: 'demo-talent', rating: 5, reviewerName: 'Northstar Studios', projectTitle: 'Bollywood campaign shoot', createdAt: '2026-06-18T10:00:00.000Z', body: 'Priya was the anchor of our campaign shoot. She learned two routines in a day, lifted the whole ensemble, and was a genuine pleasure on set. We would book her again tomorrow.' }),
+    demoReview({ id: 'r2', talentId: 'demo-talent', rating: 5, reviewerName: 'Cobalt Films', projectTitle: 'Music video', createdAt: '2026-05-02T10:00:00.000Z', body: 'Precise, expressive, and completely reliable. Her Kathak solo became the centrepiece of the edit.' }),
+    demoReview({ id: 'r3', talentId: 'demo-talent', rating: 5, reviewerName: 'Common Ground Events', projectTitle: 'Festival showcase', createdAt: '2026-03-14T10:00:00.000Z', body: 'Professional from first call to final bow. Handled a last-minute stage change without missing a beat.' }),
+    demoReview({ id: 'r4', talentId: 'demo-talent', rating: 4, reviewerName: 'Brightside Agency', projectTitle: null, createdAt: '2026-01-22T10:00:00.000Z', body: 'Great energy and camera presence. Scheduling was tight but she made it work.' }),
+  ],
+  'demo-talent-2': [
+    demoReview({ id: 'r5', talentId: 'demo-talent-2', rating: 5, reviewerName: 'Northstar Studios', projectTitle: 'Commercial shoot', createdAt: '2026-04-10T10:00:00.000Z', body: 'Aisha directed movement for our whole cast and elevated every frame. Exceptional.' }),
+    demoReview({ id: 'r6', talentId: 'demo-talent-2', rating: 5, reviewerName: 'Cobalt Films', projectTitle: null, createdAt: '2026-02-05T10:00:00.000Z', body: 'Brilliant performer, brilliant collaborator. Brought choreography ideas that made the final cut.' }),
+  ],
+  'demo-talent-4': [
+    demoReview({ id: 'r7', talentId: 'demo-talent-4', rating: 5, reviewerName: 'Brightside Agency', projectTitle: 'Brand film', createdAt: '2026-05-28T10:00:00.000Z', body: 'Leila delivered our brand film script in half the expected takes and her VO work was flawless.' }),
+    demoReview({ id: 'r8', talentId: 'demo-talent-4', rating: 4, reviewerName: 'Common Ground Events', projectTitle: 'Live hosting', createdAt: '2026-03-01T10:00:00.000Z', body: 'Confident, warm host who kept a two-hour live event moving effortlessly.' }),
+  ],
 }
 
 function rangeMatches(value: number | null, range: SearchFilterValue) {

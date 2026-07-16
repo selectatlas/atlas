@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/ui/data-table'
+import { CATEGORY_LABELS } from '@/lib/skills'
+import type { Category } from '@/types'
 import {
   Select,
   SelectContent,
@@ -51,6 +54,8 @@ export function AdminAccountsPanel() {
   const [suspendTarget, setSuspendTarget] = useState<AdminAccountRow | null>(null)
   const [suspendReason, setSuspendReason] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<AdminAccountRow | null>(null)
+  const [verifyTarget, setVerifyTarget] = useState<AdminAccountRow | null>(null)
+  const [verifyCategories, setVerifyCategories] = useState<Category[]>([])
   const [bulkDeleteTargets, setBulkDeleteTargets] = useState<AdminAccountRow[]>([])
   const [addOpen, setAddOpen] = useState(false)
   const [addName, setAddName] = useState('')
@@ -149,6 +154,31 @@ export function AdminAccountsPanel() {
     }
   }, [load])
 
+  const setVerification = useCallback(async (account: AdminAccountRow, verified: boolean, categories: Category[]) => {
+    setBusyId(account.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/users/${account.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(verified
+          ? { action: 'set_verification', verified: true, categories }
+          : { action: 'set_verification', verified: false }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? 'Verification update failed')
+      }
+      setVerifyTarget(null)
+      setVerifyCategories([])
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update verification.')
+    } finally {
+      setBusyId(null)
+    }
+  }, [load])
+
   const deleteAccounts = useCallback(async (targets: AdminAccountRow[]) => {
     if (targets.length === 0) return
     setError(null)
@@ -216,6 +246,11 @@ export function AdminAccountsPanel() {
     },
     onRestore: account => { void restoreAccount(account) },
     onDeleteRequest: account => setDeleteTarget(account),
+    onVerifyRequest: account => {
+      setVerifyTarget(account)
+      setVerifyCategories([])
+    },
+    onUnverify: account => { void setVerification(account, false, []) },
   })
 
   const toolbar = (
@@ -311,6 +346,41 @@ export function AdminAccountsPanel() {
               onClick={() => void createAccount()}
             >
               Create account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={verifyTarget !== null} onOpenChange={open => { if (!open) setVerifyTarget(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify talent</DialogTitle>
+            <DialogDescription>
+              {verifyTarget ? `Grant ${verifyTarget.full_name} the Atlas Verified badge. Pick the categories they are verified for.` : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2.5">
+            {(Object.entries(CATEGORY_LABELS) as Array<[Category, string]>).map(([value, label]) => (
+              <label key={value} className="flex items-center gap-2.5 text-sm">
+                <Checkbox
+                  checked={verifyCategories.includes(value)}
+                  onCheckedChange={checked => {
+                    setVerifyCategories(current => checked
+                      ? [...current, value]
+                      : current.filter(category => category !== value))
+                  }}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVerifyTarget(null)}>Cancel</Button>
+            <Button
+              disabled={verifyCategories.length === 0 || busyId !== null}
+              onClick={() => verifyTarget && void setVerification(verifyTarget, true, verifyCategories)}
+            >
+              Verify
             </Button>
           </DialogFooter>
         </DialogContent>

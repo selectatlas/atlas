@@ -4,8 +4,12 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import type { PortfolioItem } from '@/types'
+
+const OUTCOME_MAX_LENGTH = 280
+const ROLE_MAX_LENGTH = 80
 
 interface PortfolioEditorProps {
   profileId: string
@@ -23,11 +27,11 @@ const MEDIA_TYPE_OPTIONS: Array<{ value: PortfolioItem['type']; label: string }>
 export function PortfolioEditor({ profileId, items, onUpdate, onError }: PortfolioEditorProps) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
-    type: 'video' as PortfolioItem['type'], url: '', title: '', description: '', thumbnail_url: '',
+    type: 'video' as PortfolioItem['type'], url: '', title: '', description: '', thumbnail_url: '', role: '', project_date: '', outcome: '',
   })
 
   function resetForm() {
-    setForm({ type: 'video', url: '', title: '', description: '', thumbnail_url: '' })
+    setForm({ type: 'video', url: '', title: '', description: '', thumbnail_url: '', role: '', project_date: '', outcome: '' })
     setShowForm(false)
   }
 
@@ -37,7 +41,11 @@ export function PortfolioEditor({ profileId, items, onUpdate, onError }: Portfol
     const { error: err } = await supabase.from('portfolio_items').insert({
       profile_id: profileId, type: form.type, url: form.url.trim(),
       title: form.title.trim() || null, description: form.description.trim() || null,
-      thumbnail_url: form.thumbnail_url.trim() || null, sort_order: items.length,
+      thumbnail_url: form.thumbnail_url.trim() || null,
+      role: form.role.trim().slice(0, ROLE_MAX_LENGTH) || null,
+      project_date: form.project_date || null,
+      outcome: form.outcome.trim().slice(0, OUTCOME_MAX_LENGTH) || null,
+      sort_order: items.length,
     })
     if (err) { onError(err.message); return }
     resetForm()
@@ -97,6 +105,30 @@ export function PortfolioEditor({ profileId, items, onUpdate, onError }: Portfol
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">URL</label>
               <Input value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} placeholder="https://youtube.com/..." />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Title</label>
+              <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Performance showreel 2026" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Your role</label>
+                <Input value={form.role} maxLength={ROLE_MAX_LENGTH} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="Lead dancer" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Project date</label>
+                <Input type="date" value={form.project_date} onChange={e => setForm(f => ({ ...f, project_date: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Outcome</label>
+              <Textarea
+                value={form.outcome}
+                maxLength={OUTCOME_MAX_LENGTH}
+                onChange={e => setForm(f => ({ ...f, outcome: e.target.value }))}
+                placeholder="What did this project achieve? e.g. '2M views across campaign channels'"
+                rows={2}
+              />
             </div>
             <div className="flex gap-2 pt-1">
               <Button onClick={saveItem} className="bg-accent text-accent-foreground hover:bg-accent/80 rounded-xl font-semibold">

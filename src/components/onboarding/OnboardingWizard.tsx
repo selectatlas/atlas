@@ -33,6 +33,7 @@ const STEP_TITLES = [
   'Add a profile photo',
   'Introduce yourself',
   'Rates and availability',
+  'Show your work',
 ]
 
 export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: OnboardingWizardProps) {
@@ -48,6 +49,9 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: Onbo
   const [country, setCountry] = useState('')
   const [rates, setRates] = useState('')
   const [availableNow, setAvailableNow] = useState<boolean | null>(null)
+  const [showreelUrl, setShowreelUrl] = useState('')
+  const [creditTitle, setCreditTitle] = useState('')
+  const [creditProduction, setCreditProduction] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -86,6 +90,10 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: Onbo
           country,
           rates,
           availableNow,
+          showreelUrl: showreelUrl.trim() || null,
+          firstCredit: creditTitle.trim() && creditProduction.trim()
+            ? { title: creditTitle.trim(), production: creditProduction.trim() }
+            : null,
         }),
       })
 
@@ -116,11 +124,19 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: Onbo
     router.refresh()
   }
 
+  // The work step is optional, but reject a half-filled credit or a non-https
+  // link before the server does.
+  const showreelValid = !showreelUrl.trim() || /^https:\/\//.test(showreelUrl.trim())
+  const creditValid = Boolean(creditTitle.trim()) === Boolean(creditProduction.trim())
+
   const canContinue =
     step === 0 ? category !== null :
     step === 1 ? selectedSkills.length > 0 :
     step === 3 ? headline.trim().length > 0 :
+    step === 5 ? showreelValid && creditValid :
     true
+
+  const workStepEmpty = !showreelUrl.trim() && !creditTitle.trim() && !creditProduction.trim()
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 py-6">
@@ -296,6 +312,39 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: Onbo
               </div>
             </div>
           )}
+
+          {step === 5 && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Proof of work is the fastest way to win a hirer&apos;s trust. Both fields are optional - you can add more from your profile later.
+              </p>
+              <LabeledField label="Showreel link (optional)">
+                <Input
+                  value={showreelUrl}
+                  onChange={e => setShowreelUrl(e.target.value)}
+                  placeholder="https://youtube.com/watch?v=..."
+                  inputMode="url"
+                />
+              </LabeledField>
+              {!showreelValid && (
+                <p className="text-xs text-destructive">Showreel link must start with https://</p>
+              )}
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Your proudest credit (optional)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <LabeledField label="Your role">
+                    <Input value={creditTitle} onChange={e => setCreditTitle(e.target.value)} placeholder="Lead Dancer" maxLength={120} />
+                  </LabeledField>
+                  <LabeledField label="Production">
+                    <Input value={creditProduction} onChange={e => setCreditProduction(e.target.value)} placeholder="The Nutcracker" maxLength={120} />
+                  </LabeledField>
+                </div>
+                {!creditValid && (
+                  <p className="mt-1.5 text-xs text-destructive">Add both a role and a production, or leave both empty.</p>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -325,7 +374,7 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: Onbo
             disabled={saving || !canContinue}
             className="h-11 rounded-xl bg-accent px-6 font-semibold text-accent-foreground hover:bg-accent/80"
           >
-            {saving ? 'Setting up...' : 'Finish and preview my profile'}
+            {saving ? 'Setting up...' : workStepEmpty ? 'Skip and finish' : 'Finish and preview my profile'}
           </Button>
         )}
       </div>

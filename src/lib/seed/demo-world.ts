@@ -23,6 +23,32 @@ export const DEMO_HIRER = {
   bio: 'Independent production company making music videos, branded content, and short film across London. We cast dancers, actors, and creators for fast-turnaround shoots with major label and brand clients.',
 }
 
+// Lightweight hirer accounts whose only job is to author talent reviews, so
+// review sections aren't wall-to-wall Northstar Studios.
+export const DEMO_REVIEWER_HIRERS = [
+  {
+    full_name: 'Cobalt Films',
+    email: 'cobalt.films@atlas-demo.com',
+    city: 'London',
+    country: 'UK',
+    bio: 'Music video and commercial production house working with UK labels and brands.',
+  },
+  {
+    full_name: 'Brightside Agency',
+    email: 'brightside.agency@atlas-demo.com',
+    city: 'Manchester',
+    country: 'UK',
+    bio: 'Creative agency producing branded content and social campaigns.',
+  },
+  {
+    full_name: 'Common Ground Events',
+    email: 'commonground.events@atlas-demo.com',
+    city: 'London',
+    country: 'UK',
+    bio: 'Live events and festival production across the UK.',
+  },
+]
+
 const now = () => Date.now()
 const daysAgoIso = (days: number) => new Date(now() - days * 86_400_000).toISOString()
 const hoursAgoIso = (hours: number) => new Date(now() - hours * 3_600_000).toISOString()
@@ -301,6 +327,7 @@ interface DemoCredit {
   endMonthsAgo: number | null
   description: string
   category: Category
+  outcome?: string // credits with an outcome render as case-study cards
 }
 
 interface DemoPortfolioItem {
@@ -309,12 +336,17 @@ interface DemoPortfolioItem {
   title: string
   description: string
   imageSeed?: string // mirrored into Supabase storage when type is image
+  role?: string
+  projectMonthsAgo?: number
+  outcome?: string
 }
 
 export interface FeaturedTalent {
   email: string
   headline: string
   coverSeed: string
+  verified?: Category[] // grants the Atlas Verified badge for these categories
+  responseTimeHours?: number
   credits: DemoCredit[]
   portfolio: DemoPortfolioItem[]
 }
@@ -324,6 +356,8 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
     email: 'priya.singh@atlas-demo.com',
     headline: 'Bollywood & Kathak dancer — 12 years on stage and screen',
     coverSeed: 'atlas-priya-cover',
+    verified: ['dancer'],
+    responseTimeHours: 2,
     credits: [
       {
         title: 'Headline Performer',
@@ -333,6 +367,7 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
         endMonthsAgo: 8,
         description: 'Headlined the main stage at Trafalgar Square with a 12-dancer Bollywood ensemble in front of 35,000 people.',
         category: 'dancer',
+        outcome: 'Performed to 35,000 people; invited back to headline next year\'s event',
       },
       {
         title: 'Featured Dancer',
@@ -342,6 +377,7 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
         endMonthsAgo: 14,
         description: 'Featured dancer across a 14-date UK arena tour supporting headline Bollywood playback artists.',
         category: 'dancer',
+        outcome: '14 sold-out arena dates across the UK',
       },
       {
         title: 'Lead Dancer',
@@ -363,16 +399,18 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
       },
     ],
     portfolio: [
-      { type: 'video', url: 'https://www.youtube.com/watch?v=atlasdemo-priya-reel', title: 'Performance Showreel 2025', description: 'Three minutes of stage and screen highlights, including Trafalgar Square and arena tour footage.' },
-      { type: 'video', url: 'https://vimeo.com/atlasdemo/priya-kathak', title: 'Kathak Solo — Studio Session', description: 'Classical Kathak solo shot at Sadler\'s Wells studio.' },
-      { type: 'image', url: '', imageSeed: 'atlas-priya-stage', title: 'Diwali on the Square — Main Stage', description: 'Headline performance, Trafalgar Square.' },
-      { type: 'image', url: '', imageSeed: 'atlas-priya-editorial', title: 'Editorial Shoot — Asiana Magazine', description: 'Cover feature on British-Asian dance artists.' },
+      { type: 'video', url: 'https://www.youtube.com/watch?v=atlasdemo-priya-reel', title: 'Performance Showreel 2025', description: 'Three minutes of stage and screen highlights, including Trafalgar Square and arena tour footage.', role: 'Lead dancer & choreographer', projectMonthsAgo: 3, outcome: 'Booked four commercial campaigns off this reel' },
+      { type: 'video', url: 'https://vimeo.com/atlasdemo/priya-kathak', title: 'Kathak Solo — Studio Session', description: 'Classical Kathak solo shot at Sadler\'s Wells studio.', role: 'Solo artist', projectMonthsAgo: 6 },
+      { type: 'image', url: '', imageSeed: 'atlas-priya-stage', title: 'Diwali on the Square — Main Stage', description: 'Headline performance, Trafalgar Square.', role: 'Headline performer', projectMonthsAgo: 8, outcome: 'Main stage, 35,000-person audience' },
+      { type: 'image', url: '', imageSeed: 'atlas-priya-editorial', title: 'Editorial Shoot — Asiana Magazine', description: 'Cover feature on British-Asian dance artists.', role: 'Cover artist', projectMonthsAgo: 10 },
     ],
   },
   {
     email: 'ananya.sharma@atlas-demo.com',
     headline: 'Bollywood fusion choreographer — film & commercial',
     coverSeed: 'atlas-ananya-cover',
+    verified: ['dancer'],
+    responseTimeHours: 3,
     credits: [
       {
         title: 'Choreographer',
@@ -400,6 +438,7 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
         endMonthsAgo: 15,
         description: 'Featured role in an official music video with 40M+ views.',
         category: 'dancer',
+        outcome: 'Official video passed 40M views',
       },
     ],
     portfolio: [
@@ -440,6 +479,8 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
     email: 'james.morrison@atlas-demo.com',
     headline: 'Screen actor & certified stage combat instructor',
     coverSeed: 'atlas-james-cover',
+    verified: ['actor'],
+    responseTimeHours: 4,
     credits: [
       {
         title: 'Supporting Role — "Callum"',
@@ -449,6 +490,7 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
         endMonthsAgo: 7,
         description: 'Recurring supporting role across four episodes, including two extended fight sequences performed without a double.',
         category: 'actor',
+        outcome: 'Four broadcast episodes; all fight sequences performed without a double',
       },
       {
         title: 'Lead — "The Corner Man"',
@@ -458,6 +500,7 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
         endMonthsAgo: 16,
         description: 'Lead role as an ageing boxing trainer; long-listed for a British Independent Film Award.',
         category: 'actor',
+        outcome: 'Long-listed for a British Independent Film Award',
       },
       {
         title: 'Fight Performer',
@@ -487,6 +530,7 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
         endMonthsAgo: 4,
         description: 'Guest lead in a boxing-centred episode; all ring sequences performed for real.',
         category: 'actor',
+        outcome: 'Episode reached the UK top-10 in its release week',
       },
       {
         title: 'Supporting Role',
@@ -506,6 +550,8 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
     email: 'sophie.clarke@atlas-demo.com',
     headline: 'Food & drink creator — 180k across Instagram & TikTok',
     coverSeed: 'atlas-sophie-cover',
+    verified: ['content_creator'],
+    responseTimeHours: 2,
     credits: [
       {
         title: 'Campaign Creator',
@@ -515,6 +561,7 @@ export const DEMO_FEATURED_TALENT: FeaturedTalent[] = [
         endMonthsAgo: 4,
         description: 'Six-part cocktail serial for a premium whisky brand; 2.1M combined views.',
         category: 'content_creator',
+        outcome: '2.1M combined views across the six-part series',
       },
       {
         title: 'Resident Creator',
@@ -561,6 +608,54 @@ export const DEMO_ENGAGEMENT: Array<{ email: string; views: number; likes: numbe
 ]
 
 // ----------------------------------------------------------------
+// Reviews — written by demo hirers about featured talent
+// ----------------------------------------------------------------
+
+interface DemoReview {
+  talentEmail: string
+  reviewerEmail: string
+  rating: number
+  body: string
+  projectTitle: string | null
+  daysAgo: number
+}
+
+const NORTHSTAR = DEMO_HIRER.email
+const COBALT = 'cobalt.films@atlas-demo.com'
+const BRIGHTSIDE = 'brightside.agency@atlas-demo.com'
+const COMMON_GROUND = 'commonground.events@atlas-demo.com'
+
+export const DEMO_REVIEWS: DemoReview[] = [
+  { talentEmail: 'priya.singh@atlas-demo.com', reviewerEmail: NORTHSTAR, rating: 5, projectTitle: 'Bollywood campaign shoot', daysAgo: 28, body: 'Priya was the anchor of our campaign shoot. She learned two routines in a day, lifted the whole ensemble, and was a genuine pleasure on set. We would book her again tomorrow.' },
+  { talentEmail: 'priya.singh@atlas-demo.com', reviewerEmail: COBALT, rating: 5, projectTitle: 'Music video', daysAgo: 74, body: 'Precise, expressive, and completely reliable. Her Kathak solo became the centrepiece of the edit.' },
+  { talentEmail: 'priya.singh@atlas-demo.com', reviewerEmail: COMMON_GROUND, rating: 5, projectTitle: 'Festival showcase', daysAgo: 121, body: 'Professional from first call to final bow. Handled a last-minute stage change without missing a beat.' },
+  { talentEmail: 'priya.singh@atlas-demo.com', reviewerEmail: BRIGHTSIDE, rating: 4, projectTitle: null, daysAgo: 176, body: 'Great energy and camera presence. Scheduling was tight but she made it work.' },
+  { talentEmail: 'priya.singh@atlas-demo.com', reviewerEmail: COBALT, rating: 5, projectTitle: 'Label showcase', daysAgo: 231, body: 'Second time booking Priya and she somehow raised the bar again. Choreography notes were implemented instantly.' },
+
+  { talentEmail: 'ananya.sharma@atlas-demo.com', reviewerEmail: NORTHSTAR, rating: 5, projectTitle: 'Commercial shoot', daysAgo: 44, body: 'Ananya directed movement for our whole cast and elevated every frame. Exceptional.' },
+  { talentEmail: 'ananya.sharma@atlas-demo.com', reviewerEmail: COBALT, rating: 5, projectTitle: null, daysAgo: 132, body: 'Brilliant performer, brilliant collaborator. Brought choreography ideas that made the final cut.' },
+  { talentEmail: 'ananya.sharma@atlas-demo.com', reviewerEmail: BRIGHTSIDE, rating: 4, projectTitle: 'Brand film', daysAgo: 203, body: 'Strong choreography and clear communication with a large ensemble. Would work with her again.' },
+
+  { talentEmail: 'deepika.nair@atlas-demo.com', reviewerEmail: COMMON_GROUND, rating: 5, projectTitle: 'Cultural festival', daysAgo: 61, body: 'Deepika\'s fusion piece was the moment of the festival. Audiences were on their feet.' },
+  { talentEmail: 'deepika.nair@atlas-demo.com', reviewerEmail: NORTHSTAR, rating: 5, projectTitle: null, daysAgo: 148, body: 'Classical technique with real screen presence. A director\'s dream to shoot.' },
+  { talentEmail: 'deepika.nair@atlas-demo.com', reviewerEmail: BRIGHTSIDE, rating: 4, projectTitle: 'Social campaign', daysAgo: 219, body: 'Beautiful work and generous with retakes. Slight delay on wardrobe day but the result spoke for itself.' },
+
+  { talentEmail: 'james.morrison@atlas-demo.com', reviewerEmail: NORTHSTAR, rating: 5, projectTitle: 'Short film', daysAgo: 39, body: 'James performed every fight beat himself and still found quiet, devastating moments between rounds. Remarkable range.' },
+  { talentEmail: 'james.morrison@atlas-demo.com', reviewerEmail: COBALT, rating: 5, projectTitle: 'Music video', daysAgo: 117, body: 'Brought real menace and control to a physically demanding shoot. Zero retakes for safety.' },
+  { talentEmail: 'james.morrison@atlas-demo.com', reviewerEmail: BRIGHTSIDE, rating: 5, projectTitle: null, daysAgo: 188, body: 'Directed our stage combat workshop and choreographed a sequence in an afternoon. Total professional.' },
+  { talentEmail: 'james.morrison@atlas-demo.com', reviewerEmail: COMMON_GROUND, rating: 4, projectTitle: 'Live event', daysAgo: 244, body: 'Commanding live presence. A joy to produce for.' },
+
+  { talentEmail: 'marcus.cole@atlas-demo.com', reviewerEmail: NORTHSTAR, rating: 5, projectTitle: 'Boxing feature test', daysAgo: 52, body: 'Marcus is the real thing - the camera believes every punch. Held his own in dialogue scenes with seasoned leads.' },
+  { talentEmail: 'marcus.cole@atlas-demo.com', reviewerEmail: COBALT, rating: 5, projectTitle: null, daysAgo: 139, body: 'Cast him for authenticity, kept him for the acting. Completely dependable across a 12-day shoot.' },
+  { talentEmail: 'marcus.cole@atlas-demo.com', reviewerEmail: BRIGHTSIDE, rating: 4, projectTitle: 'Sportswear campaign', daysAgo: 210, body: 'Great on camera and patient through a long shot list. Delivered exactly what the brand needed.' },
+
+  { talentEmail: 'sophie.clarke@atlas-demo.com', reviewerEmail: BRIGHTSIDE, rating: 5, projectTitle: 'Drinks campaign', daysAgo: 33, body: 'Sophie\'s six-part serial outperformed every paid asset we ran that quarter. Sharp, fast, and a genuine partner on strategy.' },
+  { talentEmail: 'sophie.clarke@atlas-demo.com', reviewerEmail: NORTHSTAR, rating: 5, projectTitle: 'Launch content', daysAgo: 96, body: 'Delivered launch content that became the venue\'s top organic post of the year. Effortless to work with.' },
+  { talentEmail: 'sophie.clarke@atlas-demo.com', reviewerEmail: COMMON_GROUND, rating: 5, projectTitle: 'Festival coverage', daysAgo: 167, body: 'Covered two festival days and turned edits around overnight. Engagement doubled our forecast.' },
+  { talentEmail: 'sophie.clarke@atlas-demo.com', reviewerEmail: COBALT, rating: 4, projectTitle: null, daysAgo: 238, body: 'Polished food content with a clear voice. Brief adherence was excellent.' },
+]
+
+// ----------------------------------------------------------------
 // Seeder
 // ----------------------------------------------------------------
 
@@ -593,6 +688,7 @@ async function clearDemoWorld(supabase: SupabaseClient, hirerId: string, talentI
     await supabase.from('portfolio_items').delete().in('profile_id', talentIds)
     await supabase.from('profile_views').delete().in('talent_id', talentIds)
     await supabase.from('profile_likes').delete().in('talent_id', talentIds)
+    await supabase.from('talent_reviews').delete().in('talent_id', talentIds)
   }
 }
 
@@ -722,9 +818,22 @@ export async function seedDemoWorld(supabase: SupabaseClient, ids: ProfileIdByEm
     if (!coverUrl) throw new Error(`Could not create cover image in Supabase Storage for ${talent.email}`)
     const { error: headlineError } = await supabase
       .from('profiles')
-      .update({ headline: talent.headline, cover_url: coverUrl })
+      .update({
+        headline: talent.headline,
+        cover_url: coverUrl,
+        verified_at: talent.verified ? daysAgoIso(45) : null,
+        verified_categories: talent.verified ?? [],
+      })
       .eq('id', profileId)
     if (headlineError) throw new Error(`Failed to update headline for ${talent.email}: ${headlineError.message}`)
+
+    if (talent.responseTimeHours != null) {
+      const { error: responseTimeError } = await supabase
+        .from('talent_profiles')
+        .update({ response_time_hours: talent.responseTimeHours })
+        .eq('profile_id', profileId)
+      if (responseTimeError) throw new Error(`Failed to set response time for ${talent.email}: ${responseTimeError.message}`)
+    }
 
     const { error: creditsError } = await supabase.from('credits').insert(
       talent.credits.map((credit, index) => ({
@@ -736,6 +845,7 @@ export async function seedDemoWorld(supabase: SupabaseClient, ids: ProfileIdByEm
         end_date: credit.endMonthsAgo != null ? monthsAgoDate(credit.endMonthsAgo) : null,
         description: credit.description,
         category: credit.category,
+        outcome: credit.outcome ?? null,
         sort_order: index,
       }))
     )
@@ -763,6 +873,9 @@ export async function seedDemoWorld(supabase: SupabaseClient, ids: ProfileIdByEm
         title: item.title,
         description: item.description,
         thumbnail_url: thumbnailUrl,
+        role: item.role ?? null,
+        project_date: item.projectMonthsAgo != null ? monthsAgoDate(item.projectMonthsAgo) : null,
+        outcome: item.outcome ?? null,
         sort_order: index,
       })
     }
@@ -771,6 +884,21 @@ export async function seedDemoWorld(supabase: SupabaseClient, ids: ProfileIdByEm
     portfolioCount += talent.portfolio.length
   }
   console.log(`  Credits: ${creditCount}, portfolio items: ${portfolioCount}`)
+
+  // Reviews from demo hirers — the aggregates (avg rating, count) surface
+  // through the talent_stats view, so nothing here is hardcoded in the UI.
+  const { error: reviewsError } = await supabase.from('talent_reviews').insert(
+    DEMO_REVIEWS.map(review => ({
+      talent_id: requireId(ids, review.talentEmail),
+      reviewer_id: requireId(ids, review.reviewerEmail),
+      rating: review.rating,
+      body: review.body,
+      project_title: review.projectTitle,
+      created_at: daysAgoIso(review.daysAgo),
+    }))
+  )
+  if (reviewsError) throw new Error(`Failed to insert reviews: ${reviewsError.message}`)
+  console.log(`  Reviews: ${DEMO_REVIEWS.length}`)
 
   // Engagement: views and likes spread across the last 30 days.
   // Likers are drawn from other demo profiles so unique(user_id, talent_id) holds.

@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { SEED_PROFILES } from './data'
-import { DEMO_HIRER, DEMO_PASSWORD, seedDemoWorld } from './demo-world'
+import { DEMO_HIRER, DEMO_PASSWORD, DEMO_REVIEWER_HIRERS, seedDemoWorld } from './demo-world'
 import { mirrorImageToStorage, seededCategoryCoverUrl, seededPortraitUrl } from './images'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
@@ -289,6 +289,32 @@ async function seedHirer(idsByEmail: Map<string, string>): Promise<boolean> {
   return true
 }
 
+// Lightweight hirer accounts that author the seeded talent reviews.
+async function seedReviewerHirers(idsByEmail: Map<string, string>): Promise<boolean> {
+  console.log('\nSeeding reviewer hirers...')
+  for (const hirer of DEMO_REVIEWER_HIRERS) {
+    process.stdout.write(`  ${hirer.full_name}... `)
+    const user = await ensureUser({ email: hirer.email, full_name: hirer.full_name, account_type: 'hirer' })
+    if (!user) return false
+    idsByEmail.set(hirer.email, user.id)
+
+    if (!user.existed) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ city: hirer.city, country: hirer.country, bio: hirer.bio })
+        .eq('id', user.id)
+      if (error) {
+        console.log(`FAILED (profile update): ${error.message}`)
+        return false
+      }
+    }
+
+    await ensureStorageAvatar(user.id, `https://picsum.photos/seed/${slug(hirer.full_name)}-logo/400/400`)
+    console.log(user.existed ? 'already exists ✓' : '✓')
+  }
+  return true
+}
+
 async function seed() {
   if (RESET || RESET_ONLY) {
     await resetDemoUsers()
@@ -302,8 +328,9 @@ async function seed() {
 
   const talentFailures = await seedTalent(idsByEmail)
   const hirerOk = await seedHirer(idsByEmail)
+  const reviewersOk = await seedReviewerHirers(idsByEmail)
 
-  if (talentFailures > 0 || !hirerOk) {
+  if (talentFailures > 0 || !hirerOk || !reviewersOk) {
     console.log('\nSome profiles failed; skipping demo world seed. Check errors above.')
     process.exit(1)
   }

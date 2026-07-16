@@ -4,6 +4,15 @@ export function nameInitial(name: string | null | undefined, fallback = '?'): st
   return trimmed[0]!.toUpperCase()
 }
 
+export function formatDayRate(rateMin: number | null, rateMax: number | null): string | null {
+  if (rateMin !== null && rateMax !== null) {
+    return rateMin === rateMax ? `£${rateMin}/day` : `£${rateMin}–£${rateMax}/day`
+  }
+  if (rateMin !== null) return `From £${rateMin}/day`
+  if (rateMax !== null) return `Up to £${rateMax}/day`
+  return null
+}
+
 export function portfolioImageAlt(item: {
   title?: string | null
   type: string

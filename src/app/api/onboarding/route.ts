@@ -35,11 +35,14 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Profile is already set up' }, { status: 409 })
   }
 
-  const { category, skills, headline, bio, city, country, rates, availableNow } = parsed.value
+  const { category, skills, headline, bio, city, country, rates, availableNow, showreelUrl, firstCredit } = parsed.value
+
+  const profilePatch: Record<string, string | null> = { headline, bio, city, country, rates }
+  if (showreelUrl) profilePatch.showreel_url = showreelUrl
 
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ headline, bio, city, country, rates })
+    .update(profilePatch)
     .eq('id', user.id)
 
   if (profileError) {
@@ -54,6 +57,22 @@ export async function POST(request: Request) {
   if (skillsError) {
     logEvent('error', 'onboarding_skills_insert_failed', { user_id: user.id, code: skillsError.code ?? null })
     return Response.json({ error: 'Unable to save your skills' }, { status: 500 })
+  }
+
+  // Optional first credit from the "Show your work" step. Non-fatal: the
+  // profile is already complete, and RLS (credits_manage_own) scopes the
+  // insert to the caller's own profile.
+  if (firstCredit) {
+    const { error: creditError } = await supabase.from('credits').insert({
+      profile_id: user.id,
+      title: firstCredit.title,
+      production: firstCredit.production,
+      category,
+      sort_order: 0,
+    })
+    if (creditError) {
+      logEvent('warn', 'onboarding_credit_insert_failed', { user_id: user.id, code: creditError.code ?? null })
+    }
   }
 
   // talent_profiles has direct table access revoked for authenticated users

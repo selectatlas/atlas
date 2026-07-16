@@ -10,6 +10,7 @@ import {
   Check,
   FileText,
   MapPin,
+  Plus,
   Search,
   Send,
   SlidersHorizontal,
@@ -17,6 +18,7 @@ import {
   Users,
 } from 'lucide-react'
 import Hero from '@/components/Hero'
+import { landingFaq, showcaseTalent } from '@/components/marketing/landing-data'
 
 const briefExamples: Array<{
   category: string
@@ -80,7 +82,7 @@ export function LandingPage() {
       <header className="landing-header">
         <div className="landing-header__inner">
           <Link href="/" className="landing-brand" aria-label="Atlas home">
-            <span>atlas</span><b>.ai</b>
+            <span>atlas</span><b>.select</b>
           </Link>
 
           <nav className="landing-nav" aria-label="Main navigation">
@@ -105,6 +107,44 @@ export function LandingPage() {
         <span>For casting directors</span><i aria-hidden="true" />
         <span>For producers</span><i aria-hidden="true" />
         <span>For creative teams</span>
+      </section>
+
+      <section className="landing-section" id="talent-roster" aria-label="Meet the talent">
+        <div className="landing-section__heading">
+          <p className="landing-eyebrow">The roster</p>
+          <h2>The kind of talent Atlas surfaces.</h2>
+          <p>A preview from the Atlas demo roster - every card carries the specifics hirers actually search for.</p>
+        </div>
+
+        <div className="landing-roster">
+          {showcaseTalent.map(talent => (
+            <article className="landing-roster__card" key={talent.name}>
+              <div className="landing-roster__photo">
+                <Image src={talent.image} alt={`${talent.name}, ${talent.role}`} fill sizes="(max-width: 780px) 50vw, 25vw" />
+                <span>{talent.category}</span>
+              </div>
+              <div className="landing-roster__body">
+                <h3>{talent.name}</h3>
+                <p className="landing-roster__role">{talent.role}</p>
+                <p className="landing-roster__meta">
+                  <MapPin aria-hidden="true" />
+                  {talent.city} · {talent.availability}
+                </p>
+                <div className="landing-roster__skills">
+                  {talent.skills.map(skill => (
+                    <span key={skill}>{skill}</span>
+                  ))}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="landing-roster__cta">
+          <Link href="/signup" className="landing-text-link">
+            Search the full roster <ArrowRight aria-hidden="true" />
+          </Link>
+        </div>
       </section>
 
       <section className="landing-section landing-section--soft" id="how-it-works">
@@ -265,7 +305,7 @@ export function LandingPage() {
               <div className="landing-brief-card__visual" aria-hidden="true">
                 <div className="landing-brief-card__chrome">
                   <i /><i /><i />
-                  <span>atlas.ai</span>
+                  <span>atlas.select</span>
                 </div>
 
                 {example.visual === 'search' && (
@@ -379,6 +419,25 @@ export function LandingPage() {
         </article>
       </section>
 
+      <section className="landing-section landing-section--soft" id="faq" aria-label="Frequently asked questions">
+        <div className="landing-section__heading">
+          <p className="landing-eyebrow">FAQ</p>
+          <h2>Questions, answered.</h2>
+        </div>
+
+        <div className="landing-faq">
+          {landingFaq.map(item => (
+            <details className="landing-faq__item" key={item.question}>
+              <summary>
+                {item.question}
+                <Plus aria-hidden="true" />
+              </summary>
+              <p>{item.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       <section className="landing-final-cta">
         <div>
           <h2>Find the people your project needs.</h2>
@@ -391,7 +450,7 @@ export function LandingPage() {
       </section>
 
       <footer className="landing-footer">
-        <div className="landing-footer__brand"><Link href="/" className="landing-brand"><span>atlas</span><b>.ai</b></Link><p>AI-native talent discovery for the creative industry.</p></div>
+        <div className="landing-footer__brand"><Link href="/" className="landing-brand"><span>atlas</span><b>.select</b></Link><p>AI-native talent discovery for the creative industry.</p></div>
         <div className="landing-footer__links"><Link href="/login">Sign in</Link><Link href="/signup">Create account</Link><Link href="/terms">Terms of Service</Link><Link href="/privacy">Privacy Policy</Link><a href="#top">Back to top <ArrowUpRight aria-hidden="true" /></a></div>
         <p className="landing-footer__copyright">© 2026 Atlas</p>
       </footer>

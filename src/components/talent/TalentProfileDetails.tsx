@@ -8,6 +8,7 @@ export interface TalentDisplayDetails {
   height_cm: number | null
   rate_min: number | null
   rate_max: number | null
+  response_time_hours: number | null
   languages: string[]
   nationalities: string[]
   available_now: boolean | null

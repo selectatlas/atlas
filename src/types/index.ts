@@ -48,6 +48,8 @@ export interface Profile {
   availability: string | null
   showreel_url: string | null
   profile_visibility?: ProfileVisibility
+  verified_at?: string | null
+  verified_categories?: Category[]
   suspended_at?: string | null
   suspension_reason?: string | null
   created_at: string
@@ -109,6 +111,8 @@ export interface Credit {
   description: string | null
   media_url: string | null
   category: Category | null
+  outcome: string | null
+  client_logo_url: string | null
   sort_order: number
   created_at: string
 }
@@ -121,6 +125,9 @@ export interface PortfolioItem {
   title: string | null
   description: string | null
   thumbnail_url: string | null
+  role: string | null
+  project_date: string | null
+  outcome: string | null
   sort_order: number
   created_at: string
 }
@@ -143,8 +150,26 @@ export interface TalentProfileAttributes {
   languages: string[]
   nationalities: string[]
   available_now: boolean | null
+  response_time_hours: number | null
   public_attributes: Record<string, string | string[] | boolean | number | null>
   updated_at: string
+}
+
+export interface TalentReview {
+  id: string
+  talent_id: string
+  reviewer_id: string | null
+  rating: number
+  body: string
+  project_title: string | null
+  created_at: string
+  reviewer?: { full_name: string; avatar_url: string | null } | null
+}
+
+export interface ReviewSummary {
+  count: number
+  average: number | null
+  breakdown: Record<1 | 2 | 3 | 4 | 5, number>
 }
 
 export interface TalentSensitivePreferences {

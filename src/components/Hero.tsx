@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import type { CSSProperties } from "react";
+import { Check, Search } from "lucide-react";
 
 const RINGS = [
   { r: 36, n: 10, dir: 1, dur: 160 },
@@ -75,8 +77,24 @@ const buildRings = (): RingGroup[] => {
 const cssVars = (vars: Record<string, string>): CSSProperties =>
   vars as CSSProperties;
 
+const EXAMPLE_BRIEFS: Array<{ label: string; query: string }> = [
+  {
+    label: "Bollywood dancer · London",
+    query: "Bollywood dancer in London who speaks Hindi, available in December",
+  },
+  {
+    label: "Actor with stage combat",
+    query: "Actor in London with real stage combat and boxing training",
+  },
+  {
+    label: "Food creator · short-form",
+    query: "Food content creator with strong short-form video, available for a brand campaign",
+  },
+];
+
 export default function Hero() {
   const rings = buildRings();
+  const [query, setQuery] = useState("");
 
   return (
     <section className="hero" id="top" aria-labelledby="hero-title">
@@ -123,21 +141,67 @@ export default function Hero() {
       <div className="content">
         <span className="wordmark">ATLAS</span>
         <h1 id="hero-title">
-          Your space
+          Describe the person.
           <br />
-          for talent
+          We&rsquo;ll find them.
         </h1>
         <p className="subtext">
-          Built for the people who perform, and the people who book them.
+          AI-native talent search for casting directors, producers, and creative teams.
         </p>
-        <div className="actions">
-          <a className="btn btn-primary" href="/signup">
-            Sign up
-          </a>
-          <a className="btn btn-ghost" href="/login">
-            Sign in
-          </a>
-        </div>
+
+        <form
+          className="hero-search"
+          action="/signup"
+          method="get"
+          role="search"
+          aria-label="Describe the talent you need"
+        >
+          <div className="hero-search__row">
+            <Search className="hero-search__icon" aria-hidden="true" />
+            <input
+              type="text"
+              name="q"
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              placeholder="Try: a Hindi-speaking dancer in London, free this December"
+              aria-label="Describe the talent you need"
+              autoComplete="off"
+            />
+            <button type="submit" className="btn btn-primary hero-search__submit">
+              Find talent
+            </button>
+          </div>
+          <div className="hero-search__chips" aria-label="Example briefs">
+            {EXAMPLE_BRIEFS.map(example => (
+              <button
+                type="button"
+                key={example.label}
+                onClick={() => setQuery(example.query)}
+              >
+                {example.label}
+              </button>
+            ))}
+          </div>
+        </form>
+
+        <ul className="hero-proof" aria-label="Why Atlas">
+          <li>
+            <Check aria-hidden="true" />
+            Real match scores, never hardcoded
+          </li>
+          <li>
+            <Check aria-hidden="true" />
+            A reason for every strong match
+          </li>
+          <li>
+            <Check aria-hidden="true" />
+            Ranked results in seconds
+          </li>
+        </ul>
+
+        <p className="hero-signin">
+          Already using Atlas? <a href="/login">Sign in</a>
+        </p>
       </div>
 
       <a

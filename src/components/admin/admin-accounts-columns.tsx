@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal } from 'lucide-react'
+import { BadgeCheck, MoreHorizontal } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { AccountType } from '@/types'
+import type { AccountType, Category } from '@/types'
 
 export type AccountRole = AccountType | 'admin'
 
@@ -30,6 +30,8 @@ export type AdminAccountRow = {
   country: string | null
   suspended_at: string | null
   suspension_reason: string | null
+  verified_at: string | null
+  verified_categories: Category[] | null
   created_at: string
   platform_admin_role: string | null
   display_role: AccountRole
@@ -41,6 +43,8 @@ type AdminAccountColumnHandlers = {
   onSuspendRequest: (account: AdminAccountRow) => void
   onRestore: (account: AdminAccountRow) => void
   onDeleteRequest: (account: AdminAccountRow) => void
+  onVerifyRequest: (account: AdminAccountRow) => void
+  onUnverify: (account: AdminAccountRow) => void
 }
 
 export function useAdminAccountColumns({
@@ -49,6 +53,8 @@ export function useAdminAccountColumns({
   onSuspendRequest,
   onRestore,
   onDeleteRequest,
+  onVerifyRequest,
+  onUnverify,
 }: AdminAccountColumnHandlers) {
   const router = useRouter()
 
@@ -80,7 +86,12 @@ export function useAdminAccountColumns({
         const account = row.original
         return (
           <div>
-            <div className="font-medium">{account.full_name}</div>
+            <div className="flex items-center gap-1.5 font-medium">
+              {account.full_name}
+              {account.verified_at ? (
+                <BadgeCheck className="size-4 shrink-0 text-primary" aria-label="Atlas Verified" />
+              ) : null}
+            </div>
             {account.city || account.country ? (
               <div className="text-xs text-muted-foreground">
                 {[account.city, account.country].filter(Boolean).join(', ')}
@@ -168,6 +179,16 @@ export function useAdminAccountColumns({
                   Copy email
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                {account.account_type === 'talent' && !account.verified_at ? (
+                  <DropdownMenuItem onClick={() => onVerifyRequest(account)}>
+                    Verify talent…
+                  </DropdownMenuItem>
+                ) : null}
+                {account.account_type === 'talent' && account.verified_at ? (
+                  <DropdownMenuItem onClick={() => onUnverify(account)}>
+                    Remove verification
+                  </DropdownMenuItem>
+                ) : null}
                 {!isAdmin && !account.suspended_at ? (
                   <DropdownMenuItem onClick={() => onSuspendRequest(account)}>
                     Suspend account
@@ -192,5 +213,5 @@ export function useAdminAccountColumns({
         )
       },
     },
-  ], [busyId, onDeleteRequest, onRestore, onRoleChange, onSuspendRequest, router])
+  ], [busyId, onDeleteRequest, onRestore, onRoleChange, onSuspendRequest, onUnverify, onVerifyRequest, router])
 }

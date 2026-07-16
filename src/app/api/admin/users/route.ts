@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
     let query = auth.service
       .from('profiles')
-      .select('id, account_type, full_name, email, city, country, suspended_at, suspension_reason, profile_visibility, created_at')
+      .select('id, account_type, full_name, email, city, country, suspended_at, suspension_reason, profile_visibility, verified_at, verified_categories, created_at')
       .in('id', adminIds)
       .order('created_at', { ascending: false })
 
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
 
   let query = auth.service
     .from('profiles')
-    .select('id, account_type, full_name, email, city, country, suspended_at, suspension_reason, profile_visibility, created_at')
+    .select('id, account_type, full_name, email, city, country, suspended_at, suspension_reason, profile_visibility, verified_at, verified_categories, created_at')
     .order('created_at', { ascending: false })
     .limit(limit)
 

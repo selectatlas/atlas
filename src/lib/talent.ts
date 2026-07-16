@@ -1,9 +1,10 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { getPlatformAdminRole } from '@/lib/platform-admin'
-import { DEMO_PROFILE, DEMO_TALENT_ATTRIBUTES, DEMO_TALENT_RESULTS } from '@/lib/demo-data'
+import { DEMO_PROFILE, DEMO_REVIEWS, DEMO_TALENT_ATTRIBUTES, DEMO_TALENT_RESULTS } from '@/lib/demo-data'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
-import type { Profile, TalentSkill, Credit, PortfolioItem } from '@/types'
+import { summarizeReviews } from '@/lib/reviews'
+import type { Profile, TalentSkill, Credit, PortfolioItem, TalentReview } from '@/types'
 import type { TalentDisplayDetails } from '@/components/talent/TalentProfileDetails'
 
 function displayDetails(attributes: Record<string, unknown> | null | undefined, sensitive?: Record<string, boolean | null>): TalentDisplayDetails {
@@ -14,6 +15,7 @@ function displayDetails(attributes: Record<string, unknown> | null | undefined, 
     height_cm: typeof attributes?.height_cm === 'number' ? attributes.height_cm : null,
     rate_min: typeof attributes?.rate_min === 'number' ? attributes.rate_min : null,
     rate_max: typeof attributes?.rate_max === 'number' ? attributes.rate_max : null,
+    response_time_hours: typeof attributes?.response_time_hours === 'number' ? attributes.response_time_hours : null,
     languages: Array.isArray(attributes?.languages) ? attributes.languages as string[] : [],
     nationalities: Array.isArray(attributes?.nationalities) ? attributes.nationalities as string[] : [],
     available_now: typeof attributes?.available_now === 'boolean' ? attributes.available_now : null,
@@ -40,12 +42,17 @@ export async function getTalentProfile(id: string) {
         .slice(0, 6)
         .map(profile => ({ profile, match_score: 0 }))
 
+      const demoReviews = DEMO_REVIEWS[id] ?? []
+
       return {
         profile: demoProfile,
         credits: demoProfile.id === DEMO_PROFILE.id ? DEMO_PROFILE.credits : [],
         portfolioItems: demoProfile.id === DEMO_PROFILE.id ? DEMO_PROFILE.portfolio_items : [],
         likesCount: 0,
         viewsCount: 0,
+        shortlistCount: 0,
+        reviews: demoReviews,
+        reviewSummary: summarizeReviews(demoReviews),
         similarTalent,
         talentDetails: displayDetails(DEMO_TALENT_ATTRIBUTES[id], DEMO_TALENT_ATTRIBUTES[id]?.sensitive_preferences),
       }
@@ -94,7 +101,7 @@ export async function getTalentProfile(id: string) {
   const skills = profile.talent_skills as TalentSkill[]
   const primaryCategory = skills[0]?.category ?? null
 
-  const [sensitiveResult, creditsResult, portfolioResult, statsResult, similarResult] = await Promise.all([
+  const [sensitiveResult, creditsResult, portfolioResult, statsResult, reviewsResult, similarResult] = await Promise.all([
     callerAccountType === 'hirer'
       ? service.from('talent_sensitive_preferences').select('preferences').eq('profile_id', id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -114,6 +121,13 @@ export async function getTalentProfile(id: string) {
       .select('*')
       .eq('profile_id', id)
       .maybeSingle(),
+    // Two FKs point at profiles, so the reviewer join needs the explicit FK hint.
+    supabase
+      .from('talent_reviews')
+      .select('*, reviewer:profiles!talent_reviews_reviewer_id_fkey(full_name, avatar_url)')
+      .eq('talent_id', id)
+      .order('created_at', { ascending: false })
+      .limit(25),
     primaryCategory
       ? supabase
           .from('profiles')
@@ -130,9 +144,19 @@ export async function getTalentProfile(id: string) {
   const credits = (creditsResult.data ?? []) as Credit[]
   const portfolioItems = (portfolioResult.data ?? []) as PortfolioItem[]
 
-  const stats = statsResult.data as Record<string, number> | null
+  const stats = statsResult.data as Record<string, number | null> | null
   const likesCount = stats?.likes_count ?? 0
   const viewsCount = stats?.views_count ?? 0
+  const shortlistCount = stats?.shortlist_count ?? 0
+
+  const reviews = (reviewsResult.data ?? []) as TalentReview[]
+  const localSummary = summarizeReviews(reviews)
+  // Prefer the view's aggregates: they cover all reviews, not just the page we fetched.
+  const reviewSummary = {
+    ...localSummary,
+    count: stats?.review_count ?? localSummary.count,
+    average: stats?.avg_rating ?? localSummary.average,
+  }
 
   const similarTalent = ((similarResult.data ?? []) as Array<Record<string, unknown>>)
     .filter(p => (p as { profile_visibility?: string }).profile_visibility !== 'private')
@@ -147,6 +171,9 @@ export async function getTalentProfile(id: string) {
     portfolioItems,
     likesCount,
     viewsCount,
+    shortlistCount,
+    reviews,
+    reviewSummary,
     similarTalent,
     talentDetails: displayDetails(attributes as Record<string, unknown> | null, sensitivePreferences),
   }

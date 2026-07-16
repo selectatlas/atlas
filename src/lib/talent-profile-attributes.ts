@@ -2,7 +2,9 @@ import { FILTER_BY_KEY } from '@/lib/filter-taxonomy'
 import { parseSearchFilterObject } from '@/lib/search-filters'
 import type { TalentProfileAttributes, TalentSensitivePreferences } from '@/types'
 
-export type TalentAttributesPayload = Omit<TalentProfileAttributes, 'profile_id' | 'updated_at'> & {
+// response_time_hours is deliberately excluded: it is a server-managed stat
+// (seeded / computed), never writable through the attributes PATCH payload.
+export type TalentAttributesPayload = Omit<TalentProfileAttributes, 'profile_id' | 'updated_at' | 'response_time_hours'> & {
   sensitive_preferences: TalentSensitivePreferences['preferences']
 }
 

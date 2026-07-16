@@ -204,6 +204,132 @@ describe('PATCH /api/admin/users/[id]', () => {
   })
 })
 
+describe('PATCH /api/admin/users/[id] set_verification', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function makeVerificationService(target: { id: string; account_type: string; email: string } | null) {
+    const updateCalls: Array<Record<string, unknown>> = []
+    const service = {
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: () => Promise.resolve({ data: target, error: null }),
+              }),
+            }),
+            update: (patch: Record<string, unknown>) => {
+              updateCalls.push(patch)
+              return {
+                eq: () => ({
+                  select: () => ({
+                    single: () => Promise.resolve({
+                      data: { id: USER_ID, verified_at: patch.verified_at, verified_categories: patch.verified_categories },
+                      error: null,
+                    }),
+                  }),
+                }),
+              }
+            },
+          }
+        }
+        if (table === 'platform_admins') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: () => Promise.resolve({ data: null, error: null }),
+              }),
+            }),
+          }
+        }
+        return {}
+      }),
+    }
+    return { service, updateCalls }
+  }
+
+  function patchRequest(body: Record<string, unknown>) {
+    return new Request('http://localhost/api/admin/users/x', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it('verifies a talent profile with categories', async () => {
+    const { service, updateCalls } = makeVerificationService({ id: USER_ID, account_type: 'talent', email: 'user@test.com' })
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: true, userId: 'admin-1', role: 'owner', service })
+
+    const res = await PATCH(
+      patchRequest({ action: 'set_verification', verified: true, categories: ['dancer', 'actor'] }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+
+    expect(res.status).toBe(200)
+    expect(updateCalls).toHaveLength(1)
+    expect(updateCalls[0].verified_categories).toEqual(['dancer', 'actor'])
+    expect(updateCalls[0].verified_at).toBeTruthy()
+  })
+
+  it('removes verification and clears categories', async () => {
+    const { service, updateCalls } = makeVerificationService({ id: USER_ID, account_type: 'talent', email: 'user@test.com' })
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: true, userId: 'admin-1', role: 'owner', service })
+
+    const res = await PATCH(
+      patchRequest({ action: 'set_verification', verified: false }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+
+    expect(res.status).toBe(200)
+    expect(updateCalls[0]).toEqual({ verified_at: null, verified_categories: [] })
+  })
+
+  it('rejects verifying a hirer', async () => {
+    const { service, updateCalls } = makeVerificationService({ id: USER_ID, account_type: 'hirer', email: 'user@test.com' })
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: true, userId: 'admin-1', role: 'owner', service })
+
+    const res = await PATCH(
+      patchRequest({ action: 'set_verification', verified: true, categories: ['dancer'] }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+
+    expect(res.status).toBe(400)
+    expect(updateCalls).toHaveLength(0)
+  })
+
+  it('rejects unknown categories and empty category lists', async () => {
+    const { service } = makeVerificationService({ id: USER_ID, account_type: 'talent', email: 'user@test.com' })
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: true, userId: 'admin-1', role: 'owner', service })
+
+    const badCategory = await PATCH(
+      patchRequest({ action: 'set_verification', verified: true, categories: ['astronaut'] }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+    expect(badCategory.status).toBe(400)
+
+    const emptyList = await PATCH(
+      patchRequest({ action: 'set_verification', verified: true, categories: [] }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+    expect(emptyList.status).toBe(400)
+  })
+
+  it('requires platform admin auth', async () => {
+    mockRequirePlatformAdmin.mockResolvedValue({
+      ok: false,
+      response: Response.json({ error: 'Forbidden' }, { status: 403 }),
+    })
+
+    const res = await PATCH(
+      patchRequest({ action: 'set_verification', verified: true, categories: ['dancer'] }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+    expect(res.status).toBe(403)
+  })
+})
+
 describe('DELETE /api/admin/users/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
