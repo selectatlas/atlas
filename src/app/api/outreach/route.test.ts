@@ -172,7 +172,7 @@ describe('POST /api/outreach', () => {
     expect(data.error).toBe('Failed to start conversation')
   })
 
-  it('returns 500 when outreach insert fails without leaking database errors', async () => {
+  it('still reports success when only the outreach tracking insert fails (the DM was already delivered; a 500 would prompt a double-sending retry)', async () => {
     const client = makeClient({
       user: { id: 'u1' },
       accountType: 'hirer',
@@ -181,9 +181,10 @@ describe('POST /api/outreach', () => {
     })
     mockCreateClient.mockResolvedValue(client)
     const res = await POST(makeRequest({ talent_id: TALENT_ID, action: 'send', message: 'Hello!' }))
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(200)
     const data = await res.json()
-    expect(data.error).toBe('Failed to send outreach')
+    expect(data.success).toBe(true)
+    expect(data.thread_id).toBeTruthy()
   })
 
   it('rejects an oversized outreach message', async () => {

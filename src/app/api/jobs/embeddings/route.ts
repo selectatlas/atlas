@@ -13,9 +13,11 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // embedding_error stores raw upstream (OpenAI/Postgres) error text for
+  // operators - never return it to the client.
   const { data: jobs } = await supabase
     .from('jobs')
-    .select('id, title, embedding_status, embedding_error, embedding_attempts')
+    .select('id, title, embedding_status, embedding_attempts')
     .eq('hirer_id', user.id)
     .neq('embedding_status', 'complete')
     .order('created_at', { ascending: false })

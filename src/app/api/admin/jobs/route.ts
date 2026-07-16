@@ -80,7 +80,8 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const removed = url.searchParams.get('removed')
-  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') ?? 50)))
+  const limitRaw = Number(url.searchParams.get('limit') ?? 50)
+  const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? Math.trunc(limitRaw) : 50))
 
   let query = auth.service
     .from('jobs')

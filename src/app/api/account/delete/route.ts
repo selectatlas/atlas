@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { parseJsonBody, badRequest } from '@/lib/validation'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
+import { purgeUserStorage } from '@/lib/user-deletion'
 
 // POST /api/account/delete — permanent self-service account deletion.
 //
@@ -31,25 +32,9 @@ export async function POST(request: Request) {
   const service = createServiceClient()
 
   // Remove uploaded media first - storage objects do not cascade from auth.
-  for (const bucket of ['avatars', 'covers']) {
-    try {
-      let offset = 0
-      while (true) {
-        const { data: files } = await service.storage.from(bucket).list(user.id, { limit: 100, offset })
-        const paths = (files ?? []).map(file => `${user.id}/${file.name}`)
-        if (paths.length > 0) await service.storage.from(bucket).remove(paths)
-        if (!files || files.length < 100) break
-        offset += files.length
-      }
-    } catch (err) {
-      // Deletion proceeds; orphaned files are swept by the ops runbook.
-      logEvent('warn', 'account_delete_storage_cleanup_failed', {
-        user_id: user.id,
-        bucket,
-        message: err instanceof Error ? err.message : 'unknown',
-      })
-    }
-  }
+  // Failures are logged inside and deletion proceeds; orphaned files are
+  // swept by the ops runbook.
+  await purgeUserStorage(service, user.id)
 
   const { error } = await service.auth.admin.deleteUser(user.id)
   if (error) {

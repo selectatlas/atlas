@@ -75,8 +75,10 @@ export async function POST(request: Request) {
       status: 'sent',
     })
     if (error) {
+      // The DM was already delivered above - failing the request here would
+      // prompt a retry that double-sends the message. Log and report success;
+      // the outreach row is a tracking record, not the delivery itself.
       logEvent('error', 'outreach_insert_error', { user_id: user.id, code: error.code ?? null })
-      return Response.json({ error: 'Failed to send outreach' }, { status: 500 })
     }
 
     const posthog = getPostHogClient()

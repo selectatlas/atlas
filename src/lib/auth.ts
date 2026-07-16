@@ -39,11 +39,21 @@ export async function getSession(): Promise<SessionInfo> {
   const claims = data?.claims
 
   if (claims?.sub) {
-    const adminRole = await getPlatformAdminRole(claims.sub)
+    // account_type must come from the profiles row, not JWT user_metadata:
+    // users can rewrite their own user_metadata via auth.updateUser(), so a
+    // metadata-derived role would let talent forge their way into hirer
+    // layouts. Metadata is only a fallback for brand-new users whose profile
+    // row does not exist yet (pre-onboarding).
+    const [adminRole, { data: profile }] = await Promise.all([
+      getPlatformAdminRole(claims.sub),
+      supabase.from('profiles').select('account_type').eq('id', claims.sub).maybeSingle(),
+    ])
     return {
       userId: claims.sub,
       accountType:
-        (claims.user_metadata as { account_type?: string } | undefined)?.account_type ?? null,
+        profile?.account_type ??
+        (claims.user_metadata as { account_type?: string } | undefined)?.account_type ??
+        null,
       isLocalDemo: false,
       isPlatformAdmin: adminRole !== null,
       adminRole,

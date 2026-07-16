@@ -54,23 +54,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // PostHog endpoints require trailing slashes; the /ingest reverse proxy
+  // lives in src/proxy.ts (it must run before auth and strip cookies).
   skipTrailingSlashRedirect: true,
-  async rewrites() {
-    return [
-      {
-        source: '/ingest/static/:path*',
-        destination: 'https://us-assets.i.posthog.com/static/:path*',
-      },
-      {
-        source: '/ingest/array/:path*',
-        destination: 'https://us-assets.i.posthog.com/array/:path*',
-      },
-      {
-        source: '/ingest/:path*',
-        destination: 'https://us.i.posthog.com/:path*',
-      },
-    ]
-  },
   images: {
     remotePatterns: [
       // Supabase storage (avatars/covers). Hostname derived from the project URL.

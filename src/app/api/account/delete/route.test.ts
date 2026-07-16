@@ -34,7 +34,8 @@ function makeServiceClient(deleteError: { message: string } | null = null) {
     auth: { admin: { deleteUser } },
     storage: {
       from: vi.fn(() => ({
-        list: vi.fn().mockResolvedValue({ data: [{ name: 'photo.png' }] }),
+        // First page has one file; after deletion the re-list is empty.
+        list: vi.fn().mockResolvedValueOnce({ data: [{ name: 'photo.png' }] }).mockResolvedValue({ data: [] }),
         remove,
       })),
     },

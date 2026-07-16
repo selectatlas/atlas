@@ -41,7 +41,13 @@ export default function MessagesPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (cancelled) return
-      if (!user) return
+      if (!user) {
+        // Session evaporated between the proxy check and this fetch: surface
+        // an error instead of leaving the skeleton up forever.
+        setLoadError('Unable to load messages')
+        setLoading(false)
+        return
+      }
       setUserId(user.id)
 
       fetch('/api/messages/threads')

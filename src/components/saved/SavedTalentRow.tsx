@@ -14,7 +14,9 @@ interface SavedTalentRowProps {
 }
 
 export function SavedTalentRow({ talent, savedAt }: SavedTalentRowProps) {
-  const date = new Date(savedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  // Fixed timezone: this renders on the server too, and a server/client
+  // timezone difference near midnight would be a hydration mismatch.
+  const date = new Date(savedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
   const skills = talent.talent_skills.slice(0, 3).map(s => s.skill).join(' · ')
   const location = [talent.city, talent.country].filter(Boolean).join(', ')
 

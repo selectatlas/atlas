@@ -106,10 +106,11 @@ export async function POST(request: Request) {
   }
 
   // Fetch full profiles + skills for the matched IDs
-  const profileIds = (matches as Array<{ profile_id: string; similarity: number }>).map(m => m.profile_id)
-  const similarityMap = new Map(
-    (matches as Array<{ profile_id: string; similarity: number }>).map(m => [m.profile_id, m.similarity])
-  )
+  const matchRows = (matches ?? []) as Array<{ profile_id: string; similarity: number }>
+  const profileIds = matchRows.map(m => m.profile_id)
+  const similarityMap = new Map(matchRows.map(m => [m.profile_id, m.similarity]))
+
+  if (profileIds.length === 0) return Response.json({ results: [], parsed, filters: effectiveFilters })
 
   const { data: profiles } = await serviceClient
     .from('profiles')
@@ -133,10 +134,14 @@ export async function POST(request: Request) {
         profile: p,
         match_score: score,
         match_reasons: getMatchReasons(parsed, p),
+        similarity: sim,
       }
     })
-    .sort((a, b) => b.match_score - a.match_score)
+    // Rank on raw similarity: the display score clamps to 55-98, so sorting
+    // on it would collapse everything at either bound into DB fetch order.
+    .sort((a, b) => b.similarity - a.similarity)
     .slice(0, 12)
+    .map(result => ({ profile: result.profile, match_score: result.match_score, match_reasons: result.match_reasons }))
 
   return Response.json({ results, parsed, filters: effectiveFilters })
 }

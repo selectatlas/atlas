@@ -4,6 +4,25 @@ import { NextResponse, type NextRequest } from 'next/server'
 export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
+  // PostHog reverse proxy: analytics beacons and lazy-loaded extension
+  // scripts (surveys, exception autocapture) are unauthenticated and must
+  // never hit the auth logic below. Proxied here rather than via
+  // next.config rewrites so we control the host header (PostHog routes on
+  // it) and strip cookies (Supabase auth tokens must not reach PostHog).
+  if (pathname.startsWith('/ingest/')) {
+    const isAsset = pathname.startsWith('/ingest/static/') || pathname.startsWith('/ingest/array/')
+    const hostname = isAsset ? 'us-assets.i.posthog.com' : 'us.i.posthog.com'
+    const url = request.nextUrl.clone()
+    url.protocol = 'https'
+    url.hostname = hostname
+    url.port = '443'
+    url.pathname = pathname.replace(/^\/ingest/, '')
+    const headers = new Headers(request.headers)
+    headers.set('host', hostname)
+    headers.delete('cookie')
+    return NextResponse.rewrite(url, { request: { headers } })
+  }
+
   if (process.env.NODE_ENV === 'development' && request.nextUrl.pathname === '/api/demo-login') {
     return NextResponse.next()
   }
@@ -98,7 +117,14 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Role-based route protection
+  // Role-based route protection.
+  //
+  // NOTE: account_type/platform_admin here come from JWT user_metadata, which
+  // users can rewrite via auth.updateUser() - so this block is OPTIMISTIC
+  // UX-level routing only, never enforcement. Real enforcement is DB-backed:
+  // API routes resolve roles from profiles/platform_admins via
+  // getAuthenticatedCaller()/requirePlatformAdmin(), layouts via getSession(),
+  // and row access via RLS.
   if (claims) {
     const metadata = claims.user_metadata as { account_type?: string; platform_admin?: boolean } | undefined
     const accountType = metadata?.account_type

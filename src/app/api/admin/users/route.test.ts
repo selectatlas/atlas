@@ -5,7 +5,7 @@ vi.mock('@/lib/platform-admin', () => ({
   grantPlatformAdmin: vi.fn(),
 }))
 
-import { POST } from './route'
+import { GET, POST } from './route'
 import { requirePlatformAdmin, grantPlatformAdmin } from '@/lib/platform-admin'
 
 const mockRequirePlatformAdmin = requirePlatformAdmin as ReturnType<typeof vi.fn>
@@ -170,5 +170,62 @@ describe('POST /api/admin/users', () => {
 
     expect(res.status).toBe(400)
     expect(service.auth.admin.createUser).not.toHaveBeenCalled()
+  })
+})
+
+describe('GET /api/admin/users', () => {
+  // Thenable self-chaining query builder that records .or() and .limit() args.
+  function makeListService() {
+    const orCalls: string[] = []
+    const limitCalls: unknown[] = []
+    const builder: Record<string, unknown> = {}
+    const chain = () => builder
+    Object.assign(builder, {
+      select: chain,
+      order: chain,
+      eq: chain,
+      not: chain,
+      is: chain,
+      in: chain,
+      limit: (n: unknown) => {
+        limitCalls.push(n)
+        return builder
+      },
+      or: (expr: string) => {
+        orCalls.push(expr)
+        return builder
+      },
+      then: (resolve: (value: { data: never[]; error: null }) => void) =>
+        resolve({ data: [], error: null }),
+    })
+    return { service: { from: vi.fn(() => builder) }, orCalls, limitCalls }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('strips PostgREST filter delimiters from q so a crafted search term cannot inject filter clauses', async () => {
+    const { service, orCalls } = makeListService()
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: true, userId: 'admin-1', role: 'owner', service })
+
+    const res = await GET(new Request('http://localhost/api/admin/users?q=' + encodeURIComponent('x,suspended_at.not.is.null),or(')))
+
+    expect(res.status).toBe(200)
+    expect(orCalls).toHaveLength(1)
+    // Exactly one comma: the separator between the two intended ilike clauses.
+    expect(orCalls[0].split(',')).toHaveLength(2)
+    expect(orCalls[0]).not.toContain('(')
+    expect(orCalls[0]).not.toContain(')')
+  })
+
+  it('falls back to the default limit when limit is not a number', async () => {
+    const { service, limitCalls } = makeListService()
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: true, userId: 'admin-1', role: 'owner', service })
+
+    const res = await GET(new Request('http://localhost/api/admin/users?limit=abc'))
+
+    expect(res.status).toBe(200)
+    expect(limitCalls).toEqual([50])
   })
 })

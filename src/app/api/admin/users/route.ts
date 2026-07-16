@@ -8,11 +8,15 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response
 
   const url = new URL(request.url)
-  const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100)
+  // q is interpolated into a PostgREST .or() filter: strip the characters
+  // that delimit filter expressions (`,` `(` `)` `"` `\`) so a crafted
+  // search term cannot inject additional filter clauses.
+  const q = (url.searchParams.get('q') ?? '').replace(/[,()"\\]/g, '').trim().slice(0, 100)
   const accountType = url.searchParams.get('account_type')
   const roleFilter = url.searchParams.get('role')
   const suspended = url.searchParams.get('suspended')
-  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') ?? 50)))
+  const limitRaw = Number(url.searchParams.get('limit') ?? 50)
+  const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? Math.trunc(limitRaw) : 50))
 
   if (roleFilter === 'admin') {
     const { data: adminRows, error: adminError } = await auth.service

@@ -21,12 +21,12 @@ export async function PATCH(
 
   const { action } = parsedBody.body
   if (action !== 'suspend' && action !== 'unsuspend' && action !== 'set_role' && action !== 'set_account_type') {
-    return badRequest('action must be suspend, unsuspend, or set_role')
+    return badRequest('action must be suspend, unsuspend, set_role, or set_account_type')
   }
 
   const { data: target } = await auth.service
     .from('profiles')
-    .select('id, account_type, email')
+    .select('id, account_type, email, profile_visibility')
     .eq('id', id)
     .maybeSingle()
 
@@ -151,6 +151,10 @@ export async function PATCH(
       : {
           suspended_at: null,
           suspension_reason: null,
+          // Suspension forced the profile private; reinstate discoverability.
+          // (A pre-suspension visibility choice is not recorded, so 'public'
+          // is the default restore; the user can adjust it in settings.)
+          ...(target.profile_visibility === 'private' ? { profile_visibility: 'public' as const } : {}),
         }
 
   const { data: profile, error } = await auth.service

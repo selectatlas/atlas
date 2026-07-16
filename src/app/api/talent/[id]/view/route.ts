@@ -19,17 +19,30 @@ export async function POST(
   const limited = await enforceRateLimit(limitKey, 60, 60)
   if (limited) return limited
 
-  // Record the view (viewer_id is nullable for anonymous users)
-  const { error } = await supabase
-    .from('profile_views')
-    .insert({
-      talent_id,
-      viewer_id: user?.id ?? null,
-    })
+  // Only real talent profiles accumulate views - arbitrary UUIDs (or hirer
+  // ids) must not pollute the stats tables.
+  const { data: target } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', talent_id)
+    .eq('account_type', 'talent')
+    .maybeSingle()
+  if (!target) return Response.json({ error: 'Not found' }, { status: 404 })
 
-  if (error) {
-    logEvent('error', 'view_insert_error', { talent_id, code: error.code ?? null })
-    return Response.json({ error: 'Failed to record view' }, { status: 500 })
+  // Record the view (viewer_id is nullable for anonymous users); viewing
+  // your own profile is not a view.
+  if (user?.id !== talent_id) {
+    const { error } = await supabase
+      .from('profile_views')
+      .insert({
+        talent_id,
+        viewer_id: user?.id ?? null,
+      })
+
+    if (error) {
+      logEvent('error', 'view_insert_error', { talent_id, code: error.code ?? null })
+      return Response.json({ error: 'Failed to record view' }, { status: 500 })
+    }
   }
 
   // Get updated count

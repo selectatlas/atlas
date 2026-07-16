@@ -7,13 +7,14 @@ export async function purgeUserStorage(
 ): Promise<void> {
   for (const bucket of ['avatars', 'covers'] as const) {
     try {
-      let offset = 0
-      while (true) {
-        const { data: files } = await service.storage.from(bucket).list(userId, { limit: 100, offset })
-        const paths = (files ?? []).map(file => `${userId}/${file.name}`)
-        if (paths.length > 0) await service.storage.from(bucket).remove(paths)
-        if (!files || files.length < 100) break
-        offset += files.length
+      // Always re-list the first page: deleting shifts the remaining objects
+      // down, so a moving offset would skip every other page. Bounded so a
+      // remove that silently deletes nothing cannot spin forever.
+      for (let page = 0; page < 100; page++) {
+        const { data: files } = await service.storage.from(bucket).list(userId, { limit: 100 })
+        if (!files || files.length === 0) break
+        const { error } = await service.storage.from(bucket).remove(files.map(file => `${userId}/${file.name}`))
+        if (error) throw error
       }
     } catch (err) {
       logEvent('warn', 'user_storage_cleanup_failed', {
