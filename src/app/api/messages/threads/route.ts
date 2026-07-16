@@ -4,25 +4,31 @@ import { isThreadUnread } from '@/lib/inbox'
 import { parseJsonBody, isUuid, badRequest } from '@/lib/validation'
 import { enforceRateLimit } from '@/lib/rate-limit'
 
-// GET /api/messages/threads — list threads with latest message + other participant
-export async function GET() {
+// GET /api/messages/threads?filter=open|archived — list threads with latest message + other participant
+export async function GET(request: Request) {
   if (await isServerDemoOnly()) return Response.json({ threads: [] })
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const filterParam = new URL(request.url).searchParams.get('filter')
+  const filter = filterParam === 'archived' ? 'archived' : 'open'
+
   // Get threads I'm a participant of
   const { data: myThreads } = await supabase
     .from('thread_participants')
-    .select('thread_id, last_read_at')
+    .select('thread_id, last_read_at, archived_at')
     .eq('profile_id', user.id)
 
-  const threadIds = (myThreads ?? []).map(t => t.thread_id as string)
+  const rows = (myThreads ?? []).filter(row =>
+    filter === 'archived' ? row.archived_at !== null : row.archived_at === null,
+  )
+  const threadIds = rows.map(t => t.thread_id as string)
   if (threadIds.length === 0) return Response.json({ threads: [] })
 
   const readByThread = new Map(
-    (myThreads ?? []).map(row => [row.thread_id as string, row.last_read_at as string]),
+    rows.map(row => [row.thread_id as string, row.last_read_at as string]),
   )
 
   // Get all participants + latest message for each thread
@@ -31,6 +37,8 @@ export async function GET() {
     .select(`
       id,
       created_at,
+      origin_job_id,
+      jobs(title),
       thread_participants(profile_id, profiles(full_name, avatar_url)),
       messages(id, content, sender_id, created_at)
     `)
@@ -47,15 +55,20 @@ export async function GET() {
       profiles: { full_name: string; avatar_url: string | null } | null
     }>)
     const other = participants.find(p => p.profile_id !== user.id)
+    const job = thread.jobs as unknown as { title: string } | null
     const lastReadAt = readByThread.get(thread.id as string) ?? new Date(0).toISOString()
     return {
       id: thread.id,
+      otherId: other?.profile_id ?? null,
       otherName: other?.profiles?.full_name ?? 'Unknown',
       otherAvatar: other?.profiles?.avatar_url ?? null,
       lastMessage: msg?.content ?? 'No messages yet',
       lastSenderId: msg?.sender_id ?? '',
       lastMessageAt: msg?.created_at ?? thread.created_at,
       unread: isThreadUnread(msg, lastReadAt, user.id),
+      archived: filter === 'archived',
+      originJobId: (thread.origin_job_id as string | null) ?? null,
+      originJobTitle: job?.title ?? null,
     }
   }).sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
 

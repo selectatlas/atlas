@@ -47,7 +47,16 @@ function makeClient({
   messageInsertError?: { code: string } | null
   rpcError?: { code: string } | null
 }) {
-  const outreachInsert = vi.fn().mockResolvedValue({ error: outreachInsertError ?? null })
+  const outreachInsert = vi.fn(() => ({
+    select: () => ({
+      single: () =>
+        Promise.resolve({
+          data: outreachInsertError ? null : { id: 'outreach-1' },
+          error: outreachInsertError ?? null,
+        }),
+    }),
+  }))
+  const outreachUpdate = vi.fn(() => ({ eq: () => Promise.resolve({ error: null }) }))
   const messageInsert = vi.fn().mockResolvedValue({ error: messageInsertError ?? null })
   const rpc = vi.fn().mockResolvedValue({
     data: rpcError ? null : 'thread-1',
@@ -74,10 +83,12 @@ function makeClient({
       if (table === 'messages') {
         return { insert: messageInsert }
       }
-      return { insert: outreachInsert }
+      return { insert: outreachInsert, update: outreachUpdate }
     }),
     rpc,
     _outreachInsert: outreachInsert,
+    _outreachUpdate: outreachUpdate,
+    _messageInsert: messageInsert,
   }
 }
 
@@ -158,7 +169,7 @@ describe('POST /api/outreach', () => {
     expect(res.status).toBe(503)
   })
 
-  it('returns 500 when thread creation fails without leaking database errors', async () => {
+  it('returns 500 and demotes the tracking row when thread creation fails, without leaking database errors', async () => {
     const client = makeClient({
       user: { id: 'u1' },
       accountType: 'hirer',
@@ -170,9 +181,10 @@ describe('POST /api/outreach', () => {
     expect(res.status).toBe(500)
     const data = await res.json()
     expect(data.error).toBe('Failed to start conversation')
+    expect(client._outreachUpdate).toHaveBeenCalledWith({ status: 'draft' })
   })
 
-  it('still reports success when only the outreach tracking insert fails (the DM was already delivered; a 500 would prompt a double-sending retry)', async () => {
+  it('returns 500 when the outreach tracking insert fails (nothing has been delivered yet)', async () => {
     const client = makeClient({
       user: { id: 'u1' },
       accountType: 'hirer',
@@ -181,10 +193,30 @@ describe('POST /api/outreach', () => {
     })
     mockCreateClient.mockResolvedValue(client)
     const res = await POST(makeRequest({ talent_id: TALENT_ID, action: 'send', message: 'Hello!' }))
+    expect(res.status).toBe(500)
+    expect(client._messageInsert).not.toHaveBeenCalled()
+  })
+
+  it('sends through the origin-aware RPC and records a job origin when provided', async () => {
+    const JOB_ID = '33333333-3333-4333-8333-333333333333'
+    const client = makeClient({ user: { id: 'u1' }, accountType: 'hirer', talent: talentProfile })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makeRequest({ talent_id: TALENT_ID, action: 'send', message: 'Hello!', job_id: JOB_ID }))
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.success).toBe(true)
-    expect(data.thread_id).toBeTruthy()
+    expect(data.thread_id).toBe('thread-1')
+    expect(client.rpc).toHaveBeenCalledWith('create_or_get_thread_with_origin', {
+      other_profile_id: TALENT_ID,
+      origin_outreach: 'outreach-1',
+      origin_job: JOB_ID,
+    })
+  })
+
+  it('rejects a non-uuid job_id', async () => {
+    mockCreateClient.mockResolvedValue(makeClient({ user: { id: 'u1' }, accountType: 'hirer', talent: talentProfile }))
+    const res = await POST(makeRequest({ talent_id: TALENT_ID, action: 'send', message: 'Hello!', job_id: 'job-1' }))
+    expect(res.status).toBe(400)
   })
 
   it('rejects an oversized outreach message', async () => {

@@ -22,12 +22,14 @@ export async function fetchInboxForUser(
 
   const { data: myThreads } = await supabase
     .from('thread_participants')
-    .select('thread_id, last_read_at')
+    .select('thread_id, last_read_at, archived_at')
     .eq('profile_id', userId)
 
-  const threadIds = (myThreads ?? []).map(row => row.thread_id as string)
+  // Archived threads stay out of unread counts and notifications.
+  const activeThreads = (myThreads ?? []).filter(row => row.archived_at === null)
+  const threadIds = activeThreads.map(row => row.thread_id as string)
   const readByThread = new Map(
-    (myThreads ?? []).map(row => [row.thread_id as string, row.last_read_at as string]),
+    activeThreads.map(row => [row.thread_id as string, row.last_read_at as string]),
   )
 
   if (threadIds.length > 0) {

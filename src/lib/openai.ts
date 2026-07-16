@@ -108,6 +108,57 @@ export async function agentCompletion(
   return response.choices[0].message
 }
 
+export type MessageAssistMode = 'draft' | 'rephrase' | 'friendlier' | 'concise'
+
+const ASSIST_INSTRUCTIONS: Record<MessageAssistMode, string> = {
+  draft: 'Suggest the next reply the sender should write in this conversation.',
+  rephrase: 'Rewrite the sender\'s draft with better flow and wording, keeping its meaning and length.',
+  friendlier: 'Rewrite the sender\'s draft in a warmer, friendlier tone without adding new claims.',
+  concise: 'Rewrite the sender\'s draft to be noticeably shorter while keeping all key points.',
+}
+
+export async function generateMessageAssist(params: {
+  mode: MessageAssistMode
+  draft?: string
+  senderRole: 'hirer' | 'talent'
+  otherName: string
+  recentMessages: Array<{ fromMe: boolean; content: string }>
+  jobTitle?: string | null
+}): Promise<string> {
+  const { mode, draft, senderRole, otherName, recentMessages, jobTitle } = params
+  const openai = getOpenAI()
+
+  const transcript = recentMessages
+    .slice(-15)
+    .map(m => `${m.fromMe ? 'Sender' : otherName}: ${m.content.slice(0, 500)}`)
+    .join('\n')
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    temperature: 0.7,
+    max_tokens: 300,
+    messages: [
+      {
+        role: 'system',
+        content: `You help write direct messages on a creative-industry talent platform. The sender is a ${senderRole === 'hirer' ? 'casting director or producer' : 'creative talent (dancer, actor, or content creator)'} messaging ${otherName}.
+${ASSIST_INSTRUCTIONS[mode]}
+- Plain text only, no markdown, no subject line, no signature
+- 1-4 sentences, under 900 characters
+- Sound human and specific to the conversation, never templated
+- Do not use em dashes
+- Return only the message text`,
+      },
+      {
+        role: 'user',
+        content: `${jobTitle ? `The conversation started about the job "${jobTitle}".\n` : ''}Conversation so far:
+${transcript || '(no messages yet)'}
+${mode === 'draft' ? '' : `\nSender's current draft:\n${(draft ?? '').slice(0, 2000)}`}`,
+      },
+    ],
+  })
+  return response.choices[0].message.content?.trim() ?? ''
+}
+
 export async function generateOutreachMessage(params: {
   hirerContext: string
   talentName: string

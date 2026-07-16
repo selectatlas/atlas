@@ -16,9 +16,12 @@ export async function POST(request: Request) {
 
   const parsedBody = await parseJsonBody(request)
   if (!parsedBody.ok) return parsedBody.response
-  const { talent_id, action } = parsedBody.body
+  const { talent_id, action, job_id } = parsedBody.body
 
   if (!isUuid(talent_id)) return badRequest('talent_id must be a valid id')
+  if (job_id !== undefined && job_id !== null && !isUuid(job_id)) {
+    return badRequest('job_id must be a valid id')
+  }
   if (action !== 'generate' && action !== 'send') {
     return badRequest('action must be generate or send')
   }
@@ -45,10 +48,26 @@ export async function POST(request: Request) {
     const limited = await enforceRateLimit(`outreach-send:${user.id}`, 3600, 30)
     if (limited) return limited
 
-    const { data: createdThreadId, error: threadError } = await supabase.rpc('create_or_get_thread', {
+    // Insert the tracking row first so the thread can record it as its origin.
+    const { data: outreachRow, error: outreachError } = await supabase
+      .from('outreach')
+      .insert({ hirer_id: user.id, talent_id, message, status: 'sent' })
+      .select('id')
+      .single()
+    if (outreachError || !outreachRow) {
+      logEvent('error', 'outreach_insert_error', { user_id: user.id, code: outreachError?.code ?? null })
+      return Response.json({ error: 'Failed to send message' }, { status: 500 })
+    }
+
+    const { data: createdThreadId, error: threadError } = await supabase.rpc('create_or_get_thread_with_origin', {
       other_profile_id: talent_id,
+      origin_outreach: outreachRow.id,
+      origin_job: job_id ?? null,
     })
     if (threadError || !createdThreadId) {
+      // Nothing was delivered yet: demote the orphan tracking row to draft and
+      // fail. (RLS has no delete policy on outreach, but hirers can update.)
+      await supabase.from('outreach').update({ status: 'draft' }).eq('id', outreachRow.id)
       logEvent('error', 'outreach_thread_error', {
         user_id: user.id,
         code: threadError?.code ?? null,
@@ -66,19 +85,6 @@ export async function POST(request: Request) {
         code: messageError.code ?? null,
       })
       return Response.json({ error: 'Failed to send message' }, { status: 500 })
-    }
-
-    const { error } = await supabase.from('outreach').insert({
-      hirer_id: user.id,
-      talent_id,
-      message,
-      status: 'sent',
-    })
-    if (error) {
-      // The DM was already delivered above - failing the request here would
-      // prompt a retry that double-sends the message. Log and report success;
-      // the outreach row is a tracking record, not the delivery itself.
-      logEvent('error', 'outreach_insert_error', { user_id: user.id, code: error.code ?? null })
     }
 
     const posthog = getPostHogClient()
