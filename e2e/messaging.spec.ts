@@ -30,7 +30,7 @@ test.describe('messaging center', () => {
     await page.waitForURL(`/messages/${thread_id}`)
     await expect(page.getByText('Hello from outreach!')).toBeVisible()
 
-    await page.getByLabel('Message').fill('Following up - are you free next week?')
+    await page.getByRole('textbox', { name: 'Message' }).fill('Following up - are you free next week?')
     await page.getByRole('button', { name: 'Send message' }).click()
     await expect(page.getByText('Following up - are you free next week?')).toBeVisible()
 
@@ -77,12 +77,12 @@ test.describe('messaging center', () => {
     await page.goto('/messages')
 
     await page.getByRole('button', { name: 'New message' }).click()
-    await page.getByLabel('Search talent').fill('E2E compose-talent')
+    await page.getByLabel('Search talent', { exact: true }).fill('E2E compose-talent')
     await page.getByRole('button', { name: /E2E compose-talent/ }).click()
 
     // Lands in the (newly created) thread with a working composer.
     await page.waitForURL(/\/messages\/[0-9a-f-]{36}/)
-    await page.getByLabel('Message').fill('Hi! Found you through search.')
+    await page.getByRole('textbox', { name: 'Message' }).fill('Hi! Found you through search.')
     await page.getByRole('button', { name: 'Send message' }).click()
     await expect(page.getByText('Hi! Found you through search.')).toBeVisible()
 

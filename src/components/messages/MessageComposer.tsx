@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -104,20 +105,22 @@ export function MessageComposer({
             {assisting ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="top">
-            <DropdownMenuLabel>Write with AI</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => void requestAssist('draft')}>
-              Suggest a reply
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {REWRITE_ACTIONS.map(action => (
-              <DropdownMenuItem
-                key={action.mode}
-                disabled={!input.trim()}
-                onClick={() => void requestAssist(action.mode)}
-              >
-                {action.label}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Write with AI</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => void requestAssist('draft')}>
+                Suggest a reply
               </DropdownMenuItem>
-            ))}
+              <DropdownMenuSeparator />
+              {REWRITE_ACTIONS.map(action => (
+                <DropdownMenuItem
+                  key={action.mode}
+                  disabled={!input.trim()}
+                  onClick={() => void requestAssist(action.mode)}
+                >
+                  {action.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
 
