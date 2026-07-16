@@ -226,6 +226,11 @@
   html {
     @apply font-sans;
   }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
 }
 
 /*
@@ -300,7 +305,10 @@
   --ar: 1.15;
 
   position: relative;
-  min-height: 100dvh;
+  /* The sticky landing header (4.5rem + 1px border) sits above the hero in
+     flow; subtract it so the hero's bottom edge (and scroll cue) stays in
+     the first viewport. */
+  min-height: calc(100dvh - 4.5rem - 1px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -315,8 +323,8 @@
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(circle at center, transparent var(--reveal), #000 72%);
-  mask-image: radial-gradient(circle at center, transparent var(--reveal), #000 72%);
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.5) var(--reveal), #000 72%);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.5) var(--reveal), #000 72%);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;
@@ -393,6 +401,66 @@
   );
 }
 
+.hero .scroll-cue {
+  position: absolute;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  opacity: 0.55;
+  transform: translateX(-50%);
+  transition: opacity 200ms ease;
+}
+
+.hero .scroll-cue:hover,
+.hero .scroll-cue:focus-visible {
+  opacity: 1;
+}
+
+.hero .scroll-cue__mouse {
+  display: flex;
+  justify-content: center;
+  width: 24px;
+  height: 38px;
+  padding-top: 7px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+}
+
+.hero .scroll-cue__wheel {
+  width: 3px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink);
+  animation: hero-scroll-wheel 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes hero-scroll-wheel {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  55% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+
+  70% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 .hero .content {
   position: relative;
   z-index: 10;
@@ -419,6 +487,16 @@
   line-height: 0.98;
   letter-spacing: -0.03em;
   text-wrap: pretty;
+}
+
+.hero .subtext {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--ink);
+  opacity: 0.62;
+  font-size: clamp(16px, 1.6vw, 19px);
+  line-height: 1.4;
+  text-wrap: balance;
 }
 
 .hero .actions {

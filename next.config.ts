@@ -58,6 +58,9 @@ const nextConfig: NextConfig = {
   // lives in src/proxy.ts (it must run before auth and strip cookies).
   skipTrailingSlashRedirect: true,
   images: {
+    // Hero tiles and other static assets never change in place; keep
+    // optimized variants cached instead of re-transforming per visit.
+    minimumCacheTTL: 2678400,
     remotePatterns: [
       // Supabase storage (avatars/covers). Hostname derived from the project URL.
       ...(supabaseOrigin.startsWith('https://')

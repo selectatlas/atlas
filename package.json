@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx src/lib/seed/run.ts",
     "embed": "tsx src/lib/seed/embed.ts",
+    "posthog:dashboards": "node scripts/posthog-dashboards.mjs",
     "test": "vitest run",
     "test:all": "npm test && npm run test:integration",
     "test:integration": "vitest run --config vitest.integration.config.ts",

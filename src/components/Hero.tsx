@@ -108,7 +108,7 @@ export default function Hero() {
                     })}
                   >
                     <div className="spin">
-                      <Image className="tile" src={tile.src} alt="" width={92} height={106} sizes="92px" />
+                      <Image className="tile" src={tile.src} alt="" width={92} height={106} sizes="92px" loading="eager" />
                     </div>
                   </div>
                 </div>
@@ -127,6 +127,9 @@ export default function Hero() {
           <br />
           for talent
         </h1>
+        <p className="subtext">
+          Built for the people who perform, and the people who book them.
+        </p>
         <div className="actions">
           <a className="btn btn-primary" href="/signup">
             Sign up
@@ -137,6 +140,15 @@ export default function Hero() {
         </div>
       </div>
 
+      <a
+        className="scroll-cue"
+        href="#how-it-works"
+        aria-label="Scroll down to see how Atlas works"
+      >
+        <span className="scroll-cue__mouse" aria-hidden="true">
+          <span className="scroll-cue__wheel" />
+        </span>
+      </a>
     </section>
   );
 }
