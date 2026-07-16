@@ -21,6 +21,7 @@ type ApplicationRow = {
 }
 
 const ALL_STATUSES: ApplicationStatus[] = ['sent', 'viewed', 'responded', 'shortlisted', 'hired']
+const LOADING_SHELL = { breadcrumbsLoading: true }
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -113,7 +114,7 @@ export default function JobDetailPage() {
     }
   }, [job, loadError, toggling, toggleStatus])
 
-  useSetPageShell(loading ? { breadcrumbsLoading: true } : shellOverride)
+  useSetPageShell(loading ? LOADING_SHELL : shellOverride)
 
   if (loading) {
     return (

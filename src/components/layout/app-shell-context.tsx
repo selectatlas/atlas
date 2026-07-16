@@ -13,14 +13,20 @@ export type PageShellOverride = {
   hideTitle?: boolean
 }
 
+type SetOverrideFn = (override: PageShellOverride | null) => void
+
 type AppShellContextValue = {
   accountType: 'hirer' | 'talent'
   isPlatformAdmin: boolean
   override: PageShellOverride | null
-  setOverride: (override: PageShellOverride | null) => void
+  setOverride: SetOverrideFn
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null)
+// The setter lives in its own context so pages that only set the override
+// (useSetPageShell) don't re-render — and re-set — every time the override
+// changes, which would loop when the override is an inline object literal.
+const SetOverrideContext = createContext<SetOverrideFn | null>(null)
 
 export function AppShellProvider({
   accountType,
@@ -42,11 +48,21 @@ export function AppShellProvider({
     [accountType, isPlatformAdmin, override, setOverride],
   )
 
-  return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>
+  return (
+    <SetOverrideContext.Provider value={setOverride}>
+      <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>
+    </SetOverrideContext.Provider>
+  )
 }
 
 export function useAppShell() {
   const ctx = useContext(AppShellContext)
   if (!ctx) throw new Error('useAppShell must be used within AppShellProvider')
   return ctx
+}
+
+export function useSetShellOverride() {
+  const setOverride = useContext(SetOverrideContext)
+  if (!setOverride) throw new Error('useSetShellOverride must be used within AppShellProvider')
+  return setOverride
 }

@@ -22,6 +22,7 @@ import {
 } from '@/lib/messages-view'
 
 const TYPING_CLEAR_MS = 3500
+const LOADING_SHELL = { breadcrumbsLoading: true }
 
 export function ThreadView({ threadId }: { threadId: string }) {
   const router = useRouter()
@@ -156,7 +157,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
     }),
     [detail?.other?.full_name],
   )
-  useSetPageShell(loading ? { breadcrumbsLoading: true } : shellOverride)
+  useSetPageShell(loading ? LOADING_SHELL : shellOverride)
 
   const dayGroups = useMemo(() => groupMessagesByDay(messages), [messages])
   const seenMessageId = useMemo(() => {

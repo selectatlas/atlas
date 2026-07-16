@@ -40,6 +40,7 @@ export function ThreadHeader({
         size="icon-sm"
         className="md:hidden"
         aria-label="Back to messages"
+        nativeButton={false}
         render={<Link href="/messages" />}
       >
         <ChevronLeft className="size-4" />

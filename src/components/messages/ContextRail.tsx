@@ -148,6 +148,7 @@ export function ContextRail({
                   variant="outline"
                   size="sm"
                   className="mt-3 w-full gap-1.5"
+                  nativeButton={false}
                   render={<Link href={`/talent/${otherId}`} />}
                 >
                   View full profile
