@@ -27,7 +27,7 @@ export function CoverPhoto({ coverUrl, children }: CoverPhotoProps) {
       </div>
 
       {/* Overlapping content (profile photo, name, etc.) */}
-      <div className="relative -mt-12 px-4">
+      <div className="relative -mt-16 sm:-mt-24 px-4">
         {children}
       </div>
     </div>

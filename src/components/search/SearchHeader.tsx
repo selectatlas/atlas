@@ -3,6 +3,8 @@
 import { useRef, useEffect, useState } from 'react'
 import { Grid2X2, List, MoveHorizontal, Sparkles, X } from 'lucide-react'
 import { FilterBar } from '@/components/search/FilterBar'
+import { SaveSearchButton } from '@/components/search/SaveSearchButton'
+import { SearchSuggestionChips } from '@/components/search/SearchSuggestionChips'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import type { SearchFilters } from '@/lib/search-filters'
@@ -40,6 +42,7 @@ export function SearchHeader({
   const headerRef = useRef<HTMLDivElement>(null)
   const [isSticky, setIsSticky] = useState(false)
   const [stickyHeight, setStickyHeight] = useState(0)
+  const [inputFocused, setInputFocused] = useState(false)
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -96,6 +99,8 @@ export function SearchHeader({
             placeholder='Try "Bollywood dancers in London, available December"'
             aria-label="Search talent with AI"
             className="h-12 rounded-xl border-primary/20 bg-card pl-10 pr-10 text-sm shadow-sm focus-visible:border-primary focus-visible:ring-primary/30"
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
           />
           {query && (
             <Button
@@ -111,6 +116,11 @@ export function SearchHeader({
           )}
         </div>
 
+        {/* Suggested searches: shown when the input is focused and empty */}
+        {inputFocused && !query.trim() && (
+          <SearchSuggestionChips onSelect={onQueryChange} className="max-w-3xl" />
+        )}
+
         {/* AI mode: result meta */}
         {isAiMode && !searching && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -120,7 +130,12 @@ export function SearchHeader({
           </div>
         )}
 
-        <FilterBar filters={filters} onChange={onFiltersChange} resultCount={isAiMode ? aiResultCount : browseResultCount} previewCount={previewCount} />
+        <div className="flex flex-wrap items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <FilterBar filters={filters} onChange={onFiltersChange} resultCount={isAiMode ? aiResultCount : browseResultCount} previewCount={previewCount} />
+          </div>
+          <SaveSearchButton query={query} filters={filters} />
+        </div>
 
         {/* View toggle + Sort */}
         {hasResults && (

@@ -4,6 +4,7 @@ import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import { parseJsonBody, isUuid, cleanString, cleanOptionalString, badRequest } from '@/lib/validation'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
+import { buildSystemMessageContent } from '@/lib/system-messages'
 import { getPostHogClient } from '@/lib/posthog-server'
 
 export async function POST(request: Request) {
@@ -76,6 +77,31 @@ export async function POST(request: Request) {
     }
 
     const threadId = createdThreadId as string
+
+    // Best-effort "outreach sent" system card, inserted before the mirror
+    // message so the card sits above the outreach text in the thread.
+    let jobTitle: string | null = null
+    if (job_id) {
+      const { data: originJob } = await supabase
+        .from('jobs')
+        .select('title')
+        .eq('id', job_id)
+        .maybeSingle()
+      jobTitle = (originJob?.title as string | undefined) ?? null
+    }
+    const { error: systemError } = await supabase.from('messages').insert({
+      thread_id: threadId,
+      sender_id: user.id,
+      content: buildSystemMessageContent('outreach_sent', { jobTitle }),
+      kind: 'outreach_sent',
+    })
+    if (systemError) {
+      logEvent('warn', 'outreach_system_message_error', {
+        user_id: user.id,
+        code: systemError.code ?? null,
+      })
+    }
+
     const { error: messageError } = await supabase
       .from('messages')
       .insert({ thread_id: threadId, sender_id: user.id, content: message })

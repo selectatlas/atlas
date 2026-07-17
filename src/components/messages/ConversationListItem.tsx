@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { nameInitial } from '@/lib/display'
 import { formatThreadTime } from '@/lib/messages-view'
+import { isSystemMessageKind } from '@/lib/system-messages'
 import type { ThreadListItem } from '@/components/messages/types'
 
 export function ConversationListItem({
@@ -43,7 +44,9 @@ export function ConversationListItem({
           </div>
         </div>
         <p className={`mt-0.5 truncate text-xs ${thread.unread ? 'text-foreground' : 'text-muted-foreground'}`}>
-          {thread.lastSenderId === userId ? 'You: ' : ''}
+          {thread.lastSenderId === userId && !isSystemMessageKind(thread.lastMessageKind)
+            ? 'You: '
+            : ''}
           {thread.lastMessage}
         </p>
         {thread.originJobTitle && (

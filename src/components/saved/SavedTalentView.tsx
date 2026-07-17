@@ -3,6 +3,7 @@ import { Bookmark, Heart } from 'lucide-react'
 import { PageShell } from '@/components/layout/PageShell'
 import { Card } from '@/components/ui/card'
 import { SavedTalentRow } from '@/components/saved/SavedTalentRow'
+import { ShortlistTable, type ShortlistJobOption } from '@/components/saved/ShortlistTable'
 import type { Profile, TalentSkill } from '@/types'
 
 const tabs = [
@@ -20,9 +21,11 @@ interface SavedTalentViewProps {
   activeTab: 'shortlisted' | 'liked'
   shortlisted: SavedRow[]
   liked: SavedRow[]
+  /** The hirer's open jobs, powering the Invite-to-job action in the comparison table. */
+  jobs?: ShortlistJobOption[]
 }
 
-export function SavedTalentView({ activeTab, shortlisted, liked }: SavedTalentViewProps) {
+export function SavedTalentView({ activeTab, shortlisted, liked, jobs = [] }: SavedTalentViewProps) {
   const rows = activeTab === 'liked' ? liked : shortlisted
 
   return (
@@ -71,19 +74,29 @@ export function SavedTalentView({ activeTab, shortlisted, liked }: SavedTalentVi
           </Link>
         </div>
       ) : (
-        <div className="space-y-2 card-stagger">
-          {rows.map(row => {
-            const talent = row.profiles
-            if (!talent) return null
-            return (
-              <SavedTalentRow
-                key={row.talent_id}
-                talent={talent}
-                savedAt={row.created_at}
-              />
-            )
-          })}
-        </div>
+        <>
+          {/* Card list: the mobile default, and the only Liked-tab layout. */}
+          <div className={`space-y-2 card-stagger ${activeTab === 'shortlisted' ? 'md:hidden' : ''}`}>
+            {rows.map(row => {
+              const talent = row.profiles
+              if (!talent) return null
+              return (
+                <SavedTalentRow
+                  key={row.talent_id}
+                  talent={talent}
+                  savedAt={row.created_at}
+                />
+              )
+            })}
+          </div>
+
+          {/* Comparison table: desktop-only view of the shortlist. */}
+          {activeTab === 'shortlisted' && (
+            <div className="hidden md:block">
+              <ShortlistTable rows={rows} jobs={jobs} />
+            </div>
+          )}
+        </>
       )}
 
       {activeTab === 'shortlisted' && liked.length > 0 && rows.length > 0 && (

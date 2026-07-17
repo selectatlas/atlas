@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { LikeButton } from '@/components/talent/LikeButton'
 import { ShortlistButton } from '@/components/talent/ShortlistButton'
+import { VerifiedBadge } from '@/components/talent/VerifiedBadge'
 import { nameInitial } from '@/lib/display'
 
 interface SavedTalentRowProps {
@@ -31,9 +32,16 @@ export function SavedTalentRow({ talent, savedAt }: SavedTalentRowProps) {
         </Link>
 
         <div className="min-w-0 flex-1">
-          <Link href={`/talent/${talent.id}`} className="text-sm font-semibold hover:text-primary">
-            {talent.full_name}
-          </Link>
+          <div className="flex items-center gap-1.5">
+            <Link href={`/talent/${talent.id}`} className="truncate text-sm font-semibold hover:text-primary">
+              {talent.full_name}
+            </Link>
+            <VerifiedBadge
+              verifiedAt={talent.verified_at}
+              categories={talent.verified_categories}
+              compact
+            />
+          </div>
           {talent.headline && (
             <p className="truncate text-xs text-muted-foreground">{talent.headline}</p>
           )}

@@ -17,6 +17,7 @@ const EMPTY_SUMMARY: InboxSummary = {
   unreadMessages: 0,
   unreadApplications: 0,
   unreadOutreach: 0,
+  unreadSavedSearches: 0,
   totalUnread: 0,
 }
 

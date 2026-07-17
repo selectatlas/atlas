@@ -43,7 +43,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   // Get messages (newest last, limited)
   const { data: messages } = await supabase
     .from('messages')
-    .select('id, content, sender_id, created_at')
+    .select('id, content, kind, sender_id, created_at')
     .eq('thread_id', threadId)
     .order('created_at', { ascending: true })
     .limit(100)
@@ -112,7 +112,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: message, error } = await supabase
     .from('messages')
     .insert({ thread_id: threadId, sender_id: user.id, content })
-    .select('id, content, sender_id, created_at')
+    .select('id, content, kind, sender_id, created_at')
     .single()
 
   if (error || !message) {

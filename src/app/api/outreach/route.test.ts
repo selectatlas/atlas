@@ -36,6 +36,7 @@ function makeClient({
   user,
   accountType,
   talent,
+  jobTitle,
   outreachInsertError,
   messageInsertError,
   rpcError,
@@ -43,6 +44,7 @@ function makeClient({
   user: { id: string } | null
   accountType: string | null
   talent?: Record<string, unknown> | null
+  jobTitle?: string | null
   outreachInsertError?: { code: string } | null
   messageInsertError?: { code: string } | null
   rpcError?: { code: string } | null
@@ -82,6 +84,15 @@ function makeClient({
       }
       if (table === 'messages') {
         return { insert: messageInsert }
+      }
+      if (table === 'jobs') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: jobTitle ? { title: jobTitle } : null }),
+            }),
+          }),
+        }
       }
       return { insert: outreachInsert, update: outreachUpdate }
     }),
@@ -210,6 +221,42 @@ describe('POST /api/outreach', () => {
       other_profile_id: TALENT_ID,
       origin_outreach: 'outreach-1',
       origin_job: JOB_ID,
+    })
+  })
+
+  it('emits an outreach_sent system card before the mirrored message', async () => {
+    const JOB_ID = '33333333-3333-4333-8333-333333333333'
+    const client = makeClient({
+      user: { id: 'u1' },
+      accountType: 'hirer',
+      talent: talentProfile,
+      jobTitle: 'West End Revival',
+    })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makeRequest({ talent_id: TALENT_ID, action: 'send', message: 'Hello!', job_id: JOB_ID }))
+    expect(res.status).toBe(200)
+    expect(client._messageInsert).toHaveBeenCalledTimes(2)
+    expect(client._messageInsert.mock.calls[0][0]).toEqual({
+      thread_id: 'thread-1',
+      sender_id: 'u1',
+      content: 'Reached out about West End Revival',
+      kind: 'outreach_sent',
+    })
+    expect(client._messageInsert.mock.calls[1][0]).toEqual({
+      thread_id: 'thread-1',
+      sender_id: 'u1',
+      content: 'Hello!',
+    })
+  })
+
+  it('uses a generic outreach card without a job', async () => {
+    const client = makeClient({ user: { id: 'u1' }, accountType: 'hirer', talent: talentProfile })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makeRequest({ talent_id: TALENT_ID, action: 'send', message: 'Hello!' }))
+    expect(res.status).toBe(200)
+    expect(client._messageInsert.mock.calls[0][0]).toMatchObject({
+      content: 'Reached out to start a conversation',
+      kind: 'outreach_sent',
     })
   })
 

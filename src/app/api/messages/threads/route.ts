@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { isServerDemoOnly } from '@/lib/auth'
 import { isThreadUnread } from '@/lib/inbox'
+import { threadPreviewSnippet } from '@/lib/messages-view'
 import { parseJsonBody, isUuid, badRequest } from '@/lib/validation'
 import { enforceRateLimit } from '@/lib/rate-limit'
 
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
       origin_job_id,
       jobs(title),
       thread_participants(profile_id, profiles(full_name, avatar_url)),
-      messages(id, content, sender_id, created_at)
+      messages(id, content, kind, sender_id, created_at)
     `)
     .in('id', threadIds)
     .order('created_at', { referencedTable: 'messages', ascending: false })
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
 
   // Flatten and sort by latest message time
   const result = (threads ?? []).map(thread => {
-    const msgs = thread.messages as Array<{ id: string; content: string; sender_id: string; created_at: string }>
+    const msgs = thread.messages as Array<{ id: string; content: string; kind: string | null; sender_id: string; created_at: string }>
     const msg = msgs?.[0]
     const participants = (thread.thread_participants as unknown as Array<{
       profile_id: string
@@ -62,7 +63,8 @@ export async function GET(request: Request) {
       otherId: other?.profile_id ?? null,
       otherName: other?.profiles?.full_name ?? 'Unknown',
       otherAvatar: other?.profiles?.avatar_url ?? null,
-      lastMessage: msg?.content ?? 'No messages yet',
+      lastMessage: msg ? threadPreviewSnippet(msg) : 'No messages yet',
+      lastMessageKind: msg?.kind ?? 'text',
       lastSenderId: msg?.sender_id ?? '',
       lastMessageAt: msg?.created_at ?? thread.created_at,
       unread: isThreadUnread(msg, lastReadAt, user.id),

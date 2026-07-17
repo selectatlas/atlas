@@ -14,7 +14,7 @@ type SavedRow = {
 }
 
 const TALENT_JOIN =
-  'id, full_name, avatar_url, headline, city, country, talent_skills(skill)'
+  'id, full_name, avatar_url, headline, city, country, rates, availability, verified_at, verified_categories, talent_skills(id, skill, category, proficiency)'
 
 export default async function ShortlistsPage({
   searchParams,
@@ -41,7 +41,7 @@ export default async function ShortlistsPage({
     userId = user.id
   }
 
-  const [shortlistResult, likesResult] = await Promise.all([
+  const [shortlistResult, likesResult, jobsResult] = await Promise.all([
     supabase
       .from('shortlists')
       .select(`talent_id, created_at, profiles!talent_id(${TALENT_JOIN})`)
@@ -52,16 +52,25 @@ export default async function ShortlistsPage({
       .select(`talent_id, created_at, profiles!talent_id(${TALENT_JOIN})`)
       .eq('user_id', userId)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('jobs')
+      .select('id, title')
+      .eq('hirer_id', userId)
+      .eq('status', 'open')
+      .is('removed_at', null)
+      .order('created_at', { ascending: false }),
   ])
 
   const shortlisted = (shortlistResult.data ?? []) as unknown as SavedRow[]
   const liked = (likesResult.data ?? []) as unknown as SavedRow[]
+  const jobs = (jobsResult.data ?? []) as Array<{ id: string; title: string }>
 
   return (
     <SavedTalentView
       activeTab={activeTab}
       shortlisted={shortlisted}
       liked={liked}
+      jobs={jobs}
     />
   )
 }

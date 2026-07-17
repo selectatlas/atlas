@@ -16,11 +16,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface OutreachModalProps {
   talent: (Profile & { talent_skills: TalentSkill[] }) | null
+  /** When set, the outreach is an invite to this job: it frames the AI draft and links the resulting thread to the job. */
+  job?: { id: string; title: string } | null
   onClose: () => void
   onSent: () => void
 }
 
-export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
+export function OutreachModal({ talent, job = null, onClose, onSent }: OutreachModalProps) {
   const router = useRouter()
   const [message, setMessage] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -38,7 +40,7 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     /* eslint-enable react-hooks/set-state-in-effect */
     void refreshDemoModeAndGenerate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [talent?.id])
+  }, [talent?.id, job?.id])
 
   async function refreshDemoModeAndGenerate() {
     const demo = await isActiveLocalDemoMode()
@@ -53,7 +55,11 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
 
     if (demo) {
       const firstName = talent.full_name.split(' ')[0]
-      setMessage(`Hi ${firstName}, your work looks like a strong fit for a new creative brief. I’d love to share more about the project and see if you’re available.`)
+      setMessage(
+        job
+          ? `Hi ${firstName}, your work looks like a strong fit for "${job.title}". I’d love to share the brief and see if you’re available.`
+          : `Hi ${firstName}, your work looks like a strong fit for a new creative brief. I’d love to share more about the project and see if you’re available.`,
+      )
       setGenerating(false)
       return
     }
@@ -70,6 +76,10 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
         }
       } catch {
         // Fall back to the generic context when settings are unavailable.
+      }
+
+      if (job) {
+        hirerContext = `${hirerContext}, inviting this talent to apply for their job "${job.title}"`
       }
 
       const res = await fetch('/api/outreach', {
@@ -117,6 +127,7 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
           talent_id: talent.id,
           action: 'send',
           message: message.trim(),
+          job_id: job?.id,
         }),
       })
       const data = await res.json() as { success?: boolean; thread_id?: string | null; error?: string }
@@ -140,7 +151,7 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
     <Dialog open={!!talent} onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Contact talent</DialogTitle>
+          <DialogTitle>{job ? 'Invite to job' : 'Contact talent'}</DialogTitle>
         </DialogHeader>
 
         {talent && (
@@ -160,6 +171,12 @@ export function OutreachModal({ talent, onClose, onSent }: OutreachModalProps) {
                 </p>
               </div>
             </div>
+
+            {job && (
+              <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+                Inviting to <span className="font-medium text-foreground">{job.title}</span>
+              </p>
+            )}
 
             <p className="text-muted-foreground text-xs font-medium">AI-generated outreach message</p>
 

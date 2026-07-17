@@ -1,11 +1,11 @@
 import { notFound, redirect } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import { Award, Banknote, CalendarDays, Clapperboard, Eye, Heart, Star } from 'lucide-react'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import { TalentProfileShell } from '@/components/layout/TalentProfileShell'
 import { Badge } from '@/components/ui/badge'
 import { CoverPhoto } from '@/components/talent/CoverPhoto'
+import { StoryAvatar } from '@/components/talent/StoryAvatar'
 import { StatsBar } from '@/components/talent/StatsBar'
 import { CreditsTimeline } from '@/components/talent/CreditsTimeline'
 import { PortfolioGallery } from '@/components/talent/PortfolioGallery'
@@ -22,6 +22,7 @@ import { ReviewHighlights } from '@/components/talent/ReviewHighlights'
 import { ReviewsSection } from '@/components/talent/ReviewsSection'
 import { InlineShowreel } from '@/components/talent/InlineShowreel'
 import { BookingCard } from '@/components/talent/BookingCard'
+import { getProfileStories } from '@/lib/stories'
 import { getTalentProfile } from '@/lib/talent'
 import { getSession } from '@/lib/auth'
 import { DEMO_PROFILE } from '@/lib/demo-data'
@@ -119,21 +120,11 @@ export default async function TalentProfilePage({
       {/* Hero Section */}
       <CoverPhoto coverUrl={profile.cover_url}>
         <div className="flex items-end gap-4">
-          <div className="relative w-[88px] h-[88px] rounded-2xl overflow-hidden bg-muted border-4 border-background shrink-0 shadow-lg">
-            {profile.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt={profile.full_name}
-                fill
-                className="object-cover"
-                sizes="88px"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-muted-foreground/30">
-                {profile.full_name[0]}
-              </div>
-            )}
-          </div>
+          <StoryAvatar
+            avatarUrl={profile.avatar_url}
+            name={profile.full_name}
+            stories={getProfileStories(portfolioItems)}
+          />
 
           <div className="flex-1 min-w-0 pb-1">
             <div className="flex flex-wrap items-center gap-2">

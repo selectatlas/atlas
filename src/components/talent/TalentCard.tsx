@@ -7,6 +7,9 @@ import { nameInitial } from "@/lib/display";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShortlistButton } from "@/components/talent/ShortlistButton";
+import { VerifiedBadge } from "@/components/talent/VerifiedBadge";
+import { TalentLevelBadge } from "@/components/talent/TalentLevelBadge";
+import type { TalentLevel } from "@/lib/talent-level";
 
 interface TalentCardProps {
   profile: Profile & { talent_skills: TalentSkill[] };
@@ -15,6 +18,7 @@ interface TalentCardProps {
   href?: string;
   views?: number;
   likes?: number;
+  level?: TalentLevel;
 }
 
 const proficiencyVariant: Record<string, "default" | "secondary" | "outline"> =
@@ -42,6 +46,7 @@ export function TalentCard({
   href,
   views,
   likes,
+  level,
 }: TalentCardProps) {
   const topSkills = profile.talent_skills.slice(0, 3);
   const primaryCategory = profile.talent_skills[0]?.category;
@@ -89,9 +94,17 @@ export function TalentCard({
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold leading-tight">
-              {profile.full_name}
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="truncate text-sm font-semibold leading-tight">
+                {profile.full_name}
+              </h3>
+              <VerifiedBadge
+                verifiedAt={profile.verified_at}
+                categories={profile.verified_categories}
+                compact
+              />
+              <TalentLevelBadge level={level} />
+            </div>
             {profile.headline && (
               <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                 {profile.headline}
@@ -190,6 +203,7 @@ export function TalentListItem({
   href,
   views,
   likes,
+  level,
 }: TalentCardProps) {
   const topSkills = profile.talent_skills.slice(0, 2);
   const location = locationFor(profile);
@@ -216,6 +230,12 @@ export function TalentListItem({
             <h3 className="truncate text-sm font-semibold">
               {profile.full_name}
             </h3>
+            <VerifiedBadge
+              verifiedAt={profile.verified_at}
+              categories={profile.verified_categories}
+              compact
+            />
+            <TalentLevelBadge level={level} />
             {matchScore !== undefined && (
               <span className="shrink-0 rounded-full bg-brand-lime px-1.5 py-0.5 text-[10px] font-bold text-black">
                 {matchScore}%

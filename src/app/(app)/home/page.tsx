@@ -5,6 +5,7 @@ import {
   Bookmark,
   BriefcaseBusiness,
   Compass,
+  Crown,
   Mail,
   MessageSquare,
   Search,
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
-import { getProfileCompletion } from '@/lib/profile-completion'
+import { EMPTY_TALENT_ATTRIBUTES, type TalentAttributesPayload } from '@/lib/talent-profile-attributes'
 import { needsOnboarding } from '@/lib/onboarding'
 import { findThreadWithOther } from '@/lib/thread-lookup'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
@@ -22,8 +23,11 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DemoActivity } from '@/components/talent/DemoActivity'
+import { SavedSearchesSection } from '@/components/search/SavedSearchesSection'
+import { SpotlightCard } from '@/components/monetization/SpotlightCard'
+import { ProfileCompletenessCard } from '@/components/talent/ProfileCompletenessCard'
 import { nameInitial } from '@/lib/display'
-import type { Profile, TalentSkill, ApplicationStatus, OutreachStatus, Category } from '@/types'
+import type { Profile, TalentSkill, Credit, PortfolioItem, ApplicationStatus, OutreachStatus, Category } from '@/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const APP_STATUS_VARIANTS: Record<ApplicationStatus, 'outline' | 'secondary' | 'default'> = {
@@ -200,6 +204,25 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
         <QuickAction href="/jobs/new" icon={BriefcaseBusiness} title="Post a job" description="Publish a brief and collect applications." />
       </div>
 
+      <SavedSearchesSection supabase={supabase} hirerId={userId} />
+
+      <Link href="/pro">
+        <Card className="border border-primary/20 bg-primary/5 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Crown className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">Atlas Pro</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Vetted talent access, saved-search alerts, and priority support - see the plan.
+              </p>
+            </div>
+            <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
+          </div>
+        </Card>
+      </Link>
+
       <ThreadList threads={recentThreads} />
 
       {(jobs ?? []).length > 0 && (
@@ -263,15 +286,28 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
 }
 
 async function TalentDashboard({ userId, supabase }: { userId: string; supabase: SupabaseClient }) {
-  const [profileResult, appsResult, outreachResult, recentThreads] = await Promise.all([
+  const [profileResult, creditsResult, portfolioResult, attributesResult, appsResult, outreachResult, recentThreads] = await Promise.all([
     supabase.from('profiles').select(PUBLIC_PROFILE_WITH_SKILLS).eq('id', userId).single(),
+    supabase.from('credits').select('*').eq('profile_id', userId),
+    supabase.from('portfolio_items').select('*').eq('profile_id', userId),
+    supabase.from('talent_profiles').select('birth_year, gender, height_cm, rate_min, rate_max, rate_unit, rate_currency, languages, nationalities, available_now, public_attributes').eq('profile_id', userId).maybeSingle(),
     supabase.from('applications').select('id, status, created_at, jobs!job_id(title, category, location)').eq('talent_id', userId).order('created_at', { ascending: false }).limit(5),
     supabase.from('outreach').select('id, message, status, created_at, hirer_id, profiles!hirer_id(full_name)').eq('talent_id', userId).order('created_at', { ascending: false }).limit(5),
     getRecentThreads(supabase, userId),
   ])
 
-  const profile = profileResult.data as unknown as Profile & { talent_skills: TalentSkill[] }
-  const completion = profile ? getProfileCompletion(profile) : null
+  const baseProfile = profileResult.data as unknown as (Profile & { talent_skills: TalentSkill[] }) | null
+  const profile = baseProfile
+    ? {
+        ...baseProfile,
+        credits: (creditsResult.data ?? []) as Credit[],
+        portfolio_items: (portfolioResult.data ?? []) as PortfolioItem[],
+      }
+    : null
+  const talentAttributes: TalentAttributesPayload = {
+    ...EMPTY_TALENT_ATTRIBUTES,
+    ...((attributesResult.data ?? {}) as Partial<TalentAttributesPayload>),
+  }
   const applications = (appsResult.data ?? []) as unknown as Array<{
     id: string
     status: ApplicationStatus
@@ -318,26 +354,8 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
             </Link>
           </div>
         </Card>
-      ) : completion && completion.percent < 100 && (
-        <Card className="border border-primary/20 bg-primary/5 p-5 shadow-none">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold">Profile {completion.percent}% complete</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {completion.missing[0] ?? 'Add the remaining details to improve discoverability.'}
-              </p>
-            </div>
-            <Link
-              href="/profile"
-              className="inline-flex h-8 items-center justify-center rounded-xl border border-input bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent hover:text-accent-foreground"
-            >
-              Complete profile
-            </Link>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-background">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${completion.percent}%` }} />
-          </div>
-        </Card>
+      ) : profile && (
+        <ProfileCompletenessCard profile={profile} attributes={talentAttributes} editHref="/profile" />
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -351,6 +369,8 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
         <QuickAction href="/messages" icon={MessageSquare} title="Open messages" description="Continue conversations with hirers." />
         <QuickAction href="/profile" icon={UserRound} title="Edit profile" description="Update skills, portfolio, and availability." />
       </div>
+
+      <SpotlightCard />
 
       <ThreadList threads={recentThreads} />
 

@@ -1,4 +1,4 @@
-export type NotificationKind = 'message' | 'application' | 'outreach'
+export type NotificationKind = 'message' | 'application' | 'outreach' | 'saved_search'
 
 export type InboxNotification = {
   id: string
@@ -14,11 +14,12 @@ export type InboxSummary = {
   unreadMessages: number
   unreadApplications: number
   unreadOutreach: number
+  unreadSavedSearches: number
   totalUnread: number
 }
 
-export function sumInbox(summary: Pick<InboxSummary, 'unreadMessages' | 'unreadApplications' | 'unreadOutreach'>): number {
-  return summary.unreadMessages + summary.unreadApplications + summary.unreadOutreach
+export function sumInbox(summary: Pick<InboxSummary, 'unreadMessages' | 'unreadApplications' | 'unreadOutreach' | 'unreadSavedSearches'>): number {
+  return summary.unreadMessages + summary.unreadApplications + summary.unreadOutreach + summary.unreadSavedSearches
 }
 
 export function isThreadUnread(

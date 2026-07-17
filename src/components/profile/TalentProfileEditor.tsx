@@ -5,7 +5,10 @@ import Link from 'next/link'
 import { Eye } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isLocalDemoMode } from '@/lib/demo-mode'
-import { DEMO_PROFILE, DEMO_TALENT_ATTRIBUTES } from '@/lib/demo-data'
+import { DEMO_PROFILE, DEMO_REVIEWS, DEMO_TALENT_ATTRIBUTES } from '@/lib/demo-data'
+import { summarizeReviews } from '@/lib/reviews'
+import { buildTalentLevelMetrics, type TalentLevelMetrics } from '@/lib/talent-level'
+import { TalentLevelPanel } from '@/components/talent/TalentLevelPanel'
 import { PhotoUpload } from '@/components/talent/PhotoUpload'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -37,6 +40,7 @@ export function TalentProfileEditor() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [talentAttributes, setTalentAttributes] = useState<TalentAttributesPayload>(EMPTY_TALENT_ATTRIBUTES)
+  const [levelMetrics, setLevelMetrics] = useState<TalentLevelMetrics | null>(null)
   const embedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Skills feed the AI-search embedding directly, so edits must re-embed even
@@ -62,6 +66,14 @@ export function TalentProfileEditor() {
     if (isLocalDemoMode()) {
       setProfile(DEMO_PROFILE)
       setTalentAttributes(DEMO_TALENT_ATTRIBUTES[DEMO_PROFILE.id] ?? EMPTY_TALENT_ATTRIBUTES)
+      const demoSummary = summarizeReviews(DEMO_REVIEWS[DEMO_PROFILE.id] ?? [])
+      setLevelMetrics(buildTalentLevelMetrics({
+        reviewAverage: demoSummary.average,
+        reviewCount: demoSummary.count,
+        hiredCount: 1,
+        contactedCount: 2,
+        respondedCount: 2,
+      }))
       setLoading(false)
       return
     }
@@ -82,10 +94,15 @@ export function TalentProfileEditor() {
 
     if (!data) { setLoading(false); return }
 
-    const [{ data: credits }, { data: portfolioItems }, attributesResponse] = await Promise.all([
+    const [{ data: credits }, { data: portfolioItems }, attributesResponse, { data: reviewStats }, hiredResult, { data: outreachRows }] = await Promise.all([
       supabase.from('credits').select('*').eq('profile_id', user.id).order('sort_order').order('start_date', { ascending: false }),
       supabase.from('portfolio_items').select('*').eq('profile_id', user.id).order('sort_order'),
       fetch('/api/profile/attributes').then(response => response.ok ? response.json() : null),
+      // Level inputs are all readable by the talent under RLS (own rows +
+      // the aggregate talent_stats view).
+      supabase.from('talent_stats').select('review_count, avg_rating').eq('profile_id', user.id).maybeSingle(),
+      supabase.from('applications').select('id', { count: 'exact', head: true }).eq('talent_id', user.id).eq('status', 'hired'),
+      supabase.from('outreach').select('status').eq('talent_id', user.id).neq('status', 'draft'),
     ])
 
     setProfile({
@@ -95,6 +112,15 @@ export function TalentProfileEditor() {
       portfolio_items: (portfolioItems ?? []) as PortfolioItem[],
     })
     if (attributesResponse?.attributes) setTalentAttributes(attributesResponse.attributes as TalentAttributesPayload)
+
+    const contacted = (outreachRows ?? []) as Array<{ status: string }>
+    setLevelMetrics(buildTalentLevelMetrics({
+      reviewAverage: reviewStats?.avg_rating == null ? null : Number(reviewStats.avg_rating),
+      reviewCount: reviewStats?.review_count ?? 0,
+      hiredCount: hiredResult.count ?? 0,
+      contactedCount: contacted.length,
+      respondedCount: contacted.filter(row => row.status === 'responded').length,
+    }))
     setLoading(false)
   }, [])
 
@@ -182,6 +208,8 @@ export function TalentProfileEditor() {
       />
 
       <ProfileCompletenessCard profile={profile} attributes={talentAttributes} />
+
+      {levelMetrics && <TalentLevelPanel metrics={levelMetrics} />}
 
       <div className="flex items-center gap-4">
         <PhotoUpload

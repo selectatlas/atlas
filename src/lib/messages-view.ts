@@ -1,8 +1,25 @@
+import { isSystemMessageKind, systemCardTitle } from '@/lib/system-messages'
+
 export type ThreadMessage = {
   id: string
   content: string
   sender_id: string
   created_at: string
+  kind?: string | null
+}
+
+// Inbox and conversation-list snippet for the latest message. System
+// messages store a human-readable sentence as content; fall back to the
+// card title if a system message ever arrives with empty content.
+export function threadPreviewSnippet(message: {
+  kind?: string | null
+  content: string | null
+}): string {
+  const content = message.content?.trim() ?? ''
+  if (isSystemMessageKind(message.kind) && content.length === 0) {
+    return systemCardTitle(message.kind)
+  }
+  return content
 }
 
 // The other participant has seen a message when their last_read_at is at or

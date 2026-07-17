@@ -821,8 +821,11 @@ export async function seedDemoWorld(supabase: SupabaseClient, ids: ProfileIdByEm
       .update({
         headline: talent.headline,
         cover_url: coverUrl,
-        verified_at: talent.verified ? daysAgoIso(45) : null,
-        verified_categories: talent.verified ?? [],
+        // Only override verification when this featured entry grants it;
+        // otherwise keep whatever the base seed (seedVerification) set.
+        ...(talent.verified
+          ? { verified_at: daysAgoIso(45), verified_categories: talent.verified }
+          : {}),
       })
       .eq('id', profileId)
     if (headlineError) throw new Error(`Failed to update headline for ${talent.email}: ${headlineError.message}`)

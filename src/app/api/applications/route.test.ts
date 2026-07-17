@@ -20,14 +20,22 @@ function makeClient({
   accountType,
   job,
   insertError,
+  rpcError,
 }: {
   user: { id: string } | null
   accountType: string | null
-  job?: { id: string; status: string } | null
+  job?: { id: string; status: string; title?: string } | null
   insertError?: { code: string } | null
+  rpcError?: { code: string } | null
 }) {
+  const messageInsert = vi.fn().mockResolvedValue({ error: null })
+  const rpc = vi.fn().mockResolvedValue({
+    data: rpcError ? null : 'thread-1',
+    error: rpcError ?? null,
+  })
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
+    rpc,
     from: vi.fn((table: string) => {
       if (table === 'profiles') {
         return {
@@ -38,6 +46,9 @@ function makeClient({
         return {
           select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: job ?? null }) }) }),
         }
+      }
+      if (table === 'messages') {
+        return { insert: messageInsert }
       }
       // applications
       return {
@@ -51,6 +62,7 @@ function makeClient({
         }),
       }
     }),
+    _messageInsert: messageInsert,
   }
 }
 
@@ -129,6 +141,39 @@ describe('POST /api/applications', () => {
     mockCreateClient.mockResolvedValue(makeClient({ user: { id: 'u1' }, accountType: 'talent', job: { id: JOB_ID, status: 'open' } }))
     const res = await POST(makeRequest({ job_id: JOB_ID, note: 'I am available for the shoot dates.' }))
     expect(res.status).toBe(201)
+  })
+
+  it('emits an application_received system card into the hirer thread', async () => {
+    const client = makeClient({
+      user: { id: 'u1' },
+      accountType: 'talent',
+      job: { id: JOB_ID, status: 'open', title: 'West End Revival' },
+    })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makeRequest({ job_id: JOB_ID }))
+    expect(res.status).toBe(201)
+    expect(client.rpc).toHaveBeenCalledWith('create_or_get_thread_for_application', {
+      target_application_id: 'app-1',
+    })
+    expect(client._messageInsert).toHaveBeenCalledWith({
+      thread_id: 'thread-1',
+      sender_id: 'u1',
+      content: 'Applied to West End Revival',
+      kind: 'application_received',
+    })
+  })
+
+  it('still returns 201 when the system card thread cannot be created', async () => {
+    const client = makeClient({
+      user: { id: 'u1' },
+      accountType: 'talent',
+      job: { id: JOB_ID, status: 'open', title: 'West End Revival' },
+      rpcError: { code: '42883' },
+    })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makeRequest({ job_id: JOB_ID }))
+    expect(res.status).toBe(201)
+    expect(client._messageInsert).not.toHaveBeenCalled()
   })
 
   it('returns 409 when already applied (unique constraint)', async () => {

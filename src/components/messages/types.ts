@@ -6,6 +6,7 @@ export type ThreadListItem = {
   otherName: string
   otherAvatar: string | null
   lastMessage: string
+  lastMessageKind?: string | null
   lastSenderId: string
   lastMessageAt: string
   unread?: boolean

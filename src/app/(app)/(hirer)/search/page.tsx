@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { SearchX, Sparkles } from 'lucide-react'
 import { TalentCard, TalentListItem } from '@/components/talent/TalentCard'
 import { SearchHeader } from '@/components/search/SearchHeader'
+import { SearchSuggestionChips } from '@/components/search/SearchSuggestionChips'
 import { PageShell } from '@/components/layout/PageShell'
 import { SwipeStack } from '@/components/talent/SwipeStack'
 import { OutreachModal } from '@/components/outreach/OutreachModal'
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { isActiveLocalDemoMode } from '@/lib/demo-mode'
 import { searchDemoTalent } from '@/lib/demo-data'
 import { serializeSearchFilters, type SearchFilters } from '@/lib/search-filters'
+import type { TalentLevel } from '@/lib/talent-level'
 import { useSearchFilters } from '@/components/search/useSearchFilters'
 import posthog from 'posthog-js'
 import type { Profile, TalentSkill, TalentSearchResult } from '@/types'
@@ -64,7 +66,7 @@ function SearchPageContent() {
     if (q) setQuery(q)
   }, [searchParams])
 
-  const [talentStats, setTalentStats] = useState<Record<string, { views: number; likes: number }>>({})
+  const [talentStats, setTalentStats] = useState<Record<string, { views: number; likes: number; level?: TalentLevel }>>({})
   const [isLocalDemo, setIsLocalDemo] = useState(false)
   const filterSortKey = useMemo(
     () => `${sortMode}:${serializeSearchFilters(filters).toString()}`,
@@ -145,7 +147,7 @@ function SearchPageContent() {
       ),
     )
       .then(responses => {
-        const merged: Record<string, { views: number; likes: number }> = {}
+        const merged: Record<string, { views: number; likes: number; level?: TalentLevel }> = {}
         for (const data of responses) {
           Object.assign(merged, data.stats ?? {})
         }
@@ -405,6 +407,11 @@ function SearchPageContent() {
             {isAiMode ? 'No matches found. Try a different query.' : 'No talent matches those filters.'}
           </p>
           <p className="mt-1 max-w-sm text-xs text-muted-foreground">Adjust your search or filters to see more creative talent.</p>
+          <SearchSuggestionChips
+            label="Or try one of these searches"
+            onSelect={setQuery}
+            className="mt-5 [&>div]:justify-center"
+          />
         </div>
       )}
 
@@ -433,6 +440,7 @@ function SearchPageContent() {
                   href={`/talent/${profile.id}`}
                   views={talentStats[profile.id]?.views}
                   likes={talentStats[profile.id]?.likes}
+                  level={talentStats[profile.id]?.level}
                 />
               ))}
             </div>
@@ -449,6 +457,7 @@ function SearchPageContent() {
                   href={`/talent/${profile.id}`}
                   views={talentStats[profile.id]?.views}
                   likes={talentStats[profile.id]?.likes}
+                  level={talentStats[profile.id]?.level}
                 />
               ))}
             </div>

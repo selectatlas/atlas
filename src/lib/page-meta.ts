@@ -66,6 +66,12 @@ const HIRER_STATIC: Record<string, PageMeta> = {
     title: 'Notifications',
     description: 'Unread messages, applications, and outreach responses.',
   },
+  '/pro': {
+    breadcrumbs: [{ label: 'Workspace', href: '/home' }, { label: 'Atlas Pro' }],
+    eyebrow: 'Plans',
+    title: 'Atlas Pro',
+    description: 'Hire with an edge - vetted talent, alerts that keep scouting, and a team on call.',
+  },
 }
 
 const TALENT_STATIC: Record<string, PageMeta> = {

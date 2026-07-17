@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
-import { SEED_PROFILES } from './data'
+import { SEED_PROFILES, seedVerification } from './data'
 import { DEMO_HIRER, DEMO_PASSWORD, DEMO_REVIEWER_HIRERS, seedDemoWorld } from './demo-world'
 import { mirrorImageToStorage, seededCategoryCoverUrl, seededPortraitUrl } from './images'
 
@@ -198,15 +198,17 @@ async function seedTalent(idsByEmail: Map<string, string>): Promise<number> {
     idsByEmail.set(profile.email, user.id)
 
     if (user.existed) {
-      const [{ error: attributesError }] = await Promise.all([
+      const [{ error: attributesError }, { error: verificationError }] = await Promise.all([
         upsertFilterData(user.id, profile),
+        supabase.from('profiles').update(seedVerification(profile)).eq('id', user.id),
         Promise.all([
           ensureStorageAvatar(user.id, seededPortraitUrl(supabaseUrl!, profile.email)),
           ensureStorageCover(user.id, profile.skills[0]!.category),
         ]),
       ])
-      console.log(attributesError ? `already exists; filter data FAILED: ${attributesError.message}` : 'already exists; filter data updated')
-      if (attributesError) failed++
+      const updateError = attributesError ?? verificationError
+      console.log(updateError ? `already exists; update FAILED: ${updateError.message}` : 'already exists; filter data updated')
+      if (updateError) failed++
       skipped++
       continue
     }
@@ -222,6 +224,7 @@ async function seedTalent(idsByEmail: Map<string, string>): Promise<number> {
         rates: profile.rates,
         availability: profile.availability,
         showreel_url: profile.showreel_url,
+        ...seedVerification(profile),
       })
       .eq('id', user.id)
 

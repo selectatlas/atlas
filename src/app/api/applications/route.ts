@@ -3,6 +3,7 @@ import { parseJsonBody, isUuid, cleanOptionalString, badRequest } from '@/lib/va
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
 import { getPostHogClient } from '@/lib/posthog-server'
+import { buildSystemMessageContent } from '@/lib/system-messages'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   // Verify job exists and is open
   const { data: job } = await supabase
     .from('jobs')
-    .select('id, status')
+    .select('id, status, title')
     .eq('id', job_id)
     .single()
 
@@ -66,6 +67,39 @@ export async function POST(request: Request) {
     }
     logEvent('error', 'application_insert_error', { user_id: user.id, code: error.code ?? null })
     return Response.json({ error: 'Failed to apply' }, { status: 500 })
+  }
+
+  // Best-effort system card: open (or reuse) the thread with the job's
+  // hirer and drop an "application received" card into it. Never fails
+  // the application itself.
+  if (application) {
+    try {
+      const { data: threadId, error: threadError } = await supabase.rpc(
+        'create_or_get_thread_for_application',
+        { target_application_id: application.id },
+      )
+      if (threadError || !threadId) {
+        logEvent('warn', 'application_system_thread_error', {
+          user_id: user.id,
+          code: threadError?.code ?? null,
+        })
+      } else {
+        const { error: systemError } = await supabase.from('messages').insert({
+          thread_id: threadId as string,
+          sender_id: user.id,
+          content: buildSystemMessageContent('application_received', { jobTitle: job.title }),
+          kind: 'application_received',
+        })
+        if (systemError) {
+          logEvent('warn', 'application_system_message_error', {
+            user_id: user.id,
+            code: systemError.code ?? null,
+          })
+        }
+      }
+    } catch {
+      logEvent('warn', 'application_system_message_error', { user_id: user.id })
+    }
   }
 
   const posthog = getPostHogClient()

@@ -1,10 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isThreadUnread, sumInbox, type InboxNotification, type InboxSummary } from '@/lib/inbox'
+import { threadPreviewSnippet } from '@/lib/messages-view'
+import { buildSavedSearchHref, newMatchesBody } from '@/lib/saved-searches'
+import { fetchSavedSearchesWithNewMatches } from '@/lib/saved-searches-server'
 
 type ThreadRow = {
   id: string
   created_at: string
-  messages: Array<{ id: string; content: string; sender_id: string; created_at: string }>
+  messages: Array<{ id: string; content: string; kind: string | null; sender_id: string; created_at: string }>
   thread_participants: Array<{
     profile_id: string
     last_read_at: string
@@ -39,7 +42,7 @@ export async function fetchInboxForUser(
         id,
         created_at,
         thread_participants(profile_id, last_read_at, profiles(full_name, avatar_url)),
-        messages(id, content, sender_id, created_at)
+        messages(id, content, kind, sender_id, created_at)
       `)
       .in('id', threadIds)
       .order('created_at', { referencedTable: 'messages', ascending: false })
@@ -57,7 +60,7 @@ export async function fetchInboxForUser(
         id: `message-${thread.id}`,
         kind: 'message',
         title: other?.profiles?.full_name ?? 'New message',
-        body: msg?.content ?? 'New message',
+        body: msg ? threadPreviewSnippet(msg) : 'New message',
         href: `/messages/${thread.id}`,
         createdAt: msg?.created_at ?? thread.created_at,
         unread: true,
@@ -67,6 +70,7 @@ export async function fetchInboxForUser(
 
   let unreadApplications = 0
   let unreadOutreach = 0
+  let unreadSavedSearches = 0
 
   if (accountType === 'hirer') {
     const { data: jobs } = await supabase.from('jobs').select('id').eq('hirer_id', userId)
@@ -118,6 +122,23 @@ export async function fetchInboxForUser(
         unread: true,
       })
     }
+
+    // Saved-search alerts: new matching talent since each search was last
+    // run, computed at read time (no cron, no notifications table).
+    const savedSearches = await fetchSavedSearchesWithNewMatches(supabase, userId)
+    for (const search of savedSearches) {
+      if (search.newMatches === 0) continue
+      unreadSavedSearches += 1
+      notifications.push({
+        id: `saved-search-${search.id}`,
+        kind: 'saved_search',
+        title: `New matches for "${search.name}"`,
+        body: newMatchesBody(search.newMatches),
+        href: buildSavedSearchHref(search),
+        createdAt: search.latestMatchAt ?? search.createdAt,
+        unread: true,
+      })
+    }
   }
 
   notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -126,6 +147,7 @@ export async function fetchInboxForUser(
     unreadMessages,
     unreadApplications,
     unreadOutreach,
+    unreadSavedSearches,
     totalUnread: 0,
   }
   summary.totalUnread = sumInbox(summary)

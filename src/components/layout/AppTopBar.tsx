@@ -1,26 +1,16 @@
 'use client'
 
 import { FormEvent, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, Command, Search } from 'lucide-react'
+import { Command, Search } from 'lucide-react'
 import { PageBreadcrumbs } from '@/components/layout/PageBreadcrumbs'
 import { MobileSearchSheet } from '@/components/layout/MobileSearchSheet'
+import { NotificationsBell } from '@/components/layout/NotificationsBell'
 import { useAppShell } from '@/components/layout/app-shell-context'
-import { useInbox } from '@/components/layout/inbox-context'
 import { getPageMeta, getSearchTarget } from '@/lib/page-meta'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-
-function NavCountBadge({ count }: { count: number }) {
-  if (count <= 0) return null
-  return (
-    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-      {count > 99 ? '99+' : count}
-    </span>
-  )
-}
 
 function BreadcrumbSkeleton() {
   return (
@@ -36,7 +26,6 @@ export function AppTopBar() {
   const pathname = usePathname()
   const router = useRouter()
   const { accountType, override } = useAppShell()
-  const { summary } = useInbox()
   const [query, setQuery] = useState('')
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
@@ -128,14 +117,7 @@ export function AppTopBar() {
               <Command className="size-4" />
             </Button>
 
-            <Link
-              href="/notifications"
-              aria-label={`Notifications${summary.totalUnread > 0 ? `, ${summary.totalUnread} unread` : ''}`}
-              className="relative inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <Bell className="size-4" />
-              <NavCountBadge count={summary.totalUnread} />
-            </Link>
+            <NotificationsBell />
           </div>
         </div>
       </header>

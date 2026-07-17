@@ -8,6 +8,7 @@ import { useInbox } from '@/components/layout/inbox-context'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ThreadHeader } from '@/components/messages/ThreadHeader'
 import { MessageBubble } from '@/components/messages/MessageBubble'
+import { SystemMessageCard } from '@/components/messages/SystemMessageCard'
 import { DayDivider } from '@/components/messages/DayDivider'
 import { TypingIndicator } from '@/components/messages/TypingIndicator'
 import { MessageComposer } from '@/components/messages/MessageComposer'
@@ -20,6 +21,7 @@ import {
   lastOwnMessageId,
   type ThreadMessage,
 } from '@/lib/messages-view'
+import { isSystemMessageKind } from '@/lib/system-messages'
 
 const TYPING_CLEAR_MS = 3500
 const LOADING_SHELL = { breadcrumbsLoading: true }
@@ -209,14 +211,23 @@ export function ThreadView({ threadId }: { threadId: string }) {
             dayGroups.map(group => (
               <div key={group.dayKey} className="space-y-2">
                 <DayDivider label={group.label} />
-                {group.messages.map(message => (
-                  <MessageBubble
-                    key={message.id}
-                    message={message}
-                    isMine={message.sender_id === userId}
-                    seen={message.id === seenMessageId}
-                  />
-                ))}
+                {group.messages.map(message =>
+                  isSystemMessageKind(message.kind) ? (
+                    <SystemMessageCard
+                      key={message.id}
+                      message={message}
+                      kind={message.kind}
+                      jobId={detail.origin.job_id}
+                    />
+                  ) : (
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      isMine={message.sender_id === userId}
+                      seen={message.id === seenMessageId}
+                    />
+                  ),
+                )}
               </div>
             ))
           )}

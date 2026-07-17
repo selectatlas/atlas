@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { SITE_URL } from '@/lib/site'
 import './globals.css'
 import { PostHogAuthSync } from '@/components/analytics/PostHogAuthSync'
+import { Toaster } from '@/components/ui/sonner'
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full">
         <PostHogAuthSync />
         {children}
+        <Toaster position="top-center" />
       </body>
     </html>
   )

@@ -5,6 +5,7 @@ import {
   groupMessagesByDay,
   formatDayLabel,
   formatThreadTime,
+  threadPreviewSnippet,
 } from '@/lib/messages-view'
 
 const msg = (id: string, sender: string, createdAt: string) => ({
@@ -88,5 +89,27 @@ describe('formatThreadTime', () => {
   it('shows a short date beyond 48 hours', () => {
     const now = new Date('2026-01-10T12:00:00.000Z')
     expect(formatThreadTime('2026-01-01T09:30:00.000Z', now)).toContain('Jan')
+  })
+})
+
+describe('threadPreviewSnippet', () => {
+  it('returns the content for text messages', () => {
+    expect(threadPreviewSnippet({ kind: 'text', content: 'See you Friday' })).toBe('See you Friday')
+    expect(threadPreviewSnippet({ content: 'No kind field' })).toBe('No kind field')
+  })
+
+  it('returns the stored sentence for system messages', () => {
+    expect(
+      threadPreviewSnippet({ kind: 'application_received', content: 'Applied to West End Revival' }),
+    ).toBe('Applied to West End Revival')
+  })
+
+  it('falls back to the card title when a system message has empty content', () => {
+    expect(threadPreviewSnippet({ kind: 'application_hired', content: '  ' })).toBe('Hired')
+    expect(threadPreviewSnippet({ kind: 'outreach_sent', content: null })).toBe('Outreach sent')
+  })
+
+  it('returns empty for an empty text message rather than a title', () => {
+    expect(threadPreviewSnippet({ kind: 'text', content: null })).toBe('')
   })
 })

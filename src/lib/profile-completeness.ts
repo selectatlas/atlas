@@ -1,7 +1,7 @@
 import type { Credit, PortfolioItem, Profile, TalentSkill } from '@/types'
 import type { TalentAttributesPayload } from '@/lib/talent-profile-attributes'
 
-type TalentProfile = Profile & {
+export type CompletenessProfile = Profile & {
   talent_skills: TalentSkill[]
   credits?: Credit[]
   portfolio_items?: PortfolioItem[]
@@ -15,7 +15,16 @@ export interface ProfileCompletenessItem {
   weight: number
 }
 
-export function getProfileCompleteness(profile: TalentProfile, attributes?: TalentAttributesPayload) {
+/**
+ * The single source of truth for profile completeness. The former 7-check
+ * `profile-completion.ts` percent model was folded into this weighted model,
+ * so the home meter and the profile editor always agree on the score.
+ */
+
+/** Demo-grade stat line shown wherever the completeness checklist opens. */
+export const COMPLETENESS_STAT = 'Profiles at 100% get 4x more outreach from hirers.'
+
+export function getProfileCompleteness(profile: CompletenessProfile, attributes?: TalentAttributesPayload) {
   const searchDetailCount = attributes ? [
     attributes.birth_year,
     attributes.gender,
@@ -40,5 +49,10 @@ export function getProfileCompleteness(profile: TalentProfile, attributes?: Tale
   ]
 
   const score = items.reduce((total, item) => total + (item.complete ? item.weight : 0), 0)
-  return { score, items, missing: items.filter(item => !item.complete) }
+  return {
+    score,
+    items,
+    missing: items.filter(item => !item.complete),
+    completed: items.filter(item => item.complete),
+  }
 }

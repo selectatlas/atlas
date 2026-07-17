@@ -889,3 +889,52 @@ export const SEED_PROFILES: SeedProfile[] = [
   ...otherCreators,
   ...photographersAndVideographers,
 ]
+
+// ----------------------------------------------------------------
+// Verification: a majority of demo talent read as "Atlas Verified" so
+// search grids and shortlist rows carry the trust badge everywhere the
+// investor looks. The minority below stay unverified so the badge reads
+// as earned, not default. Keep this list aligned with the featured
+// talent grants in demo-world.ts (deepika.nair and marcus.cole are
+// deliberately unverified there too).
+// ----------------------------------------------------------------
+const UNVERIFIED_SEED_EMAILS = new Set<string>([
+  // Bollywood dancers
+  'deepika.nair@atlas-demo.com',
+  'sunita.joshi@atlas-demo.com',
+  'pooja.verma@atlas-demo.com',
+  // Other dancers
+  'luna.garcia@atlas-demo.com',
+  'jade.brown@atlas-demo.com',
+  'olivia.parker@atlas-demo.com',
+  // Combat actors
+  'marcus.cole@atlas-demo.com',
+  'ryan.fletcher@atlas-demo.com',
+  // Other actors
+  'sam.nguyen@atlas-demo.com',
+  'patrick.murphy@atlas-demo.com',
+  'aaron.patel@atlas-demo.com',
+  // Food content creators
+  'lauren.webb@atlas-demo.com',
+  'jessica.hart@atlas-demo.com',
+  // Other creators
+  'zoe.adams@atlas-demo.com',
+  'iris.murphy@atlas-demo.com',
+  'nadia.brown@atlas-demo.com',
+])
+
+export const SEED_VERIFIED_AT_ISO = '2026-06-01T09:00:00.000Z'
+
+/** Verification fields for a seed profile: verified for the categories they work in, or unverified if listed above. */
+export function seedVerification(profile: SeedProfile): {
+  verified_at: string | null
+  verified_categories: Category[]
+} {
+  if (UNVERIFIED_SEED_EMAILS.has(profile.email)) {
+    return { verified_at: null, verified_categories: [] }
+  }
+  return {
+    verified_at: SEED_VERIFIED_AT_ISO,
+    verified_categories: [...new Set(profile.skills.map(skill => skill.category))],
+  }
+}

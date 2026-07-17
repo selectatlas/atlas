@@ -23,6 +23,6 @@ describe('inbox helpers', () => {
   })
 
   it('sums unread counts', () => {
-    expect(sumInbox({ unreadMessages: 2, unreadApplications: 1, unreadOutreach: 3 })).toBe(6)
+    expect(sumInbox({ unreadMessages: 2, unreadApplications: 1, unreadOutreach: 3, unreadSavedSearches: 1 })).toBe(7)
   })
 })

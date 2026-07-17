@@ -5,12 +5,22 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { UsersRound } from 'lucide-react'
 import { CATEGORY_LABELS } from '@/lib/skills'
+import {
+  APPLICANT_TABS,
+  APPLICATION_STATUS_LABELS,
+  applicationMatchesTab,
+  countApplicantsByTab,
+  derivePipelineStage,
+  type ApplicantTab,
+} from '@/lib/job-pipeline'
 import { PageShell } from '@/components/layout/PageShell'
 import { useSetPageShell } from '@/components/layout/use-set-page-shell'
+import { JobPipelineStepper } from '@/components/jobs/JobPipelineStepper'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Job, ApplicationStatus, Profile, TalentSkill } from '@/types'
 
 type ApplicationRow = {
@@ -20,7 +30,6 @@ type ApplicationRow = {
   profiles: (Profile & { talent_skills: TalentSkill[] }) | null
 }
 
-const ALL_STATUSES: ApplicationStatus[] = ['sent', 'viewed', 'responded', 'shortlisted', 'hired']
 const LOADING_SHELL = { breadcrumbsLoading: true }
 
 export default function JobDetailPage() {
@@ -33,6 +42,7 @@ export default function JobDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [tab, setTab] = useState<ApplicantTab>('all')
 
   useEffect(() => {
     let cancelled = false
@@ -90,6 +100,14 @@ export default function JobDetailPage() {
     setUpdatingId(null)
   }
 
+  const statuses = useMemo(() => applications.map(a => a.status), [applications])
+  const stage = useMemo(() => derivePipelineStage(statuses), [statuses])
+  const tabCounts = useMemo(() => countApplicantsByTab(statuses), [statuses])
+  const visibleApplications = useMemo(
+    () => applications.filter(a => applicationMatchesTab(a.status, tab)),
+    [applications, tab]
+  )
+
   const shellOverride = useMemo(() => {
     if (loadError) {
       return {
@@ -141,6 +159,11 @@ export default function JobDetailPage() {
     <div className="space-y-4 pb-8">
       <PageShell />
 
+      {/* Pipeline stepper */}
+      <Card className="px-3 py-4">
+        <JobPipelineStepper stage={stage} />
+      </Card>
+
       {/* Job details */}
       <Card className="p-5 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
@@ -177,46 +200,84 @@ export default function JobDetailPage() {
             </Link>
           </Card>
         ) : (
-          <div className="space-y-2">
-            {applications.map(app => {
-              const talent = app.profiles
-              if (!talent) return null
-              return (
-                <Card key={app.id} className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Link href={`/talent/${talent.id}`}>
-                      <Avatar className="h-11 w-11 rounded-xl">
-                        <AvatarImage src={talent.avatar_url ?? ''} alt={talent.full_name} />
-                        <AvatarFallback className="rounded-xl text-xl font-bold">
-                          {talent.full_name[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Link>
+          <div className="space-y-3">
+            <Tabs value={tab} onValueChange={value => setTab(value as ApplicantTab)}>
+              <TabsList className="w-full max-w-full justify-start overflow-x-auto">
+                {APPLICANT_TABS.map(t => (
+                  <TabsTrigger key={t.tab} value={t.tab} className="flex-1">
+                    {t.label}
+                    <span className="text-muted-foreground text-[11px] tabular-nums">{tabCounts[t.tab]}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
 
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/talent/${talent.id}`} className="font-medium text-sm hover:text-primary transition-colors">
-                        {talent.full_name}
-                      </Link>
-                      <p className="text-muted-foreground text-xs truncate mt-0.5">
-                        {talent.talent_skills.slice(0, 2).map(s => s.skill).join(' · ')}
-                      </p>
-                    </div>
+            {visibleApplications.length === 0 ? (
+              <Card className="p-6 text-center">
+                <p className="text-muted-foreground text-sm">No applicants in this stage yet.</p>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {visibleApplications.map(app => {
+                  const talent = app.profiles
+                  if (!talent) return null
+                  const updating = updatingId === app.id
+                  return (
+                    <Card key={app.id} className="p-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Link href={`/talent/${talent.id}`}>
+                          <Avatar className="h-11 w-11 rounded-xl">
+                            <AvatarImage src={talent.avatar_url ?? ''} alt={talent.full_name} />
+                            <AvatarFallback className="rounded-xl text-xl font-bold">
+                              {talent.full_name[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Link>
 
-                    <select
-                      value={app.status}
-                      disabled={updatingId === app.id}
-                      aria-label={`Status for ${talent.full_name}`}
-                      onChange={e => updateApplicationStatus(app.id, e.target.value as ApplicationStatus)}
-                      className="shrink-0 text-xs font-medium px-2.5 py-1.5 rounded-full border bg-transparent cursor-pointer transition-colors"
-                    >
-                      {ALL_STATUSES.map(s => (
-                        <option key={s} value={s} className="bg-card text-foreground">{s}</option>
-                      ))}
-                    </select>
-                  </div>
-                </Card>
-              )
-            })}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Link href={`/talent/${talent.id}`} className="font-medium text-sm hover:text-primary transition-colors truncate">
+                              {talent.full_name}
+                            </Link>
+                            <Badge
+                              variant={app.status === 'hired' ? 'default' : 'secondary'}
+                              className="text-[10px] shrink-0"
+                            >
+                              {APPLICATION_STATUS_LABELS[app.status]}
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground text-xs truncate mt-0.5">
+                            {talent.talent_skills.slice(0, 2).map(s => s.skill).join(' · ')}
+                          </p>
+                        </div>
+
+                        {app.status !== 'hired' && (
+                          <div className="flex shrink-0 items-center gap-2">
+                            {app.status !== 'shortlisted' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={updating}
+                                onClick={() => updateApplicationStatus(app.id, 'shortlisted')}
+                              >
+                                Shortlist
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              disabled={updating}
+                              onClick={() => updateApplicationStatus(app.id, 'hired')}
+                            >
+                              Hire
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

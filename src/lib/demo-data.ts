@@ -245,6 +245,7 @@ export const DEMO_TALENT_RESULTS = [
     headline: 'Actor | Dancer | Stunt Performer',
     city: 'London',
     category: 'actor',
+    verified: true,
     skills: [
       { skill: 'Hindi', proficiency: 'expert' },
       { skill: 'Screen acting', proficiency: 'advanced' },
@@ -260,6 +261,7 @@ export const DEMO_TALENT_RESULTS = [
     headline: 'Contemporary Dancer | Movement Coach',
     city: 'Leeds',
     category: 'dancer',
+    verified: true,
     skills: [
       { skill: 'Contemporary', proficiency: 'expert' },
       { skill: 'Improvisation', proficiency: 'advanced' },
@@ -275,6 +277,7 @@ export const DEMO_TALENT_RESULTS = [
     headline: 'Photographer | Director | Visual Storyteller',
     city: 'London',
     category: 'photographer_videographer',
+    verified: true,
     skills: [
       { skill: 'Fashion content', proficiency: 'expert' },
       { skill: 'Photography', proficiency: 'expert' },
