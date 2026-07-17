@@ -25,7 +25,7 @@ function AvatarMedia({ avatarUrl, name, sizes }: { avatarUrl: string | null; nam
 
 /**
  * Profile avatar with an Instagram-style story ring. When the talent has
- * portfolio media, the avatar gets a gradient ring and tapping it opens a
+ * portfolio media, the avatar gets an accent ring and tapping it opens a
  * fullscreen story viewer: auto-advancing photos and muted autoplay videos
  * with per-story progress bars, tap left/right to navigate.
  */
@@ -84,7 +84,7 @@ export function StoryAvatar({ avatarUrl, name, stories }: StoryAvatarProps) {
 
   if (stories.length === 0) {
     return (
-      <div className="relative w-[132px] h-[132px] sm:w-[176px] sm:h-[176px] rounded-2xl overflow-hidden bg-muted border-4 border-background shrink-0 shadow-lg">
+      <div className="relative w-[132px] h-[132px] sm:w-[176px] sm:h-[176px] rounded-2xl overflow-hidden bg-muted border-4 border-background shrink-0 shadow-sm">
         <AvatarMedia avatarUrl={avatarUrl} name={name} sizes="(max-width: 640px) 132px, 176px" />
       </div>
     )
@@ -103,7 +103,7 @@ export function StoryAvatar({ avatarUrl, name, stories }: StoryAvatarProps) {
           setOpen(true)
         }}
         aria-label={`View ${name}'s stories`}
-        className="group shrink-0 rounded-[22px] bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600 p-[3px] shadow-lg"
+        className="group shrink-0 rounded-[22px] bg-primary p-[3px] shadow-sm"
       >
         <span className="block rounded-[19px] bg-background p-[2px]">
           <span className="relative block h-[122px] w-[122px] overflow-hidden rounded-2xl bg-muted transition-transform duration-200 group-active:scale-[0.97] sm:h-[166px] sm:w-[166px]">

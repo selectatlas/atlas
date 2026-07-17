@@ -60,11 +60,11 @@ export function FilterBar({ filters, onChange, resultCount, previewCount }: Filt
                 aria-label={label}
                 title={label}
                 onClick={() => onChange(pruneFiltersForCategory(filters, value))}
-                className="group flex h-7 shrink-0 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-foreground active:scale-[0.97] data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                className="group flex h-7 shrink-0 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-[color,background-color,transform,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-foreground active:scale-[0.97] data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
                 <Icon className="size-3.5 shrink-0" />
-                <span className="grid grid-cols-[0fr] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[state=active]:grid-cols-[1fr]">
-                  <span className="overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[state=active]:pl-1.5 group-data-[state=active]:opacity-100">{label}</span>
+                <span className="grid grid-cols-[0fr] transition-[grid-template-columns] duration-[var(--duration-fast)] ease-[var(--ease-out)] group-data-[state=active]:grid-cols-[1fr]">
+                  <span className="overflow-hidden whitespace-nowrap opacity-0 transition-[opacity,padding] duration-[var(--duration-fast)] ease-[var(--ease-out)] group-data-[state=active]:pl-1.5 group-data-[state=active]:opacity-100">{label}</span>
                 </span>
                 {total !== undefined && (
                   <span className="pl-1.5 text-[11px] tabular-nums text-muted-foreground/60 group-data-[state=active]:text-muted-foreground">{total}</span>

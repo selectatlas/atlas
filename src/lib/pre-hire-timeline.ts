@@ -3,7 +3,7 @@
 // Shortlisted -> Hired) from the thread's linked outreach and application
 // statuses. Pure so it is unit-testable without Supabase.
 
-export type PreHireStageKey = 'started' | 'replied' | 'shortlisted' | 'hired'
+export type PreHireStageKey = 'started' | 'replied' | 'shortlisted' | 'hired' | 'declined' | 'declined'
 
 export type PreHireStage = {
   key: PreHireStageKey
@@ -27,6 +27,24 @@ export function buildPreHireTimeline(origin: PreHireOrigin): PreHireStage[] {
   const hasOutreach = Boolean(origin.outreach_id)
   const applicationStatus = origin.application_status ?? null
   if (!hasOutreach && !applicationStatus) return []
+
+  // Declined is terminal: the stepper collapses to what happened rather
+  // than showing unreachable Shortlisted/Hired steps.
+  if (applicationStatus === 'declined') {
+    return [
+      { key: 'started', label: hasOutreach ? 'Outreach sent' : 'Applied', complete: true, current: false },
+      { key: 'declined', label: 'Not selected', complete: true, current: true },
+    ]
+  }
+
+  // Declined is terminal: the stepper collapses to what happened rather
+  // than showing unreachable Shortlisted/Hired steps.
+  if (applicationStatus === 'declined') {
+    return [
+      { key: 'started', label: hasOutreach ? 'Outreach sent' : 'Applied', complete: true, current: false },
+      { key: 'declined', label: 'Not selected', complete: true, current: true },
+    ]
+  }
 
   const replied =
     origin.outreach_status === 'responded' ||

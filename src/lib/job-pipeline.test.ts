@@ -67,6 +67,7 @@ describe('countApplicantsByTab', () => {
       responded: 0,
       shortlisted: 0,
       hired: 0,
+      declined: 0,
     })
   })
 
@@ -79,13 +80,15 @@ describe('countApplicantsByTab', () => {
       'responded',
       'shortlisted',
       'hired',
+      'declined',
     ]
     expect(countApplicantsByTab(statuses)).toEqual({
-      all: 7,
+      all: 8,
       viewed: 1,
       responded: 2,
       shortlisted: 1,
       hired: 1,
+      declined: 1,
     })
   })
 

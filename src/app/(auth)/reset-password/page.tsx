@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { LegalFooterLinks } from '@/components/layout/LegalFooterLinks'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -164,6 +165,8 @@ export default function ResetPasswordPage() {
             </>
           )}
         </Card>
+
+        <LegalFooterLinks className="mt-6" />
       </div>
     </div>
   )

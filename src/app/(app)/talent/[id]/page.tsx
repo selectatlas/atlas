@@ -25,7 +25,7 @@ import { BookingCard } from '@/components/talent/BookingCard'
 import { ReviewDialog } from '@/components/talent/ReviewDialog'
 import { getProfileStories } from '@/lib/stories'
 import { getTalentProfile } from '@/lib/talent'
-import { hasHiredTalent } from '@/lib/reviews-server'
+import { getReviewAllowance } from '@/lib/reviews-server'
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { DEMO_PROFILE } from '@/lib/demo-data'
@@ -80,9 +80,10 @@ export default async function TalentProfilePage({
   const categories = [...new Set(skills.map(s => s.category))]
 
   // Review authoring is only offered to hirers who have actually hired this
-  // talent; the API route and RLS enforce the same eligibility server-side.
+  // talent and still have an unreviewed booking (one review per hire); the
+  // API route and RLS enforce the same eligibility server-side.
   const canReview = !isOwner && accountType === 'hirer' && userId
-    ? await hasHiredTalent(await createClient(), userId, id)
+    ? (await getReviewAllowance(await createClient(), userId, id)).canReview
     : false
 
   const averageRating = formatRating(reviewSummary.average)

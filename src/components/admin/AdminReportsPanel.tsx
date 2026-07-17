@@ -68,6 +68,34 @@ export function AdminReportsPanel() {
     }
   }, [load])
 
+  // Resolution with consequences: act on the reported user/job through the
+  // existing admin endpoints, then resolve the report with the action noted,
+  // so resolving is never just a status flip.
+  const actOnReport = useCallback(async (report: AdminReportRow, action: 'suspend' | 'remove_job') => {
+    setBusyId(report.id)
+    setError(null)
+    const reason = reviewNotes.trim() || `Report: ${report.reason.replaceAll('_', ' ')}`
+    try {
+      const res = action === 'suspend'
+        ? await fetch(`/api/admin/users/${report.reported_profile?.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'suspend', reason }),
+          })
+        : await fetch(`/api/admin/jobs/${report.reported_job?.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'remove', reason }),
+          })
+      if (!res.ok) throw new Error('Action failed')
+      const actionNote = action === 'suspend' ? 'Action taken: user suspended.' : 'Action taken: job removed.'
+      await updateReport(report.id, 'resolved', [reviewNotes.trim(), actionNote].filter(Boolean).join(' '))
+    } catch {
+      setError(action === 'suspend' ? 'Failed to suspend the reported user.' : 'Failed to remove the reported job.')
+      setBusyId(null)
+    }
+  }, [reviewNotes, updateReport])
+
   const columns = useAdminReportColumns({
     busyId,
     onReview: report => {
@@ -160,6 +188,32 @@ export function AdminReportsPanel() {
                 >
                   Dismiss
                 </Button>
+                {reviewTarget?.reported_profile ? (
+                  <Button
+                    variant="destructive"
+                    disabled={busyId !== null}
+                    onClick={() => {
+                      if (reviewTarget && window.confirm('Suspend this user and resolve the report?')) {
+                        void actOnReport(reviewTarget, 'suspend')
+                      }
+                    }}
+                  >
+                    Suspend user
+                  </Button>
+                ) : null}
+                {reviewTarget?.reported_job ? (
+                  <Button
+                    variant="destructive"
+                    disabled={busyId !== null}
+                    onClick={() => {
+                      if (reviewTarget && window.confirm('Remove this job and resolve the report?')) {
+                        void actOnReport(reviewTarget, 'remove_job')
+                      }
+                    }}
+                  >
+                    Remove job
+                  </Button>
+                ) : null}
                 <Button
                   disabled={busyId !== null}
                   onClick={() => reviewTarget && void updateReport(reviewTarget.id, 'resolved', reviewNotes)}

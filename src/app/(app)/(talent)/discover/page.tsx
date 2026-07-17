@@ -1,12 +1,13 @@
 'use client'
 
-import { Suspense, useState, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { BriefcaseBusiness, Check, Layers, LayoutGrid, List, MapPin, X } from 'lucide-react'
+import { BriefcaseBusiness, Check, Layers, LayoutGrid, List, MapPin, SlidersHorizontal, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isLocalDemoMode } from '@/lib/demo-mode'
 import { DEMO_APPLICATIONS_STORAGE_KEY, DEMO_JOBS, DEMO_PROFILE, type DemoApplication } from '@/lib/demo-data'
 import { CATEGORY_LABELS } from '@/lib/skills'
+import { BUDGET_BANDS, JOB_SORTS, WORK_TYPE_FILTERS, parseBudgetRange, type BudgetBand, type JobSort, type WorkTypeFilter } from '@/lib/job-discovery'
 import { buildApplicationNote, getJobMatchReasons, getJobMeta } from '@/lib/matching'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import { Card } from '@/components/ui/card'
@@ -17,13 +18,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApplicationPreviewDialog } from '@/components/talent/ApplicationPreviewDialog'
 import { JobCover } from '@/components/talent/JobCover'
+import { JobFilterSheet, type JobFilterValues } from '@/components/talent/JobFilterSheet'
 import posthog from 'posthog-js'
 import type { Job, Category, Profile, TalentSkill } from '@/types'
 
 type JobResult = Job & { hirer?: { full_name: string } | null }
-type SortOption = 'newest' | 'rate_high' | 'rate_low'
-type WorkTypeFilter = 'all' | 'in_person' | 'remote' | 'hybrid'
-type BudgetFilter = 'any' | 'under250' | '250to500' | 'over500'
+type JobFeedPage = { jobs: JobResult[]; nextCursor: string | null; total: number | null }
+
+const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[]
 
 const WORK_TYPE_OPTIONS: Record<WorkTypeFilter, string> = {
   all: 'All work types',
@@ -32,14 +34,14 @@ const WORK_TYPE_OPTIONS: Record<WorkTypeFilter, string> = {
   hybrid: 'Hybrid',
 }
 
-const BUDGET_OPTIONS: Record<BudgetFilter, string> = {
+const BUDGET_OPTIONS: Record<BudgetBand, string> = {
   any: 'Any rate',
   under250: 'Under £250',
   '250to500': '£250 - £500',
   over500: 'Over £500',
 }
 
-const SORT_OPTIONS: Record<SortOption, string> = {
+const SORT_OPTIONS: Record<JobSort, string> = {
   newest: 'Newest first',
   rate_high: 'Rate: high to low',
   rate_low: 'Rate: low to high',
@@ -57,18 +59,34 @@ function DiscoverPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [jobs, setJobs] = useState<JobResult[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [total, setTotal] = useState<number | null>(null)
+  const [locations, setLocations] = useState<string[]>([])
   const [talentProfile, setTalentProfile] = useState<(Profile & { talent_skills: TalentSkill[] }) | null>(null)
   const [loading, setLoading] = useState(true)
-  const [talentCategory, setTalentCategory] = useState<Category | null>(null)
+  const [loadingJobs, setLoadingJobs] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [talentCategories, setTalentCategories] = useState<Category[]>([])
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  const [baselineCount, setBaselineCount] = useState<number | null>(null)
   const [passed, setPassed] = useState<Set<string>>(new Set())
   const [applied, setApplied] = useState<Set<string>>(new Set())
   const [applyingId, setApplyingId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'swipe' | 'grid' | 'list'>('grid')
+  // Filters and sort live in the URL so results are shareable, survive
+  // reloads, and drive the server-side feed query.
   const search = searchParams.get('q') ?? ''
-  const [sort, setSort] = useState<SortOption>('newest')
-  const [workType, setWorkType] = useState<WorkTypeFilter>('all')
-  const [locationFilter, setLocationFilter] = useState('all')
-  const [budgetBand, setBudgetBand] = useState<BudgetFilter>('any')
+  const sort = normalizeChoice(searchParams.get('sort'), JOB_SORTS, 'newest')
+  const workType = normalizeChoice(searchParams.get('work'), WORK_TYPE_FILTERS, 'all')
+  const budgetBand = normalizeChoice(searchParams.get('rate'), BUDGET_BANDS, 'any')
+  const locationFilter = searchParams.get('loc') ?? 'all'
+  // Category chip selection: unset = the talent's own categories ("For you"),
+  // 'all' = the whole market, or one specific category.
+  const catParam = searchParams.get('cat')
+  const selectedCat: 'mine' | 'all' | Category =
+    catParam === 'all' ? 'all' : ALL_CATEGORIES.includes(catParam as Category) ? (catParam as Category) : 'mine'
+  const requestIdRef = useRef(0)
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [applicationJob, setApplicationJob] = useState<JobResult | null>(null)
@@ -81,7 +99,7 @@ function DiscoverPageContent() {
     async function load() {
       if (isLocalDemoMode()) {
         setTalentProfile(DEMO_PROFILE)
-        setTalentCategory('dancer')
+        setTalentCategories(['dancer'])
         setJobs(DEMO_JOBS)
         try {
           const existing = window.sessionStorage.getItem(DEMO_APPLICATIONS_STORAGE_KEY)
@@ -91,6 +109,7 @@ function DiscoverPageContent() {
           // Ignore unreadable preview storage; applications simply start empty.
         }
         setLoading(false)
+        setLoadingJobs(false)
         return
       }
 
@@ -102,52 +121,112 @@ function DiscoverPageContent() {
         return
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select(PUBLIC_PROFILE_WITH_SKILLS)
-        .eq('id', user.id)
-        .single()
+      const [{ data: profile }, { data: applicationData }, { data: locationData }, { data: countData }] = await Promise.all([
+        supabase.from('profiles').select(PUBLIC_PROFILE_WITH_SKILLS).eq('id', user.id).single(),
+        supabase.from('applications').select('job_id').eq('talent_id', user.id),
+        supabase.rpc('open_job_locations'),
+        supabase.rpc('open_job_category_counts'),
+      ])
 
       const talent = profile as unknown as Profile & { talent_skills: TalentSkill[] }
       setTalentProfile(talent)
       const skills = talent.talent_skills ?? []
-      const primaryCategory = skills[0]?.category ?? null
-      setTalentCategory(primaryCategory)
-
-      let query = supabase
-        .from('jobs')
-        .select('*, hirer:profiles!hirer_id(full_name)')
-        .eq('status', 'open')
-        .is('removed_at', null)
-        .order('created_at', { ascending: false })
-
-      if (primaryCategory) {
-        query = query.eq('category', primaryCategory)
-      }
-
-      const [{ data: jobData }, { data: applicationData }] = await Promise.all([
-        query,
-        supabase.from('applications').select('job_id').eq('talent_id', user.id),
-      ])
-      setJobs((jobData ?? []) as JobResult[])
+      // Every category the talent has a skill in - not just the first - so
+      // multi-discipline talent see their whole market.
+      setTalentCategories(Array.from(new Set(skills.map(skill => skill.category))))
       setApplied(new Set((applicationData ?? []).map(application => application.job_id as string)))
+      setLocations(((locationData ?? []) as string[]).filter(Boolean))
+      const counts: Record<string, number> = {}
+      for (const row of (countData ?? []) as { category: string; job_count: number | string }[]) {
+        counts[row.category] = Number(row.job_count)
+      }
+      setCategoryCounts(counts)
       setLoading(false)
     }
     load()
   }, [router])
 
-  const locations = useMemo(
+  const effectiveCategories = useMemo<Category[]>(() => {
+    if (selectedCat === 'all') return []
+    if (selectedCat === 'mine') return talentCategories
+    return [selectedCat]
+  }, [selectedCat, talentCategories])
+
+  // Server-driven feed: refetch page one whenever the filters change. The
+  // request id guards against a slow response overwriting a newer one.
+  useEffect(() => {
+    if (loading || isLocalDemoMode()) return
+    const requestId = ++requestIdRef.current
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the feed when filters change
+    setLoadingJobs(true)
+    setJobs([])
+    setNextCursor(null)
+    const params = buildFeedQuery({ categories: effectiveCategories, search, workType, location: locationFilter, budgetBand, sort, cursor: null })
+    fetch(`/api/jobs?${params}`)
+      .then(res => (res.ok ? (res.json() as Promise<JobFeedPage>) : Promise.reject(new Error(`${res.status}`))))
+      .then(page => {
+        if (requestIdRef.current !== requestId) return
+        setJobs(page.jobs)
+        setNextCursor(page.nextCursor)
+        setTotal(page.total)
+      })
+      .catch(() => {
+        if (requestIdRef.current !== requestId) return
+        setJobs([])
+        setTotal(0)
+      })
+      .finally(() => {
+        if (requestIdRef.current === requestId) setLoadingJobs(false)
+      })
+  }, [loading, effectiveCategories, search, sort, workType, locationFilter, budgetBand])
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore || loadingJobs || isLocalDemoMode()) return
+    setLoadingMore(true)
+    const requestId = requestIdRef.current
+    try {
+      const params = buildFeedQuery({ categories: effectiveCategories, search, workType, location: locationFilter, budgetBand, sort, cursor: nextCursor })
+      const res = await fetch(`/api/jobs?${params}`)
+      if (!res.ok || requestIdRef.current !== requestId) return
+      const page = await res.json() as JobFeedPage
+      if (requestIdRef.current !== requestId) return
+      setJobs(prev => {
+        const seen = new Set(prev.map(job => job.id))
+        return [...prev, ...page.jobs.filter(job => !seen.has(job.id))]
+      })
+      setNextCursor(page.nextCursor)
+    } catch {
+      // Keep the current deck; the button stays visible so the user can retry.
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  const derivedLocations = useMemo(
     () => [...new Set(jobs.map(j => j.location))].sort((a, b) => a.localeCompare(b)),
     [jobs]
   )
 
-  const locationOptions = useMemo<Record<string, string>>(
-    () => ({ all: 'All locations', ...Object.fromEntries(locations.map(loc => [loc, loc])) }),
-    [locations]
-  )
+  const locationOptions = useMemo<Record<string, string>>(() => {
+    const source = locations.length > 0 ? locations : derivedLocations
+    const withSelected = locationFilter !== 'all' && !source.includes(locationFilter)
+      ? [...source, locationFilter].sort((a, b) => a.localeCompare(b))
+      : source
+    return { all: 'All locations', ...Object.fromEntries(withSelected.map(loc => [loc, loc])) }
+  }, [locations, derivedLocations, locationFilter])
 
   const visibleJobs = useMemo(() => {
-    let filtered = jobs.filter(j => !passed.has(j.id))
+    const remaining = jobs.filter(j => !passed.has(j.id))
+    // Real mode: the server already filtered and sorted; only locally
+    // passed jobs need hiding. The pipeline below serves local demo mode,
+    // which has no API and works over the small in-memory demo set.
+    if (!isLocalDemoMode()) return remaining
+
+    let filtered = remaining
+
+    if (effectiveCategories.length > 0) {
+      filtered = filtered.filter(j => effectiveCategories.includes(j.category))
+    }
 
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -166,10 +245,11 @@ function DiscoverPageContent() {
     }
     if (budgetBand !== 'any') {
       filtered = filtered.filter(j => {
-        const rate = parseBudget(j.budget)
-        if (budgetBand === 'under250') return rate > 0 && rate < 250
-        if (budgetBand === '250to500') return rate >= 250 && rate <= 500
-        return rate > 500
+        const { min, max } = parseBudgetRange(j.budget)
+        if (min === null || max === null) return false
+        if (budgetBand === 'under250') return min < 250
+        if (budgetBand === '250to500') return max >= 250 && min <= 500
+        return max > 500
       })
     }
 
@@ -177,29 +257,96 @@ function DiscoverPageContent() {
       switch (sort) {
         case 'newest':
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        case 'rate_high': {
-          const aRate = parseBudget(a.budget)
-          const bRate = parseBudget(b.budget)
-          return bRate - aRate
-        }
-        case 'rate_low': {
-          const aRate = parseBudget(a.budget)
-          const bRate = parseBudget(b.budget)
-          return aRate - bRate
-        }
+        case 'rate_high':
+          return (parseBudgetRange(b.budget).max ?? 0) - (parseBudgetRange(a.budget).max ?? 0)
+        case 'rate_low':
+          return (parseBudgetRange(a.budget).min ?? 0) - (parseBudgetRange(b.budget).min ?? 0)
       }
     })
 
     return filtered
-  }, [jobs, passed, search, sort, workType, locationFilter, budgetBand])
+  }, [jobs, passed, search, sort, workType, locationFilter, budgetBand, effectiveCategories])
 
   const hasActiveFilters = workType !== 'all' || locationFilter !== 'all' || budgetBand !== 'any'
+  const activeFilterCount = [workType !== 'all', locationFilter !== 'all', budgetBand !== 'any'].filter(Boolean).length
+  const categoryTotal = useMemo(() => {
+    const values = Object.values(categoryCounts)
+    return values.length > 0 ? values.reduce((sum, count) => sum + count, 0) : null
+  }, [categoryCounts])
+  // Talent with no skills yet has no "For you" scope; the All chip is their reality.
+  const displayCat = selectedCat === 'mine' && talentCategories.length === 0 ? 'all' : selectedCat
+
+  function applyFilterParams(update: (params: URLSearchParams) => void) {
+    const params = new URLSearchParams(searchParams.toString())
+    update(params)
+    const query = params.toString()
+    router.replace(query ? `/discover?${query}` : '/discover', { scroll: false })
+  }
+
+  function setFilterParam(key: 'work' | 'loc' | 'rate' | 'sort' | 'cat', value: string, defaultValue: string) {
+    applyFilterParams(params => {
+      if (value === defaultValue) params.delete(key)
+      else params.set(key, value)
+    })
+  }
 
   function clearFilters() {
-    setWorkType('all')
-    setLocationFilter('all')
-    setBudgetBand('any')
+    applyFilterParams(params => {
+      params.delete('work')
+      params.delete('loc')
+      params.delete('rate')
+    })
   }
+
+  function applySheetFilters(values: JobFilterValues) {
+    applyFilterParams(params => {
+      if (values.workType === 'all') params.delete('work'); else params.set('work', values.workType)
+      if (values.location === 'all') params.delete('loc'); else params.set('loc', values.location)
+      if (values.budgetBand === 'any') params.delete('rate'); else params.set('rate', values.budgetBand)
+      if (values.sort === 'newest') params.delete('sort'); else params.set('sort', values.sort)
+    })
+  }
+
+  // Live "Show N roles" count for the filter sheet's apply button.
+  const fetchFilterCount = useCallback(async (draft: JobFilterValues): Promise<number | null> => {
+    if (isLocalDemoMode()) return null
+    const params = buildFeedQuery({
+      categories: effectiveCategories,
+      search,
+      workType: draft.workType,
+      location: draft.location,
+      budgetBand: draft.budgetBand,
+      sort: draft.sort,
+      cursor: null,
+    })
+    params.set('count', '1')
+    try {
+      const res = await fetch(`/api/jobs?${params}`)
+      if (!res.ok) return null
+      const page = await res.json() as JobFeedPage
+      return page.total
+    } catch {
+      return null
+    }
+  }, [effectiveCategories, search])
+
+  // When filters zero out the feed, fetch how many roles exist without them
+  // so the empty state can say what clearing would recover.
+  useEffect(() => {
+    if (loading || isLocalDemoMode() || total !== 0 || !hasActiveFilters) return
+    let cancelled = false
+    const params = buildFeedQuery({
+      categories: effectiveCategories, search, workType: 'all', location: 'all', budgetBand: 'any', sort: 'newest', cursor: null,
+    })
+    params.set('count', '1')
+    fetch(`/api/jobs?${params}`)
+      .then(res => (res.ok ? (res.json() as Promise<JobFeedPage>) : null))
+      .then(page => {
+        if (!cancelled && page) setBaselineCount(page.total)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [loading, total, hasActiveFilters, effectiveCategories, search])
 
   function openJob(job: JobResult) {
     router.push(`/discover/${job.id}`)
@@ -271,12 +418,23 @@ function DiscoverPageContent() {
     setApplicationSuccess(job)
     if (advanceAfterApplication) setDragX(0)
     window.setTimeout(() => setApplicationSuccess(current => current?.id === job.id ? null : current), 5000)
+    maybeTopUpDeck()
   }
 
   function passJob(jobId: string) {
     setPassed(prev => new Set([...prev, jobId]))
     setDragX(0)
     posthog.capture('job_passed', { job_id: jobId })
+    if (!isLocalDemoMode()) {
+      // Fire-and-forget: the pass is already applied optimistically, and a
+      // lost write only means the job reappears next session.
+      void fetch('/api/jobs/passes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: jobId }),
+      }).catch(() => {})
+    }
+    maybeTopUpDeck()
   }
 
   const pointerId = useRef<number | null>(null)
@@ -315,14 +473,29 @@ function DiscoverPageContent() {
   const swipeJobs = visibleJobs.filter(job => !applied.has(job.id))
   const current = swipeJobs[0]
   const next = swipeJobs[1]
-  const reviewedCount = passed.size + applied.size
-  const progressPosition = Math.min(reviewedCount + 1, Math.max(jobs.length, 1))
+  // Count only jobs in the loaded deck: `applied` holds ALL of the talent's
+  // applications (including closed/other-category jobs), so sizing the sets
+  // directly would overshoot the "N / N" progress counter.
+  const reviewedCount = jobs.reduce(
+    (count, job) => count + (passed.has(job.id) || applied.has(job.id) ? 1 : 0),
+    0,
+  )
+  const deckSize = total ?? jobs.length
+  const progressPosition = Math.min(reviewedCount + 1, Math.max(deckSize, 1))
   const hasJobsForView = viewMode === 'swipe' ? swipeJobs.length > 0 : visibleJobs.length > 0
+  const roleCount = total ?? visibleJobs.length
   const rotation = dragging ? dragX * 0.06 : 0
   const isRight = dragX > 40
   const isLeft = dragX < -40
 
-  if (loading) {
+  // Keep the swipe deck topped up: called from pass/apply/view-switch events
+  // so the next page arrives before the deck runs dry.
+  function maybeTopUpDeck(nextMode: 'swipe' | 'grid' | 'list' = viewMode) {
+    if (nextMode !== 'swipe') return
+    if (swipeJobs.length < 6 && nextCursor) void loadMore()
+  }
+
+  if (loading || (loadingJobs && jobs.length === 0)) {
     return (
       <div className="space-y-6 py-2">
         <Skeleton className="h-7 rounded-xl w-1/2" />
@@ -347,8 +520,8 @@ function DiscoverPageContent() {
     <div className="space-y-6">
       <PageShell
         description={
-          talentCategory
-            ? `Matched for ${CATEGORY_LABELS[talentCategory]}`
+          talentCategories.length > 0
+            ? `Matched for ${talentCategories.map(category => CATEGORY_LABELS[category]).join(' · ')}`
             : 'Browse roles matched to your skills and availability.'
         }
         actions={
@@ -360,7 +533,7 @@ function DiscoverPageContent() {
                   key={mode}
                   size="xs"
                   variant={viewMode === mode ? 'secondary' : 'ghost'}
-                  onClick={() => setViewMode(mode)}
+                  onClick={() => { setViewMode(mode); maybeTopUpDeck(mode) }}
                   aria-pressed={viewMode === mode}
                   className={viewMode === mode ? 'bg-background text-foreground shadow-sm' : ''}
                 >
@@ -376,9 +549,47 @@ function DiscoverPageContent() {
         <p className="-mt-4 inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">Local demo mode</p>
       )}
 
-      {/* Filters + sort */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Select items={WORK_TYPE_OPTIONS} value={workType} onValueChange={value => setWorkType((value ?? 'all') as WorkTypeFilter)}>
+      {/* Category chips: the talent's own market first, then the rest */}
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {talentCategories.length > 0 && (
+          <CategoryChip active={displayCat === 'mine'} onClick={() => setFilterParam('cat', 'mine', 'mine')}>
+            For you
+          </CategoryChip>
+        )}
+        <CategoryChip active={displayCat === 'all'} onClick={() => setFilterParam('cat', 'all', 'mine')}>
+          All categories{categoryTotal !== null ? ` · ${categoryTotal}` : ''}
+        </CategoryChip>
+        {ALL_CATEGORIES.map(category => (
+          <CategoryChip
+            key={category}
+            active={displayCat === category}
+            onClick={() => setFilterParam('cat', category, 'mine')}
+          >
+            {CATEGORY_LABELS[category]}{categoryCounts[category] !== undefined ? ` · ${categoryCounts[category]}` : ''}
+          </CategoryChip>
+        ))}
+      </div>
+
+      {/* Mobile: filter sheet trigger + applied-filter chips */}
+      <div className="flex flex-wrap items-center gap-2 sm:hidden">
+        <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => setFilterSheetOpen(true)}>
+          <SlidersHorizontal className="size-3.5" />
+          Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
+        </Button>
+        {workType !== 'all' && (
+          <FilterChip label={WORK_TYPE_OPTIONS[workType]} onRemove={() => setFilterParam('work', 'all', 'all')} />
+        )}
+        {locationFilter !== 'all' && (
+          <FilterChip label={locationFilter} onRemove={() => setFilterParam('loc', 'all', 'all')} />
+        )}
+        {budgetBand !== 'any' && (
+          <FilterChip label={BUDGET_OPTIONS[budgetBand]} onRemove={() => setFilterParam('rate', 'any', 'any')} />
+        )}
+      </div>
+
+      {/* Desktop: inline filters + sort */}
+      <div className="hidden flex-wrap items-center gap-2 sm:flex">
+        <Select items={WORK_TYPE_OPTIONS} value={workType} onValueChange={value => setFilterParam('work', value ?? 'all', 'all')}>
           <SelectTrigger aria-label="Filter by work type" className="w-auto min-w-[8.5rem] rounded-xl">
             <SelectValue />
           </SelectTrigger>
@@ -388,7 +599,7 @@ function DiscoverPageContent() {
             ))}
           </SelectContent>
         </Select>
-        <Select items={locationOptions} value={locationFilter} onValueChange={value => setLocationFilter(value ?? 'all')}>
+        <Select items={locationOptions} value={locationFilter} onValueChange={value => setFilterParam('loc', value ?? 'all', 'all')}>
           <SelectTrigger aria-label="Filter by location" className="w-auto min-w-[8.5rem] rounded-xl">
             <SelectValue />
           </SelectTrigger>
@@ -398,7 +609,7 @@ function DiscoverPageContent() {
             ))}
           </SelectContent>
         </Select>
-        <Select items={BUDGET_OPTIONS} value={budgetBand} onValueChange={value => setBudgetBand((value ?? 'any') as BudgetFilter)}>
+        <Select items={BUDGET_OPTIONS} value={budgetBand} onValueChange={value => setFilterParam('rate', value ?? 'any', 'any')}>
           <SelectTrigger aria-label="Filter by rate" className="w-auto min-w-[7.5rem] rounded-xl">
             <SelectValue />
           </SelectTrigger>
@@ -414,7 +625,7 @@ function DiscoverPageContent() {
           </Button>
         )}
         <div className="ml-auto">
-          <Select items={SORT_OPTIONS} value={sort} onValueChange={value => setSort((value ?? 'newest') as SortOption)}>
+          <Select items={SORT_OPTIONS} value={sort} onValueChange={value => setFilterParam('sort', value ?? 'newest', 'newest')}>
             <SelectTrigger aria-label="Sort jobs" className="w-auto min-w-[7rem] rounded-xl">
               <SelectValue />
             </SelectTrigger>
@@ -428,8 +639,14 @@ function DiscoverPageContent() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {visibleJobs.length} open {visibleJobs.length === 1 ? 'role' : 'roles'}
-        {hasActiveFilters ? ' match your filters' : talentCategory ? ` in ${CATEGORY_LABELS[talentCategory]}` : ''}
+        {roleCount} open {roleCount === 1 ? 'role' : 'roles'}
+        {hasActiveFilters
+          ? ' match your filters'
+          : displayCat === 'all'
+            ? ' across all categories'
+            : displayCat === 'mine'
+              ? (talentCategories.length > 0 ? ` in ${talentCategories.map(category => CATEGORY_LABELS[category]).join(' · ')}` : '')
+              : ` in ${CATEGORY_LABELS[displayCat]}`}
         {search.trim() && <> · filtering by &ldquo;{search.trim()}&rdquo; - use the top search bar to change.</>}
       </p>
 
@@ -446,43 +663,72 @@ function DiscoverPageContent() {
                   : "You've reviewed all jobs"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {hasActiveFilters ? 'Try widening or clearing your filters.' : 'Check back soon for new opportunities.'}
+            {hasActiveFilters
+              ? baselineCount !== null && baselineCount > 0
+                ? `${baselineCount} open ${baselineCount === 1 ? 'role matches' : 'roles match'} without your filters.`
+                : 'Try widening or clearing your filters.'
+              : 'Check back soon for new opportunities.'}
           </p>
           {hasActiveFilters && (
             <Button type="button" variant="outline" size="sm" className="mt-4 rounded-xl" onClick={clearFilters}>
-              Clear filters
+              {baselineCount !== null && baselineCount > 0
+                ? `Clear filters · see ${baselineCount} ${baselineCount === 1 ? 'role' : 'roles'}`
+                : 'Clear filters'}
+            </Button>
+          )}
+          {!hasActiveFilters && nextCursor && (
+            <Button type="button" variant="outline" size="sm" className="mt-4 rounded-xl" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? 'Loading...' : 'Load more roles'}
             </Button>
           )}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 gap-4 card-stagger sm:grid-cols-2 lg:grid-cols-3">
-          {visibleJobs.map(job => (
-            <JobGridCard
-              key={job.id}
-              job={job}
-              matchReasons={getJobMatchReasons(job, talentProfile)}
-              applied={applied.has(job.id)}
-              applying={applyingId === job.id}
-              onApply={() => requestApplication(job)}
-              onViewBrief={() => openJob(job)}
-              onPass={() => passJob(job.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 card-stagger sm:grid-cols-2 lg:grid-cols-3">
+            {visibleJobs.map(job => (
+              <JobGridCard
+                key={job.id}
+                job={job}
+                matchReasons={getJobMatchReasons(job, talentProfile)}
+                applied={applied.has(job.id)}
+                applying={applyingId === job.id}
+                onApply={() => requestApplication(job)}
+                onViewBrief={() => openJob(job)}
+                onPass={() => passJob(job.id)}
+              />
+            ))}
+          </div>
+          {nextCursor && (
+            <div className="flex justify-center pt-2">
+              <Button type="button" variant="outline" className="rounded-xl" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? 'Loading...' : 'Load more roles'}
+              </Button>
+            </div>
+          )}
+        </>
       ) : viewMode === 'list' ? (
-        <div className="space-y-3 card-stagger">
-          {visibleJobs.map(job => (
-            <JobCard
-              key={job.id}
-              job={job}
-              applied={applied.has(job.id)}
-              applying={applyingId === job.id}
-              onApply={() => requestApplication(job)}
-              onViewBrief={() => openJob(job)}
-              onPass={() => passJob(job.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="space-y-3 card-stagger">
+            {visibleJobs.map(job => (
+              <JobCard
+                key={job.id}
+                job={job}
+                applied={applied.has(job.id)}
+                applying={applyingId === job.id}
+                onApply={() => requestApplication(job)}
+                onViewBrief={() => openJob(job)}
+                onPass={() => passJob(job.id)}
+              />
+            ))}
+          </div>
+          {nextCursor && (
+            <div className="flex justify-center pt-2">
+              <Button type="button" variant="outline" className="rounded-xl" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? 'Loading...' : 'Load more roles'}
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="pb-20">
           <div className="relative select-none h-[460px]">
@@ -531,7 +777,7 @@ function DiscoverPageContent() {
 
             {current && (
               <div className="absolute top-3 right-3 z-20 bg-background/70 backdrop-blur-sm text-muted-foreground text-xs px-2.5 py-1 rounded-full">
-                {progressPosition} / {Math.max(jobs.length, 1)}
+                {progressPosition} / {Math.max(deckSize, 1)}
               </div>
             )}
           </div>
@@ -570,6 +816,18 @@ function DiscoverPageContent() {
         </div>
       )}
 
+      <JobFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        initial={{ workType, location: locationFilter, budgetBand, sort }}
+        workTypeOptions={WORK_TYPE_OPTIONS}
+        locationOptions={locationOptions}
+        budgetOptions={BUDGET_OPTIONS}
+        sortOptions={SORT_OPTIONS}
+        fetchCount={fetchFilterCount}
+        onApply={applySheetFilters}
+      />
+
       <ApplicationPreviewDialog
         job={applicationJob}
         profile={talentProfile}
@@ -581,6 +839,37 @@ function DiscoverPageContent() {
         onConfirm={confirmApplication}
       />
     </div>
+  )
+}
+
+function CategoryChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Button
+      type="button"
+      size="xs"
+      variant={active ? 'secondary' : 'outline'}
+      onClick={onClick}
+      aria-pressed={active}
+      className={`shrink-0 rounded-full ${active ? 'bg-foreground text-background hover:bg-foreground/90' : ''}`}
+    >
+      {children}
+    </Button>
+  )
+}
+
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <Badge variant="secondary" className="gap-1 rounded-full pr-1 text-xs">
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${label} filter`}
+        className="rounded-full p-0.5 hover:bg-foreground/10"
+      >
+        <X className="size-3" />
+      </button>
+    </Badge>
   )
 }
 
@@ -754,9 +1043,26 @@ function JobCard({
   )
 }
 
-function parseBudget(budget: string | null): number {
-  if (!budget) return 0
-  const match = budget.match(/[\d,]+/)
-  if (!match) return 0
-  return parseInt(match[0].replace(/,/g, ''), 10)
+function normalizeChoice<T extends string>(value: string | null, choices: readonly T[], fallback: T): T {
+  return value !== null && (choices as readonly string[]).includes(value) ? (value as T) : fallback
+}
+
+function buildFeedQuery(options: {
+  categories: Category[]
+  search: string
+  workType: WorkTypeFilter
+  location: string
+  budgetBand: BudgetBand
+  sort: JobSort
+  cursor: string | null
+}): URLSearchParams {
+  const params = new URLSearchParams()
+  if (options.categories.length > 0) params.set('category', options.categories.join(','))
+  if (options.search.trim()) params.set('q', options.search.trim())
+  if (options.workType !== 'all') params.set('work', options.workType)
+  if (options.location !== 'all') params.set('loc', options.location)
+  if (options.budgetBand !== 'any') params.set('rate', options.budgetBand)
+  if (options.sort !== 'newest') params.set('sort', options.sort)
+  if (options.cursor) params.set('cursor', options.cursor)
+  return params
 }

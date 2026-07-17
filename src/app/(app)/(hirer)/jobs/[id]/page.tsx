@@ -195,6 +195,24 @@ export default function JobDetailPage() {
                 <dt className="text-muted-foreground text-xs">Location</dt>
                 <dd className="text-right">{job.location}</dd>
               </div>
+              {job.duration && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground text-xs">Duration</dt>
+                  <dd className="text-right">{job.duration}</dd>
+                </div>
+              )}
+              {job.travel_required != null && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground text-xs">Travel</dt>
+                  <dd className="text-right">{job.travel_required ? 'Required' : 'Not expected'}</dd>
+                </div>
+              )}
+              {job.usage_rights && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground text-xs">Usage</dt>
+                  <dd className="text-right">{job.usage_rights}</dd>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground text-xs">Applicants</dt>
                 <dd className="text-right tabular-nums">{applications.length}</dd>
@@ -306,7 +324,7 @@ export default function JobDetailPage() {
                           </p>
                         </div>
 
-                        {app.status !== 'hired' && (
+                        {app.status !== 'hired' && app.status !== 'declined' && (
                           <div className="flex shrink-0 items-center gap-2">
                             {app.status !== 'shortlisted' && (
                               <Button
@@ -324,6 +342,19 @@ export default function JobDetailPage() {
                               onClick={() => updateApplicationStatus(app.id, 'hired')}
                             >
                               Hire
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground"
+                              disabled={updating}
+                              onClick={() => {
+                                if (window.confirm(`Decline ${talent.full_name}? They will see that this role went in a different direction.`)) {
+                                  updateApplicationStatus(app.id, 'declined')
+                                }
+                              }}
+                            >
+                              Decline
                             </Button>
                           </div>
                         )}

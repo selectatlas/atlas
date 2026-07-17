@@ -43,6 +43,19 @@ describe('buildPreHireTimeline', () => {
     expect(stages[2].current).toBe(true)
   })
 
+  it('collapses to a terminal "Not selected" stage when declined', () => {
+    const stages = buildPreHireTimeline({ application_status: 'declined' })
+    expect(stages.map(s => s.key)).toEqual(['started', 'declined'])
+    expect(stages[0]).toMatchObject({ label: 'Applied', complete: true, current: false })
+    expect(stages[1]).toMatchObject({ label: 'Not selected', complete: true, current: true })
+  })
+
+  it('labels the declined start stage from the outreach origin', () => {
+    const stages = buildPreHireTimeline({ outreach_id: 'o1', outreach_status: 'responded', application_status: 'declined' })
+    expect(stages).toHaveLength(2)
+    expect(stages[0].label).toBe('Outreach sent')
+  })
+
   it('completes every stage when hired', () => {
     const stages = buildPreHireTimeline({ outreach_id: 'o1', outreach_status: 'responded', application_status: 'hired' })
     expect(stages.every(s => s.complete)).toBe(true)

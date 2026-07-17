@@ -6,6 +6,7 @@ import { parseJsonBody, cleanString, badRequest } from '@/lib/validation'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
 import { filtersToDatabase, parseSearchFilterObject, type SearchFilters } from '@/lib/search-filters'
+import { rankingSimilarity } from '@/lib/matching'
 
 function normalise(value: string | null | undefined) {
   return (value ?? '').toLowerCase().trim()
@@ -137,9 +138,14 @@ export async function POST(request: Request) {
         similarity: sim,
       }
     })
-    // Rank on raw similarity: the display score clamps to 55-98, so sorting
-    // on it would collapse everything at either bound into DB fetch order.
-    .sort((a, b) => b.similarity - a.similarity)
+    // Rank on raw similarity plus the verification boost (same constant the
+    // DB ordering uses): the display score clamps to 55-98, so sorting on it
+    // would collapse everything at either bound into DB fetch order.
+    .sort(
+      (a, b) =>
+        rankingSimilarity(b.similarity, b.profile.verified_at as string | null) -
+        rankingSimilarity(a.similarity, a.profile.verified_at as string | null),
+    )
     .slice(0, 12)
     .map(result => ({ profile: result.profile, match_score: result.match_score, match_reasons: result.match_reasons }))
 

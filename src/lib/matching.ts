@@ -3,6 +3,17 @@ import type { Job, Profile, TalentSkill } from '@/types'
 
 type TalentProfile = Profile & { talent_skills: TalentSkill[] }
 
+// Ordering boost for verified talent in semantic search. Must match the
+// constant in supabase/migrations/024_search_verification_boost.sql - the
+// DB orders its candidate set with it and the search route re-sorts the
+// fetched page in JS, so the two must agree or the DB ordering is undone.
+// Applied to ranking only; displayed match scores stay the raw similarity.
+export const VERIFICATION_MATCH_BOOST = 0.02
+
+export function rankingSimilarity(similarity: number, verifiedAt: string | null | undefined): number {
+  return similarity + (verifiedAt ? VERIFICATION_MATCH_BOOST : 0)
+}
+
 function normalise(value: string | null | undefined) {
   return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 }

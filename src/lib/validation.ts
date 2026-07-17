@@ -78,6 +78,20 @@ export function cleanStringArray(
   return items
 }
 
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+// Optional YYYY-MM-DD date: undefined/null/empty are fine, anything else must
+// be a real calendar date.
+export function cleanOptionalDate(value: unknown): { ok: boolean; value: string | null } {
+  if (value === undefined || value === null || value === '') return { ok: true, value: null }
+  if (typeof value !== 'string' || !DATE_PATTERN.test(value)) return { ok: false, value: null }
+  const date = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    return { ok: false, value: null }
+  }
+  return { ok: true, value }
+}
+
 export function badRequest(message: string): Response {
   return Response.json({ error: message }, { status: 400 })
 }

@@ -11,9 +11,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LabeledField } from '@/components/ui/labeled-field'
-import type { Category } from '@/types'
+import { Switch } from '@/components/ui/switch'
+import type { Category, JobWorkType } from '@/types'
 
 const CATEGORIES: Category[] = ['dancer', 'actor', 'photographer_videographer', 'content_creator']
+const WORK_TYPES: { value: JobWorkType; label: string }[] = [
+  { value: 'in_person', label: 'In person' },
+  { value: 'hybrid', label: 'Hybrid' },
+  { value: 'remote', label: 'Remote' },
+]
 
 export default function NewJobPage() {
   const router = useRouter()
@@ -24,6 +30,13 @@ export default function NewJobPage() {
   const [skills, setSkills] = useState<string[]>([])
   const [location, setLocation] = useState('')
   const [budget, setBudget] = useState('')
+  const [workType, setWorkType] = useState<JobWorkType | ''>('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [applicationDeadline, setApplicationDeadline] = useState('')
+  const [duration, setDuration] = useState('')
+  const [usageRights, setUsageRights] = useState('')
+  const [travelRequired, setTravelRequired] = useState(false)
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [defaultsLoaded, setDefaultsLoaded] = useState(false)
@@ -86,7 +99,21 @@ export default function NewJobPage() {
       const res = await fetch('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, category, skills_required: skills, location, budget }),
+        body: JSON.stringify({
+          title,
+          description,
+          category,
+          skills_required: skills,
+          location,
+          budget,
+          work_type: workType || null,
+          start_date: startDate || null,
+          end_date: endDate || null,
+          application_deadline: applicationDeadline || null,
+          duration: duration || null,
+          usage_rights: usageRights || null,
+          travel_required: travelRequired,
+        }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Failed to post job'); return }
@@ -223,6 +250,66 @@ export default function NewJobPage() {
               onChange={e => setBudget(e.target.value)}
             />
           </LabeledField>
+        </CardContent>
+      </Card>
+
+      {/* Logistics — feeds the action card talent sees on the job brief */}
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-3">Work type <span className="text-muted-foreground/50">(optional)</span></label>
+            <div className="flex flex-wrap gap-2">
+              {WORK_TYPES.map(wt => (
+                <Button
+                  key={wt.value}
+                  type="button"
+                  variant="outline"
+                  onClick={() => setWorkType(prev => prev === wt.value ? '' : wt.value)}
+                  className={`rounded-full ${workType === wt.value ? 'bg-foreground text-background hover:bg-foreground/90' : ''}`}
+                >
+                  {wt.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LabeledField label={<>Start date <span className="text-muted-foreground/50">(optional)</span></>}>
+              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            </LabeledField>
+            <LabeledField label={<>End date <span className="text-muted-foreground/50">(optional)</span></>}>
+              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            </LabeledField>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LabeledField label={<>Apply by <span className="text-muted-foreground/50">(optional)</span></>}>
+              <Input type="date" value={applicationDeadline} onChange={e => setApplicationDeadline(e.target.value)} />
+            </LabeledField>
+            <LabeledField label={<>Duration <span className="text-muted-foreground/50">(optional)</span></>}>
+              <Input
+                placeholder="e.g. 2 rehearsal weeks + 12 tour dates"
+                value={duration}
+                onChange={e => setDuration(e.target.value)}
+              />
+            </LabeledField>
+          </div>
+
+          <LabeledField label={<>Usage rights <span className="text-muted-foreground/50">(optional)</span></>}>
+            <Input
+              placeholder="e.g. Tour visuals + social coverage, 18 months"
+              value={usageRights}
+              onChange={e => setUsageRights(e.target.value)}
+            />
+          </LabeledField>
+
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Travel required</p>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">Shown to talent on the job brief</p>
+            </div>
+            <Switch checked={travelRequired} onCheckedChange={setTravelRequired} />
+          </div>
         </CardContent>
       </Card>
 

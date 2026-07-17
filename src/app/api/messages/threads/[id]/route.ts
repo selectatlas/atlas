@@ -137,6 +137,34 @@ export async function POST(request: Request, { params }: RouteParams) {
     return Response.json({ error: 'Failed to send message' }, { status: 500 })
   }
 
+  // Best-effort: a reply from the talent advances the linked outreach and
+  // application to 'responded' so the hirer's inbox, pipeline tabs and the
+  // pre-hire timeline reflect it. Both writes are self-scoped - the outreach
+  // update matches only the sender's own row, and mark_application_replied
+  // only ever advances the caller's own application from sent/viewed - so
+  // they no-op harmlessly when the sender is the hirer.
+  try {
+    const { data: thread } = await supabase
+      .from('message_threads')
+      .select('origin_outreach_id, origin_job_id')
+      .eq('id', threadId)
+      .maybeSingle()
+
+    if (thread?.origin_outreach_id) {
+      await supabase
+        .from('outreach')
+        .update({ status: 'responded' })
+        .eq('id', thread.origin_outreach_id)
+        .eq('talent_id', user.id)
+        .in('status', ['sent', 'viewed'])
+    }
+    if (thread?.origin_job_id) {
+      await supabase.rpc('mark_application_replied', { p_job_id: thread.origin_job_id })
+    }
+  } catch {
+    logEvent('warn', 'message_reply_status_error', { user_id: user.id })
+  }
+
   return Response.json({ message }, { status: 201 })
 }
 

@@ -42,15 +42,20 @@ export default async function ShortlistsPage({
   }
 
   const [shortlistResult, likesResult, jobsResult] = await Promise.all([
+    // Inner join + visibility filter: talent who went private (including
+    // suspended talent, whose visibility is forced private) drop out of
+    // saved lists instead of leaking their profile through them.
     supabase
       .from('shortlists')
-      .select(`talent_id, created_at, profiles!talent_id(${TALENT_JOIN})`)
+      .select(`talent_id, created_at, profiles!talent_id!inner(${TALENT_JOIN})`)
       .eq('hirer_id', userId)
+      .neq('profiles.profile_visibility', 'private')
       .order('created_at', { ascending: false }),
     supabase
       .from('profile_likes')
-      .select(`talent_id, created_at, profiles!talent_id(${TALENT_JOIN})`)
+      .select(`talent_id, created_at, profiles!talent_id!inner(${TALENT_JOIN})`)
       .eq('user_id', userId)
+      .neq('profiles.profile_visibility', 'private')
       .order('created_at', { ascending: false }),
     supabase
       .from('jobs')

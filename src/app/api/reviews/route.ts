@@ -1,10 +1,11 @@
 import { getAuthenticatedCaller } from '@/lib/access'
-import { hasHiredTalent } from '@/lib/reviews-server'
+import { getReviewAllowance } from '@/lib/reviews-server'
 import { SUB_RATING_KEYS } from '@/lib/reviews'
 import { parseJsonBody, isUuid, badRequest, cleanString, cleanOptionalString } from '@/lib/validation'
 import { enforceRateLimit } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
 import { getPostHogClient } from '@/lib/posthog-server'
+import { buildSystemMessageContent } from '@/lib/system-messages'
 
 const REVIEW_BODY_MAX = 2000
 const PROJECT_TITLE_MAX = 140
@@ -62,8 +63,18 @@ export async function POST(request: Request) {
   // Eligibility/ownership: the hirer must have actually hired this talent.
   // 403, never 404 — a missing relationship is a permissions failure and
   // must not leak whether the talent exists.
-  const eligible = await hasHiredTalent(supabase, user.id, talentId)
-  if (!eligible) return Response.json({ error: 'Forbidden' }, { status: 403 })
+  const allowance = await getReviewAllowance(supabase, user.id, talentId)
+  if (allowance.hiredCount === 0) return Response.json({ error: 'Forbidden' }, { status: 403 })
+
+  // One review per booking: repeat reviews are only allowed after repeat
+  // hires, so a single engagement can't be used to stack rating aggregates.
+  // The talent_reviews insert policy (migration 020) enforces the same cap.
+  if (!allowance.canReview) {
+    return Response.json(
+      { error: 'You have already reviewed this talent for each completed booking' },
+      { status: 409 },
+    )
+  }
 
   const { data, error } = await supabase
     .from('talent_reviews')
@@ -82,6 +93,38 @@ export async function POST(request: Request) {
   if (error || !data) {
     logEvent('error', 'review_insert_error', { user_id: user.id, code: error?.code ?? null })
     return Response.json({ error: 'Failed to publish review' }, { status: 500 })
+  }
+
+  // Best-effort: tell the talent a review landed. Without this the review
+  // is only discoverable by visiting their own public profile.
+  try {
+    const { data: threadId, error: threadError } = await supabase.rpc(
+      'create_or_get_thread_with_origin',
+      { other_profile_id: talentId, origin_outreach: null, origin_job: null },
+    )
+    if (threadError || !threadId) {
+      logEvent('warn', 'review_published_thread_error', {
+        user_id: user.id,
+        code: threadError?.code ?? null,
+      })
+    } else {
+      const { error: cardError } = await supabase.from('messages').insert({
+        thread_id: threadId as string,
+        sender_id: user.id,
+        content: buildSystemMessageContent('review_published', {
+          jobTitle: projectTitle.value,
+        }),
+        kind: 'review_published',
+      })
+      if (cardError) {
+        logEvent('warn', 'review_published_message_error', {
+          user_id: user.id,
+          code: cardError.code ?? null,
+        })
+      }
+    }
+  } catch {
+    logEvent('warn', 'review_published_message_error', { user_id: user.id })
   }
 
   const posthog = getPostHogClient()

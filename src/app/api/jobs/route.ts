@@ -1,11 +1,51 @@
 import { getAuthenticatedCaller } from '@/lib/access'
 import { embedJob } from '@/lib/job-embedding'
-import { parseJsonBody, cleanString, cleanOptionalString, cleanStringArray, badRequest } from '@/lib/validation'
+import { parseBudgetRange, parseDiscoverParams, fetchDiscoverJobs, MAX_EXCLUDED_PASSES } from '@/lib/job-discovery'
+import { parseJsonBody, cleanString, cleanOptionalString, cleanStringArray, cleanOptionalDate, badRequest } from '@/lib/validation'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
 import { getPostHogClient } from '@/lib/posthog-server'
 
 const CATEGORIES = ['dancer', 'actor', 'photographer_videographer', 'content_creator'] as const
+const WORK_TYPES = ['remote', 'hybrid', 'in_person'] as const
+
+// Paginated open-jobs feed for the talent discover page. Filtering, sorting,
+// and keyset pagination run in Postgres; passed jobs are excluded for the
+// calling talent. Any authenticated user may list (jobs are select-all).
+export async function GET(request: Request) {
+  const caller = await getAuthenticatedCaller()
+  if (!caller.ok) return caller.response
+  const { supabase, user } = caller
+
+  const limited = await enforceRateLimit(`jobs-list:${user.id}`, 60, 60)
+  if (limited) return limited
+
+  const parsed = parseDiscoverParams(new URL(request.url).searchParams)
+  if (!parsed.ok) return badRequest(parsed.error)
+
+  let excludeJobIds: string[] = []
+  if (caller.access.canTalent) {
+    const { data: passes } = await supabase
+      .from('job_passes')
+      .select('job_id')
+      .eq('talent_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(MAX_EXCLUDED_PASSES)
+    excludeJobIds = (passes ?? []).map(pass => pass.job_id as string)
+  }
+
+  const result = await fetchDiscoverJobs(supabase, parsed.filters, {
+    cursor: parsed.cursor,
+    excludeJobIds,
+    countOnly: parsed.countOnly,
+  })
+  if (!result.ok) {
+    logEvent('error', 'jobs_list_error', { user_id: user.id })
+    return Response.json({ error: 'Failed to load jobs' }, { status: 500 })
+  }
+
+  return Response.json(result.page)
+}
 
 export async function POST(request: Request) {
   const caller = await getAuthenticatedCaller()
@@ -35,26 +75,69 @@ export async function POST(request: Request) {
     return badRequest(`category must be one of: ${CATEGORIES.join(', ')}`)
   }
 
+  const workType = body.work_type ?? null
+  const startDate = cleanOptionalDate(body.start_date)
+  const endDate = cleanOptionalDate(body.end_date)
+  const applicationDeadline = cleanOptionalDate(body.application_deadline)
+  const duration = cleanOptionalString(body.duration, 200)
+  const usageRights = cleanOptionalString(body.usage_rights, 500)
+  const travelRequired = body.travel_required ?? false
+
+  if (workType !== null && !WORK_TYPES.includes(workType as typeof WORK_TYPES[number])) {
+    return badRequest(`work_type must be one of: ${WORK_TYPES.join(', ')}`)
+  }
+  if (!startDate.ok) return badRequest('start_date must be a YYYY-MM-DD date')
+  if (!endDate.ok) return badRequest('end_date must be a YYYY-MM-DD date')
+  if (!applicationDeadline.ok) return badRequest('application_deadline must be a YYYY-MM-DD date')
+  if (!duration.ok) return badRequest('duration must be 200 characters or fewer')
+  if (!usageRights.ok) return badRequest('usage_rights must be 500 characters or fewer')
+  if (typeof travelRequired !== 'boolean') return badRequest('travel_required must be a boolean')
+
   // Rate limit job creation + daily AI quota (each job costs an embedding call)
   const limited =
     (await enforceRateLimit(`jobs-create:${user.id}`, 3600, 10)) ??
     (await enforceAiQuota(user.id))
   if (limited) return limited
 
-  const { data: job, error } = await supabase
+  const budgetBounds = parseBudgetRange(budget.value)
+  const jobRow = {
+    hirer_id: user.id,
+    title,
+    description,
+    category,
+    skills_required: skillsRequired,
+    location,
+    budget: budget.value,
+    budget_min: budgetBounds.min,
+    budget_max: budgetBounds.max,
+    status: 'open',
+    work_type: workType,
+    start_date: startDate.value,
+    end_date: endDate.value,
+    application_deadline: applicationDeadline.value,
+    duration: duration.value,
+    usage_rights: usageRights.value,
+    travel_required: travelRequired,
+  }
+
+  let { data: job, error } = await supabase
     .from('jobs')
-    .insert({
-      hirer_id: user.id,
-      title,
-      description,
-      category,
-      skills_required: skillsRequired,
-      location,
-      budget: budget.value,
-      status: 'open',
-    })
+    .insert(jobRow)
     .select()
     .single()
+
+  // Keep existing deployments working until migration 021 (budget bounds)
+  // is applied: retry without the structured columns (undefined properties
+  // are dropped from the insert payload).
+  if (error?.code === '42703') {
+    const fallback = await supabase
+      .from('jobs')
+      .insert({ ...jobRow, budget_min: undefined, budget_max: undefined })
+      .select()
+      .single()
+    job = fallback.data
+    error = fallback.error
+  }
 
   if (error || !job) {
     logEvent('error', 'job_insert_error', { user_id: user.id, code: error?.code ?? null })

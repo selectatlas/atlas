@@ -110,6 +110,19 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Suspension enforcement for API calls. Unlike the role routing below,
+  // this IS enforcement: it is DB-backed via the security-definer
+  // is_caller_suspended() (migration 022), so a suspended user with a live
+  // session cannot keep using the API from an already-loaded tab. Routes
+  // using getAuthenticatedCaller() re-check independently; this catch-all
+  // covers the routes that authenticate ad hoc.
+  if (claims && pathname.startsWith('/api/')) {
+    const { data: suspended } = await supabase.rpc('is_caller_suspended')
+    if (suspended === true) {
+      return NextResponse.json({ error: 'Account suspended' }, { status: 403 })
+    }
+  }
+
   // Redirect authenticated users away from auth pages
   if (claims && isAuthRoute) {
     const url = request.nextUrl.clone()

@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, Briefcase, Command, Search, type LucideIcon } from 'lucide-react'
+import { Briefcase, Command, Search, type LucideIcon } from 'lucide-react'
 import { PageBreadcrumbs } from '@/components/layout/PageBreadcrumbs'
 import { MobileSearchSheet } from '@/components/layout/MobileSearchSheet'
 import { NotificationsBell } from '@/components/layout/NotificationsBell'
@@ -18,14 +18,13 @@ type QuickTab =
   | { title: string; icon: LucideIcon; href: string; badge?: number }
   | { type: 'separator' }
 
+// Notifications live in the bell (mobile: direct link, md+: preview popover),
+// so the quick tabs only carry destinations without their own entry point.
 const hirerQuickTabs: QuickTab[] = [
   { title: 'Jobs', icon: Briefcase, href: '/jobs' },
-  { title: 'Notifications', icon: Bell, href: '/notifications' },
 ]
 
-const talentQuickTabs: QuickTab[] = [
-  { title: 'Notifications', icon: Bell, href: '/notifications' },
-]
+const talentQuickTabs: QuickTab[] = []
 
 function BreadcrumbSkeleton() {
   return (
@@ -146,16 +145,17 @@ export function AppTopBar() {
               <Command className="size-4" />
             </Button>
 
-            {/* Below md the quick tabs are hidden, so keep the bell as the notifications entry point. */}
-            <div className="md:hidden">
-              <NotificationsBell />
-            </div>
+            {/* The bell handles its own breakpoints: direct link below md,
+                latest-3 preview popover at md and up. */}
+            <NotificationsBell />
 
-            <ExpandableTabs
-              tabs={quickTabs}
-              onChange={onQuickTabChange}
-              className="hidden shrink-0 flex-nowrap border-none shadow-none md:flex"
-            />
+            {quickTabs.length > 0 && (
+              <ExpandableTabs
+                tabs={quickTabs}
+                onChange={onQuickTabChange}
+                className="hidden shrink-0 flex-nowrap border-none shadow-none md:flex"
+              />
+            )}
           </div>
         </div>
       </header>

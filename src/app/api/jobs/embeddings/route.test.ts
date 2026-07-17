@@ -34,6 +34,8 @@ const FAILED_JOB = { id: 'job-1', title: 'Shoot', description: 'A shoot', skills
 function makeClient(user: { id: string } | null, accountType: string | null, pendingJobs: object[] = []) {
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
+    rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
+    // is_caller_suspended check in getAuthenticatedCaller
     from: vi.fn((table: string) => {
       if (table === 'profiles') {
         return {

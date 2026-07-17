@@ -3,7 +3,7 @@ export type PlatformAdminRole = 'owner' | 'moderator' | 'support'
 export type ReportStatus = 'open' | 'reviewing' | 'resolved' | 'dismissed'
 export type Category = 'dancer' | 'actor' | 'photographer_videographer' | 'content_creator'
 export type Proficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert'
-export type ApplicationStatus = 'sent' | 'viewed' | 'responded' | 'shortlisted' | 'hired'
+export type ApplicationStatus = 'sent' | 'viewed' | 'responded' | 'shortlisted' | 'hired' | 'declined' | 'declined'
 export type OutreachStatus = 'draft' | 'sent' | 'viewed' | 'responded'
 export type JobStatus = 'open' | 'closed'
 export type JobWorkType = 'in_person' | 'remote' | 'hybrid'
@@ -87,6 +87,8 @@ export interface Job {
   skills_required: string[]
   location: string
   budget: string | null
+  budget_min?: number | null
+  budget_max?: number | null
   status: JobStatus
   removed_at?: string | null
   removal_reason?: string | null

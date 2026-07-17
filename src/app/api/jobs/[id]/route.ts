@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { parseJsonBody, isUuid } from '@/lib/validation'
+import { buildSystemMessageContent } from '@/lib/system-messages'
+import { findThreadWithOther } from '@/lib/thread-lookup'
+import { logEvent } from '@/lib/log'
 
 export async function GET(
   _request: Request,
@@ -19,6 +22,16 @@ export async function GET(
 
   if (error || !job) return Response.json({ error: 'Not found' }, { status: 404 })
   if (job.hirer_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Opening the job detail is the hirer seeing the applicants: advance new
+  // applications to 'viewed' so the inbox unread badge clears and the
+  // pipeline tabs reflect reality. Runs before the select so the response
+  // carries the post-view statuses.
+  await supabase
+    .from('applications')
+    .update({ status: 'viewed' })
+    .eq('job_id', id)
+    .eq('status', 'sent')
 
   const { data: applications } = await supabase
     .from('applications')
@@ -41,7 +54,7 @@ export async function PATCH(
 
   const { data: job } = await supabase
     .from('jobs')
-    .select('hirer_id')
+    .select('hirer_id, title, status')
     .eq('id', id)
     .single()
 
@@ -63,5 +76,32 @@ export async function PATCH(
     .single()
 
   if (error) return Response.json({ error: 'Update failed' }, { status: 500 })
+
+  // Best-effort: closing a role tells applicants still in flight, so their
+  // application doesn't just silently vanish from discover. Existing threads
+  // only - closing a job is not a reason to open new conversations.
+  if (job.status === 'open' && status === 'closed') {
+    try {
+      const { data: pending } = await supabase
+        .from('applications')
+        .select('talent_id')
+        .eq('job_id', id)
+        .in('status', ['sent', 'viewed', 'responded'])
+
+      for (const application of pending ?? []) {
+        const threadId = await findThreadWithOther(supabase, user.id, application.talent_id as string)
+        if (!threadId) continue
+        await supabase.from('messages').insert({
+          thread_id: threadId,
+          sender_id: user.id,
+          content: buildSystemMessageContent('job_closed', { jobTitle: job.title }),
+          kind: 'job_closed',
+        })
+      }
+    } catch {
+      logEvent('warn', 'job_closed_message_error', { user_id: user.id })
+    }
+  }
+
   return Response.json({ job: updated })
 }

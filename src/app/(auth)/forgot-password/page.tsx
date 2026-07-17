@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { LegalFooterLinks } from '@/components/layout/LegalFooterLinks'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -116,6 +117,8 @@ export default function ForgotPasswordPage() {
             </>
           )}
         </Card>
+
+        <LegalFooterLinks className="mt-6" />
       </div>
     </div>
   )

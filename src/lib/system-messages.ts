@@ -9,6 +9,9 @@ export const SYSTEM_MESSAGE_KINDS = [
   'outreach_sent',
   'application_shortlisted',
   'application_hired',
+  'application_declined',
+  'review_published',
+  'job_closed',
 ] as const
 
 export type SystemMessageKind = (typeof SYSTEM_MESSAGE_KINDS)[number]
@@ -29,6 +32,12 @@ export function systemCardTitle(kind: SystemMessageKind): string {
       return 'Shortlisted'
     case 'application_hired':
       return 'Hired'
+    case 'application_declined':
+      return 'Not selected'
+    case 'review_published':
+      return 'Review published'
+    case 'job_closed':
+      return 'Role closed'
   }
 }
 
@@ -48,5 +57,13 @@ export function buildSystemMessageContent(
       return jobTitle ? `Shortlisted for ${jobTitle}` : 'Application shortlisted'
     case 'application_hired':
       return jobTitle ? `Hired for ${jobTitle}` : 'Hired for this role'
+    case 'application_declined':
+      return jobTitle
+        ? `The role ${jobTitle} went in a different direction this time`
+        : 'This role went in a different direction this time'
+    case 'review_published':
+      return jobTitle ? `Left a review after ${jobTitle}` : 'Left a review on your profile'
+    case 'job_closed':
+      return jobTitle ? `${jobTitle} is no longer accepting applications` : 'This role has closed'
   }
 }

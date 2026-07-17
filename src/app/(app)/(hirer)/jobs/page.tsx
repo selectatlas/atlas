@@ -75,10 +75,22 @@ export default async function JobsPage() {
                       <h2 className="font-semibold text-base leading-tight">{job.title}</h2>
                       <p className="mt-1 text-xs text-muted-foreground">{job.location}{job.budget ? ` · ${job.budget}` : ''}</p>
                     </div>
-                    <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className="text-xs shrink-0">
-                      {job.status}
-                    </Badge>
+                    {job.removed_at ? (
+                      <Badge variant="destructive" className="text-xs shrink-0">
+                        Removed
+                      </Badge>
+                    ) : (
+                      <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className="text-xs shrink-0">
+                        {job.status}
+                      </Badge>
+                    )}
                   </div>
+
+                  {job.removed_at && (
+                    <p className="mb-3 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      Removed by moderation{job.removal_reason ? `: ${job.removal_reason}` : ''}
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-between">
                     <Badge variant="outline" className="text-xs">

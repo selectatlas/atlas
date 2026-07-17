@@ -4,7 +4,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
-import { filtersToDatabase } from '@/lib/search-filters'
+import { activeFilterCount, filtersToDatabase } from '@/lib/search-filters'
 import { mapSavedSearchRow, type SavedSearch, type SavedSearchRow } from '@/lib/saved-searches'
 
 export type SavedSearchWithMatches = SavedSearch & {
@@ -32,6 +32,14 @@ export async function fetchSavedSearches(
 export async function countNewMatches(
   search: Pick<SavedSearch, 'filters' | 'lastViewedAt'>,
 ): Promise<{ count: number; latestMatchAt: string | null }> {
+  // A saved search with no structured filters would match every talent on
+  // the platform, turning "new matches" into "any new signup". Since the
+  // free-text query is not re-embedded here, skip counting instead of
+  // over-notifying.
+  if (activeFilterCount(search.filters) === 0) {
+    return { count: 0, latestMatchAt: null }
+  }
+
   const service = createServiceClient()
   const { data: matches } = await service.rpc('search_talent_filtered', {
     filters: filtersToDatabase(search.filters),

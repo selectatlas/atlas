@@ -6,7 +6,7 @@ vi.mock('@/lib/rate-limit', () => ({
   enforceRateLimit: vi.fn().mockResolvedValue(null),
 }))
 
-import { PATCH } from './route'
+import { PATCH, POST } from './route'
 import { createClient } from '@/lib/supabase/server'
 import { enforceRateLimit } from '@/lib/rate-limit'
 
@@ -117,5 +117,132 @@ describe('PATCH /api/messages/threads/[id]', () => {
     expect(res.status).toBe(500)
     const data = await res.json()
     expect(data.error).toBe('Failed to update thread')
+  })
+})
+
+const OUTREACH_ID = '22222222-2222-4222-8222-222222222222'
+const JOB_ID = '33333333-3333-4333-8333-333333333333'
+
+function makePostClient({
+  user,
+  isParticipant = true,
+  origin,
+  originLookupThrows = false,
+}: {
+  user: { id: string } | null
+  isParticipant?: boolean
+  origin?: { origin_outreach_id: string | null; origin_job_id: string | null } | null
+  originLookupThrows?: boolean
+}) {
+  const outreachIn = vi.fn().mockResolvedValue({ error: null })
+  const outreachEqTalent = vi.fn(() => ({ in: outreachIn }))
+  const outreachEqId = vi.fn(() => ({ eq: outreachEqTalent }))
+  const outreachUpdate = vi.fn(() => ({ eq: outreachEqId }))
+  const rpc = vi.fn().mockResolvedValue({ data: null, error: null })
+  return {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
+    rpc,
+    from: vi.fn((table: string) => {
+      if (table === 'thread_participants') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: () =>
+                  Promise.resolve({ data: isParticipant ? { profile_id: user?.id } : null }),
+              }),
+            }),
+          }),
+        }
+      }
+      if (table === 'messages') {
+        return {
+          insert: () => ({
+            select: () => ({
+              single: () =>
+                Promise.resolve({
+                  data: { id: 'm1', content: 'hi', kind: 'text', sender_id: user?.id, created_at: new Date().toISOString() },
+                  error: null,
+                }),
+            }),
+          }),
+        }
+      }
+      if (table === 'message_threads') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => {
+                if (originLookupThrows) return Promise.reject(new Error('boom'))
+                return Promise.resolve({ data: origin ?? null })
+              },
+            }),
+          }),
+        }
+      }
+      return { update: outreachUpdate }
+    }),
+    _outreachUpdate: outreachUpdate,
+    _outreachEqId: outreachEqId,
+    _outreachEqTalent: outreachEqTalent,
+  }
+}
+
+function makePostRequest(content = 'Thanks, I would love to chat!') {
+  return new Request(`http://localhost/api/messages/threads/${THREAD_ID}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+}
+
+describe('POST /api/messages/threads/[id] reply status transitions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockEnforceRateLimit.mockResolvedValue(null)
+  })
+
+  it('advances the linked outreach and application when replying in an origin thread', async () => {
+    const client = makePostClient({
+      user: { id: 'talent-1' },
+      origin: { origin_outreach_id: OUTREACH_ID, origin_job_id: JOB_ID },
+    })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makePostRequest(), routeParams)
+    expect(res.status).toBe(201)
+    expect(client._outreachUpdate).toHaveBeenCalledWith({ status: 'responded' })
+    expect(client._outreachEqId).toHaveBeenCalledWith('id', OUTREACH_ID)
+    expect(client._outreachEqTalent).toHaveBeenCalledWith('talent_id', 'talent-1')
+    expect(client.rpc).toHaveBeenCalledWith('mark_application_replied', { p_job_id: JOB_ID })
+  })
+
+  it('skips transitions when the thread has no origin', async () => {
+    const client = makePostClient({ user: { id: 'talent-1' }, origin: { origin_outreach_id: null, origin_job_id: null } })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makePostRequest(), routeParams)
+    expect(res.status).toBe(201)
+    expect(client._outreachUpdate).not.toHaveBeenCalled()
+    expect(client.rpc).not.toHaveBeenCalled()
+  })
+
+  it('still returns 201 when the origin lookup fails', async () => {
+    const client = makePostClient({ user: { id: 'talent-1' }, originLookupThrows: true })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makePostRequest(), routeParams)
+    expect(res.status).toBe(201)
+  })
+
+  it('returns 403 when the caller is not a participant', async () => {
+    const client = makePostClient({ user: { id: 'talent-1' }, isParticipant: false })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makePostRequest(), routeParams)
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    const client = makePostClient({ user: null })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makePostRequest(), routeParams)
+    expect(res.status).toBe(401)
   })
 })

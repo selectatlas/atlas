@@ -148,6 +148,29 @@ describe('PATCH /api/applications/[id]', () => {
     })
   })
 
+  it('emits a declined system card when moving to declined', async () => {
+    const client = makeClient({ user: { id: 'u1' }, application: ownedApplication({ status: 'viewed' }) })
+    mockCreateClient.mockResolvedValue(client)
+    const req = new Request('http://localhost', { method: 'PATCH', body: JSON.stringify({ status: 'declined' }) })
+    const res = await PATCH(req, { params })
+    expect(res.status).toBe(200)
+    expect(client._messageInsert).toHaveBeenCalledWith({
+      thread_id: 'thread-1',
+      sender_id: 'u1',
+      content: 'The role West End Revival went in a different direction this time',
+      kind: 'application_declined',
+    })
+  })
+
+  it('returns 409 when declining a hired applicant', async () => {
+    const client = makeClient({ user: { id: 'u1' }, application: ownedApplication({ status: 'hired' }) })
+    mockCreateClient.mockResolvedValue(client)
+    const req = new Request('http://localhost', { method: 'PATCH', body: JSON.stringify({ status: 'declined' }) })
+    const res = await PATCH(req, { params })
+    expect(res.status).toBe(409)
+    expect(client._messageInsert).not.toHaveBeenCalled()
+  })
+
   it('does not emit a card for non-decision statuses', async () => {
     const client = makeClient({ user: { id: 'u1' }, application: ownedApplication() })
     mockCreateClient.mockResolvedValue(client)

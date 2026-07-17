@@ -39,6 +39,7 @@ function makeClient({
 }) {
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
+    rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
     from: vi.fn((table: string) => {
       if (table === 'profiles') {
         return {

@@ -4,11 +4,12 @@ import { logEvent } from '@/lib/log'
 import { buildSystemMessageContent, type SystemMessageKind } from '@/lib/system-messages'
 import type { ApplicationStatus } from '@/types'
 
-const VALID_STATUSES: ApplicationStatus[] = ['sent', 'viewed', 'responded', 'shortlisted', 'hired']
+const VALID_STATUSES: ApplicationStatus[] = ['sent', 'viewed', 'responded', 'shortlisted', 'hired', 'declined']
 
 const STATUS_SYSTEM_KINDS: Partial<Record<ApplicationStatus, SystemMessageKind>> = {
   shortlisted: 'application_shortlisted',
   hired: 'application_hired',
+  declined: 'application_declined',
 }
 
 export async function PATCH(
@@ -43,6 +44,12 @@ export async function PATCH(
   }
 
   const previousStatus = application.status as ApplicationStatus
+
+  // A hire is final: declining after hiring would silently retract an
+  // accepted offer through a status flip.
+  if (status === 'declined' && previousStatus === 'hired') {
+    return Response.json({ error: 'Cannot decline a hired applicant' }, { status: 409 })
+  }
 
   const { data: updated, error } = await supabase
     .from('applications')

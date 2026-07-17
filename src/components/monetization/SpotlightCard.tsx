@@ -48,7 +48,7 @@ export function SpotlightCard() {
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-primary transition-all"
+              className="h-full rounded-full bg-primary transition-[width] duration-[var(--duration-base)] ease-[var(--ease-out)]"
               style={{ width: `${preview.percentRemaining}%` }}
             />
           </div>

@@ -31,7 +31,7 @@ import type { Profile, TalentSkill, Credit, PortfolioItem, ApplicationStatus, Ou
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const APP_STATUS_VARIANTS: Record<ApplicationStatus, 'outline' | 'secondary' | 'default'> = {
-  sent: 'outline', viewed: 'secondary', responded: 'default', shortlisted: 'default', hired: 'default',
+  sent: 'outline', viewed: 'secondary', responded: 'default', shortlisted: 'default', hired: 'default', declined: 'outline',
 }
 const OUTREACH_STATUS_VARIANTS: Record<OutreachStatus, 'outline' | 'secondary' | 'default'> = {
   draft: 'outline', sent: 'secondary', viewed: 'default', responded: 'default',
@@ -175,7 +175,7 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
     supabase.from('profile_likes').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('hirer_id', userId),
     supabase.from('jobs').select('id, title, category, location, status, created_at').eq('hirer_id', userId).order('created_at', { ascending: false }).limit(4),
-    supabase.from('shortlists').select('talent_id, created_at, profiles!talent_id(full_name, avatar_url, talent_skills(skill))').eq('hirer_id', userId).order('created_at', { ascending: false }).limit(4),
+    supabase.from('shortlists').select('talent_id, created_at, profiles!talent_id!inner(full_name, avatar_url, talent_skills(skill))').eq('hirer_id', userId).neq('profiles.profile_visibility', 'private').order('created_at', { ascending: false }).limit(4),
     getRecentThreads(supabase, userId),
   ])
 
@@ -286,7 +286,7 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
 }
 
 async function TalentDashboard({ userId, supabase }: { userId: string; supabase: SupabaseClient }) {
-  const [profileResult, creditsResult, portfolioResult, attributesResult, appsResult, outreachResult, recentThreads] = await Promise.all([
+  const [profileResult, creditsResult, portfolioResult, attributesResult, appsResult, outreachResult, recentThreads, statsResult] = await Promise.all([
     supabase.from('profiles').select(PUBLIC_PROFILE_WITH_SKILLS).eq('id', userId).single(),
     supabase.from('credits').select('*').eq('profile_id', userId),
     supabase.from('portfolio_items').select('*').eq('profile_id', userId),
@@ -294,6 +294,7 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
     supabase.from('applications').select('id, status, created_at, jobs!job_id(title, category, location)').eq('talent_id', userId).order('created_at', { ascending: false }).limit(5),
     supabase.from('outreach').select('id, message, status, created_at, hirer_id, profiles!hirer_id(full_name)').eq('talent_id', userId).order('created_at', { ascending: false }).limit(5),
     getRecentThreads(supabase, userId),
+    supabase.from('talent_stats').select('views_count, likes_count, shortlist_count').eq('profile_id', userId).maybeSingle(),
   ])
 
   const baseProfile = profileResult.data as unknown as (Profile & { talent_skills: TalentSkill[] }) | null
@@ -330,6 +331,14 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
     })),
   )
 
+  // Hirer interest signals from the talent_stats view - the talent-facing
+  // half of likes/views/shortlists that hirers generate.
+  const interestStats = {
+    views_count: (statsResult.data?.views_count as number | null) ?? 0,
+    likes_count: (statsResult.data?.likes_count as number | null) ?? 0,
+    shortlist_count: (statsResult.data?.shortlist_count as number | null) ?? 0,
+  }
+
   return (
     <div className="space-y-8 py-2">
       <DashboardHeader
@@ -358,10 +367,13 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
         <ProfileCompletenessCard profile={profile} attributes={talentAttributes} editHref="/profile" />
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard value={applications.length} label="Applications" />
         <StatCard value={outreachItems.length} label="Inbound outreach" />
         <StatCard value={recentThreads.length} label="Open threads" />
+        <StatCard value={interestStats.views_count} label="Profile views" />
+        <StatCard value={interestStats.likes_count} label="Likes" />
+        <StatCard value={interestStats.shortlist_count} label="Shortlisted by" />
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">

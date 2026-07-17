@@ -26,7 +26,7 @@ export function pipelineStageIndex(stage: PipelineStage): number {
   return PIPELINE_STEPS.findIndex(step => step.stage === stage)
 }
 
-export type ApplicantTab = 'all' | 'viewed' | 'responded' | 'shortlisted' | 'hired'
+export type ApplicantTab = 'all' | 'viewed' | 'responded' | 'shortlisted' | 'hired' | 'declined'
 
 export const APPLICANT_TABS: ReadonlyArray<{ tab: ApplicantTab; label: string }> = [
   { tab: 'all', label: 'All' },
@@ -34,6 +34,7 @@ export const APPLICANT_TABS: ReadonlyArray<{ tab: ApplicantTab; label: string }>
   { tab: 'responded', label: 'Responded' },
   { tab: 'shortlisted', label: 'Shortlisted' },
   { tab: 'hired', label: 'Hired' },
+  { tab: 'declined', label: 'Declined' },
 ]
 
 export function applicationMatchesTab(status: ApplicationStatus, tab: ApplicantTab): boolean {
@@ -48,9 +49,10 @@ export function countApplicantsByTab(statuses: ApplicationStatus[]): Record<Appl
     responded: 0,
     shortlisted: 0,
     hired: 0,
+    declined: 0,
   }
   for (const status of statuses) {
-    if (status === 'viewed' || status === 'responded' || status === 'shortlisted' || status === 'hired') {
+    if (status !== 'sent') {
       counts[status] += 1
     }
   }
@@ -63,4 +65,5 @@ export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
   responded: 'Responded',
   shortlisted: 'Shortlisted',
   hired: 'Hired',
+  declined: 'Declined',
 }

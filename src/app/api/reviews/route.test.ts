@@ -29,12 +29,14 @@ const TALENT_ID = '22222222-2222-4222-8222-222222222222'
 function makeClient({
   user,
   accountType,
-  hired = true,
+  hiredCount = 1,
+  existingReviews = 0,
   insertError = null,
 }: {
   user: { id: string } | null
   accountType: string | null
-  hired?: boolean
+  hiredCount?: number
+  existingReviews?: number
   insertError?: { code: string } | null
 }) {
   const insert = vi.fn(() => ({
@@ -48,6 +50,8 @@ function makeClient({
   return {
     insert,
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
+    rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
+    // is_caller_suspended check in getAuthenticatedCaller
     from: vi.fn((table: string) => {
       if (table === 'profiles') {
         return {
@@ -59,20 +63,26 @@ function makeClient({
         }
       }
       if (table === 'applications') {
+        // Head count of hired applications with this talent.
         return {
           select: () => ({
             eq: () => ({
               eq: () => ({
-                eq: () => ({
-                  limit: () => Promise.resolve({ data: hired ? [{ id: 'app-1' }] : [] }),
-                }),
+                eq: () => Promise.resolve({ count: hiredCount }),
               }),
             }),
           }),
         }
       }
-      // talent_reviews
-      return { insert }
+      // talent_reviews: head count of the hirer's existing reviews + insert.
+      return {
+        insert,
+        select: () => ({
+          eq: () => ({
+            eq: () => Promise.resolve({ count: existingReviews }),
+          }),
+        }),
+      }
     }),
   }
 }
@@ -114,11 +124,27 @@ describe('POST /api/reviews', () => {
   })
 
   it('returns 403 (never 404) when the hirer has no hired application with the talent', async () => {
-    const client = makeClient({ user: { id: 'u1' }, accountType: 'hirer', hired: false })
+    const client = makeClient({ user: { id: 'u1' }, accountType: 'hirer', hiredCount: 0 })
     mockCreateClient.mockResolvedValue(client)
     const res = await POST(makeRequest(VALID_BODY))
     expect(res.status).toBe(403)
     expect(client.insert).not.toHaveBeenCalled()
+  })
+
+  it('returns 409 when every hired booking already has a review (no rating stacking)', async () => {
+    const client = makeClient({ user: { id: 'u1' }, accountType: 'hirer', hiredCount: 1, existingReviews: 1 })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makeRequest(VALID_BODY))
+    expect(res.status).toBe(409)
+    expect(client.insert).not.toHaveBeenCalled()
+  })
+
+  it('allows another review after a repeat hire', async () => {
+    const client = makeClient({ user: { id: 'u1' }, accountType: 'hirer', hiredCount: 2, existingReviews: 1 })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makeRequest(VALID_BODY))
+    expect(res.status).toBe(201)
+    expect(client.insert).toHaveBeenCalled()
   })
 
   it('returns 400 for malformed JSON and invalid fields', async () => {

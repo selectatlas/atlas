@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { Camera, Clapperboard, Megaphone, Music2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { resolveCoverUrl } from '@/lib/job-cover'
 import type { Category } from '@/types'
 
 // Category-tinted gradient shown whenever a job has no cover image, so the
@@ -24,11 +25,14 @@ interface JobCoverProps {
 export function JobCover({ coverUrl, category, title, sizes, className, children }: JobCoverProps) {
   const fallback = FALLBACK_STYLES[category]
   const FallbackIcon = fallback.icon
+  // cover_url is hirer-writable via RLS, so an arbitrary value must degrade
+  // to the gradient instead of crashing next/image for every viewer.
+  const src = resolveCoverUrl(coverUrl)
   return (
     <div className={cn('relative w-full overflow-hidden bg-muted', className)}>
-      {coverUrl ? (
+      {src ? (
         <Image
-          src={coverUrl}
+          src={src}
           alt={`Cover for ${title}`}
           fill
           sizes={sizes}

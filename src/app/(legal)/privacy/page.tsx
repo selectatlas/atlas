@@ -149,8 +149,8 @@ export default function PrivacyPage() {
         <h2 className={headingClass}>11. Contact</h2>
         <p className={bodyClass}>
           Privacy questions and rights requests can be sent to{' '}
-          <a href="mailto:hello@flowconverts.com" className="text-foreground underline underline-offset-2">
-            hello@flowconverts.com
+          <a href="mailto:hello@atlas.select" className="text-foreground underline underline-offset-2">
+            hello@atlas.select
           </a>.
         </p>
       </section>

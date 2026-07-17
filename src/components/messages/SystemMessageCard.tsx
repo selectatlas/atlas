@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowUpRight, BadgeCheck, FileText, Send, Star, type LucideIcon } from 'lucide-react'
+import { Archive, ArrowUpRight, BadgeCheck, CircleSlash, FileText, PenLine, Send, Star, type LucideIcon } from 'lucide-react'
 import { useAppShell } from '@/components/layout/app-shell-context'
 import { formatMessageTime, type ThreadMessage } from '@/lib/messages-view'
 import { systemCardTitle, type SystemMessageKind } from '@/lib/system-messages'
@@ -11,6 +11,9 @@ const KIND_ICONS: Record<SystemMessageKind, LucideIcon> = {
   outreach_sent: Send,
   application_shortlisted: Star,
   application_hired: BadgeCheck,
+  application_declined: CircleSlash,
+  review_published: PenLine,
+  job_closed: Archive,
 }
 
 // Inline system card: thread events (application, outreach, shortlist,

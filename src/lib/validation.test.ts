@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseJsonBody, isUuid, cleanString, cleanOptionalString, cleanStringArray } from './validation'
+import { parseJsonBody, isUuid, cleanString, cleanOptionalString, cleanStringArray, cleanOptionalDate } from './validation'
 
 function jsonRequest(body: string) {
   return new Request('http://localhost/test', { method: 'POST', body })
@@ -92,5 +92,22 @@ describe('cleanStringArray', () => {
     expect(cleanStringArray(['x'.repeat(11)], 5, 10)).toBeNull()
     expect(cleanStringArray([42], 5, 10)).toBeNull()
     expect(cleanStringArray('not-array', 5, 10)).toBeNull()
+  })
+})
+
+describe('cleanOptionalDate', () => {
+  it('accepts a valid date and absent values', () => {
+    expect(cleanOptionalDate('2026-08-16')).toEqual({ ok: true, value: '2026-08-16' })
+    expect(cleanOptionalDate(undefined)).toEqual({ ok: true, value: null })
+    expect(cleanOptionalDate(null)).toEqual({ ok: true, value: null })
+    expect(cleanOptionalDate('')).toEqual({ ok: true, value: null })
+  })
+
+  it('rejects malformed or impossible dates and non-strings', () => {
+    expect(cleanOptionalDate('16/08/2026').ok).toBe(false)
+    expect(cleanOptionalDate('2026-8-16').ok).toBe(false)
+    expect(cleanOptionalDate('2026-02-30').ok).toBe(false)
+    expect(cleanOptionalDate('2026-13-01').ok).toBe(false)
+    expect(cleanOptionalDate(20260816).ok).toBe(false)
   })
 })

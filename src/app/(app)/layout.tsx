@@ -8,6 +8,7 @@ import { AppShellProvider } from '@/components/layout/app-shell-context'
 import { AppTopBar } from '@/components/layout/AppTopBar'
 import { CommandPalette } from '@/components/layout/CommandPalette'
 import { InboxProvider } from '@/components/layout/inbox-context'
+import { LegalFooterLinks } from '@/components/layout/LegalFooterLinks'
 
 // Single persistent shell for every authenticated surface. Because all authed
 // routes share this one layout, the sidebar never remounts on navigation -
@@ -18,13 +19,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!userId && !isLocalDemo) redirect('/login')
 
   if (userId && !isLocalDemo && !isPlatformAdmin) {
+    // suspended_at is not column-granted to authenticated sessions (005/013),
+    // so selecting it here silently errors and never redirects. The
+    // security-definer function from migration 022 is the supported check.
     const supabase = await createClient()
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('suspended_at')
-      .eq('id', userId)
-      .maybeSingle()
-    if (profile?.suspended_at) redirect('/suspended')
+    const { data: suspended } = await supabase.rpc('is_caller_suspended')
+    if (suspended === true) redirect('/suspended')
   }
 
   // Platform admins default to the hirer shell but can flip to the talent
@@ -47,6 +47,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <main className="flex-1 px-4 pb-24 pt-6 sm:px-6 md:px-8 md:pb-8 lg:px-10">
               <div className="mx-auto w-full max-w-[1440px]">
                 {children}
+                <footer className="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-6 text-xs text-muted-foreground">
+                  <p>© 2026 Atlas</p>
+                  <LegalFooterLinks className="justify-start" />
+                </footer>
               </div>
             </main>
           </div>
