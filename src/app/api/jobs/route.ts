@@ -1,6 +1,10 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAuthenticatedCaller } from '@/lib/access'
+import { createServiceClient } from '@/lib/supabase/server'
 import { embedJob } from '@/lib/job-embedding'
-import { parseBudgetRange, parseDiscoverParams, fetchDiscoverJobs, MAX_EXCLUDED_PASSES } from '@/lib/job-discovery'
+import { embedText } from '@/lib/openai'
+import { parseBudgetRange, parseDiscoverParams, fetchDiscoverJobs, MAX_EXCLUDED_PASSES, type DiscoverFilters, type JobFeedItem } from '@/lib/job-discovery'
+import { normalizeMatchScore } from '@/lib/matching'
 import { parseJsonBody, cleanString, cleanOptionalString, cleanStringArray, cleanOptionalDate, badRequest } from '@/lib/validation'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
@@ -34,6 +38,16 @@ export async function GET(request: Request) {
     excludeJobIds = (passes ?? []).map(pass => pass.job_id as string)
   }
 
+  // Relevance sort with a search term = semantic ranking: embed the query
+  // and rank by vector similarity. Falls through to the keyset feed (FTS,
+  // newest-first) if embedding or the RPC fails, so search never breaks.
+  if (parsed.filters.sort === 'relevance' && parsed.filters.search && !parsed.countOnly && !parsed.cursor) {
+    const quotaLimited = await enforceAiQuota(user.id)
+    if (quotaLimited) return quotaLimited
+    const semantic = await runSemanticJobSearch(supabase, parsed.filters, excludeJobIds, user.id)
+    if (semantic) return Response.json(semantic)
+  }
+
   const result = await fetchDiscoverJobs(supabase, parsed.filters, {
     cursor: parsed.cursor,
     excludeJobIds,
@@ -45,6 +59,65 @@ export async function GET(request: Request) {
   }
 
   return Response.json(result.page)
+}
+
+// Semantic job search: top-N by cosine similarity with structured filters
+// applied in SQL. Returns null on any failure so the caller can fall back.
+async function runSemanticJobSearch(
+  supabase: SupabaseClient,
+  filters: DiscoverFilters,
+  excludeJobIds: string[],
+  userId: string,
+) {
+  let queryEmbedding: number[]
+  try {
+    queryEmbedding = await embedText(filters.search)
+  } catch (err) {
+    logEvent('error', 'jobs_semantic_embed_error', {
+      user_id: userId,
+      message: err instanceof Error ? err.message.slice(0, 200) : 'unknown',
+    })
+    return null
+  }
+
+  const service = createServiceClient()
+  const { data: matches, error } = await service.rpc('match_jobs_filtered', {
+    query_embedding: queryEmbedding,
+    filters: {
+      ...(filters.categories.length > 0 ? { categories: filters.categories } : {}),
+      ...(filters.workType !== 'all' ? { work_type: filters.workType } : {}),
+      ...(filters.location ? { location: filters.location } : {}),
+      ...(filters.budgetBand !== 'any' ? { rate: filters.budgetBand } : {}),
+    },
+    exclude_ids: excludeJobIds,
+    match_count: 50,
+  })
+  if (error) {
+    logEvent('error', 'jobs_semantic_rpc_error', { user_id: userId, code: error.code ?? null })
+    return null
+  }
+
+  const rows = (matches ?? []) as Array<{ job_id: string; similarity: number }>
+  if (rows.length === 0) return { jobs: [], nextCursor: null, total: 0 }
+
+  // Fetch through the caller's client so RLS still applies to the job rows.
+  const { data: jobRows, error: jobsError } = await supabase
+    .from('jobs')
+    .select('*, hirer:profiles!hirer_id(full_name)')
+    .in('id', rows.map(row => row.job_id))
+    .eq('status', 'open')
+    .is('removed_at', null)
+  if (jobsError) {
+    logEvent('error', 'jobs_semantic_fetch_error', { user_id: userId, code: jobsError.code ?? null })
+    return null
+  }
+
+  const similarity = new Map(rows.map(row => [row.job_id, row.similarity]))
+  const jobs = ((jobRows ?? []) as JobFeedItem[])
+    .sort((a, b) => (similarity.get(b.id) ?? 0) - (similarity.get(a.id) ?? 0))
+    .map(job => ({ ...job, match_score: normalizeMatchScore(similarity.get(job.id) ?? 0) }))
+
+  return { jobs, nextCursor: null, total: jobs.length }
 }
 
 export async function POST(request: Request) {

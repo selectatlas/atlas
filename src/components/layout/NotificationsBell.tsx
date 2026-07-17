@@ -12,7 +12,7 @@ import { isActiveLocalDemoMode } from '@/lib/demo-mode'
 import type { InboxNotification } from '@/lib/inbox'
 
 const BELL_CLASSES =
-  'relative inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+  'relative inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-[color,background-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-muted hover:text-foreground active:scale-[0.97]'
 
 function CountBadge({ count }: { count: number }) {
   if (count <= 0) return null

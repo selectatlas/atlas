@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEMO_JOBS, DEMO_PROFILE } from '@/lib/demo-data'
-import { VERIFICATION_MATCH_BOOST, buildApplicationNote, getJobMatchReasons, getJobMeta, rankingSimilarity } from '@/lib/matching'
+import { VERIFICATION_MATCH_BOOST, buildApplicationNote, getJobMatchReasons, getJobMeta, normalizeMatchScore, rankingSimilarity } from '@/lib/matching'
 
 describe('talent job matching', () => {
   it('explains the strongest fit signals for a job', () => {
@@ -44,5 +44,17 @@ describe('rankingSimilarity', () => {
   it('keeps the boost small enough not to outrank a clearly better match', () => {
     // A verified talent should win ties, not beat a materially stronger match.
     expect(rankingSimilarity(0.5, '2026-01-01T00:00:00Z')).toBeLessThan(rankingSimilarity(0.6, null))
+  })
+})
+
+describe('normalizeMatchScore', () => {
+  it('scales typical cosine similarities into the display band', () => {
+    expect(normalizeMatchScore(0.6)).toBe(72)
+    expect(normalizeMatchScore(0.75)).toBe(90)
+  })
+
+  it('clamps to 55-98 at the extremes', () => {
+    expect(normalizeMatchScore(0)).toBe(55)
+    expect(normalizeMatchScore(1)).toBe(98)
   })
 })

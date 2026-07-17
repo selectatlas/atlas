@@ -115,7 +115,7 @@ export function AppTopBar() {
               <button
                 type="button"
                 onClick={openCommandPalette}
-                className="absolute top-1/2 right-2 hidden -translate-y-1/2 items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground xl:flex"
+                className="absolute top-1/2 right-2 hidden -translate-y-1/2 items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-foreground active:opacity-60 xl:flex"
                 aria-label="Open command palette"
               >
                 <Command className="size-3" />

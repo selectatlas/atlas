@@ -5,6 +5,7 @@ import Image from 'next/image'
 import type { Profile, TalentSkill } from '@/types'
 import { nameInitial } from '@/lib/display'
 import { CATEGORY_LABELS } from '@/lib/skills'
+import { useReducedMotion } from '@/lib/use-reduced-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
@@ -43,6 +44,7 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
   const startTime = useRef(0)
   const cardRef = useRef<HTMLDivElement>(null)
   const pointerId = useRef<number | null>(null)
+  const reducedMotion = useReducedMotion()
 
   const current = results[currentIndex]
   const next = results[currentIndex + 1]
@@ -134,7 +136,7 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
     )
   }
 
-  const rotation = dragging ? dragX * 0.08 : 0
+  const rotation = dragging && !reducedMotion ? dragX * 0.08 : 0
   const isRight = dragX > 40
   const isLeft = dragX < -40
 
@@ -156,7 +158,7 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
         className="absolute inset-0 bg-card border rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing shadow-2xl"
         style={{
           transform: `translateX(${dragX}px) rotate(${rotation}deg)`,
-          transition: dragging ? 'none' : 'transform 0.3s ease',
+          transition: dragging || reducedMotion ? 'none' : 'transform var(--duration-base) var(--ease-out)',
           zIndex: 2,
           touchAction: 'none',
         }}
@@ -192,7 +194,7 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
           size="icon-lg"
           onClick={() => { setLastAction({ type: 'pass', talentId: current.profile.id, talent: current.profile }); onPass(current.profile.id); advance() }}
           aria-label="Pass"
-          className="size-14 rounded-full bg-muted text-xl text-muted-foreground shadow-lg hover:text-foreground"
+          className="size-14 rounded-full bg-muted text-xl text-muted-foreground shadow-sm hover:text-foreground"
         >
           ✕
         </Button>
@@ -229,7 +231,7 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
           size="icon-lg"
           onClick={() => { setLastAction({ type: 'contact', talentId: current.profile.id, talent: current.profile }); onContact(current.profile); advance() }}
           aria-label="Contact"
-          className="size-14 rounded-full bg-accent text-xl text-accent-foreground shadow-lg hover:bg-accent/80"
+          className="size-14 rounded-full bg-accent text-xl text-accent-foreground shadow-sm hover:bg-accent/80"
         >
           ✓
         </Button>

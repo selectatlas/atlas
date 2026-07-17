@@ -14,6 +14,14 @@ export function rankingSimilarity(similarity: number, verifiedAt: string | null 
   return similarity + (verifiedAt ? VERIFICATION_MATCH_BOOST : 0)
 }
 
+// Cosine similarity for text-embedding-3-small typically lands at 0.3-0.85
+// for relevant matches. Scale to 55-98% so displayed scores feel meaningful
+// without being misleadingly high. Display only — never rank on this (the
+// clamps collapse ordering at the bounds).
+export function normalizeMatchScore(similarity: number): number {
+  return Math.min(98, Math.max(55, Math.round(similarity * 120)))
+}
+
 function normalise(value: string | null | undefined) {
   return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 }

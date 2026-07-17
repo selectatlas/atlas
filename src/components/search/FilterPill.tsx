@@ -31,7 +31,7 @@ export function FilterPill({ definition, filters, onChange }: { definition: Tale
         {definition.label}
         <ChevronDown className="size-3 transition-transform group-open:rotate-180" />
       </summary>
-      <div className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2rem))] space-y-4 rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-xl">
+      <div className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2rem))] space-y-4 rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-md">
         <FilterSection definition={definition} filters={draft} onChange={next => setDraftValue(next[definition.key as keyof SearchFilters])} compact />
         <Button
           type="button"

@@ -182,7 +182,7 @@ export function LandingPage() {
           <article className="landing-bento__cell landing-bento__cell--wide landing-bento__cell--ink">
             <div className="landing-bento__copy">
               <h3>Search like you brief</h3>
-              <p>Ask for the combination that matters — not the closest job title.</p>
+              <p>Ask for the combination that matters - not the closest job title.</p>
             </div>
             <div className="landing-bento__visual" aria-hidden="true">
               <div className="landing-bento-search">
@@ -269,7 +269,7 @@ export function LandingPage() {
                 <ArrowRight className="landing-bento-flow__arrow" aria-hidden="true" />
                 <div className="landing-bento-flow__stage landing-bento-flow__stage--message">
                   <span>Reach out</span>
-                  <p>“Hi Maya — we’re casting a two-day commercial shoot in March and your movement work stood out…”</p>
+                  <p>“Hi Maya - we’re casting a two-day commercial shoot in March and your movement work stood out…”</p>
                 </div>
               </div>
             </div>
@@ -280,7 +280,7 @@ export function LandingPage() {
       <section className="landing-outcomes" aria-label="What Atlas is built to do">
         <div className="landing-outcome">
           <h3>Specific in, specific out</h3>
-          <p>Search by the details that make a brief specific — language, movement, look, availability.</p>
+          <p>Search by the details that make a brief specific - language, movement, look, availability.</p>
         </div>
         <div className="landing-outcome">
           <h3>Explainable matches</h3>

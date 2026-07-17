@@ -12,7 +12,10 @@ export const DISCOVER_PAGE_SIZE = 24
 // beyond this the oldest passes may resurface, which is acceptable.
 export const MAX_EXCLUDED_PASSES = 500
 
-export const JOB_SORTS = ['newest', 'rate_high', 'rate_low'] as const
+// 'relevance' is semantic ranking: the route embeds the query and ranks by
+// vector similarity (no cursor). Everything else runs the keyset feed, and
+// relevance without a search term degrades to newest.
+export const JOB_SORTS = ['newest', 'relevance', 'rate_high', 'rate_low'] as const
 export type JobSort = (typeof JOB_SORTS)[number]
 
 export const WORK_TYPE_FILTERS = ['all', 'in_person', 'remote', 'hybrid'] as const
@@ -164,6 +167,7 @@ export function cursorPredicate(sort: JobSort, cursor: DiscoverCursor): string {
 function sortColumn(sort: JobSort): { column: 'created_at' | 'budget_max' | 'budget_min'; ascending: boolean } {
   if (sort === 'rate_high') return { column: 'budget_max', ascending: false }
   if (sort === 'rate_low') return { column: 'budget_min', ascending: true }
+  // 'newest', and 'relevance' when the semantic path didn't run
   return { column: 'created_at', ascending: false }
 }
 
@@ -172,6 +176,8 @@ export interface DiscoverQueryOptions {
   excludeJobIds?: string[]
   /** Only compute the matching-row count (used by the filter sheet's live count). */
   countOnly?: boolean
+  /** Only jobs created after this ISO timestamp (used for alert new-match counts). */
+  createdAfter?: string
 }
 
 export async function fetchDiscoverJobs(
@@ -197,7 +203,7 @@ async function runDiscoverQuery(
   options: DiscoverQueryOptions,
   searchMode: 'fts' | 'ilike',
 ): Promise<{ ok: true; page: DiscoverPage } | { ok: false; code: string | null }> {
-  const { cursor, excludeJobIds = [], countOnly = false } = options
+  const { cursor, excludeJobIds = [], countOnly = false, createdAfter } = options
   const { column, ascending } = sortColumn(filters.sort)
 
   let query = countOnly
@@ -229,6 +235,8 @@ async function runDiscoverQuery(
   if (excludeJobIds.length > 0) {
     query = query.not('id', 'in', `(${excludeJobIds.join(',')})`)
   }
+
+  if (createdAfter) query = query.gt('created_at', createdAfter)
 
   if (countOnly) {
     const { error, count } = await query

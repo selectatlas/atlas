@@ -93,6 +93,13 @@ describe('parseDiscoverParams', () => {
     expect(parseDiscoverParams(new URLSearchParams({ category: 'dancer,astronaut' })).ok).toBe(false)
   })
 
+  it('accepts the relevance sort', () => {
+    expect(parseDiscoverParams(new URLSearchParams({ sort: 'relevance', q: 'ballet' }))).toMatchObject({
+      ok: true,
+      filters: { sort: 'relevance', search: 'ballet' },
+    })
+  })
+
   it('parses the count-only flag', () => {
     expect(parseDiscoverParams(new URLSearchParams())).toMatchObject({ ok: true, countOnly: false })
     expect(parseDiscoverParams(new URLSearchParams({ count: '1' }))).toMatchObject({ ok: true, countOnly: true })

@@ -113,7 +113,7 @@ export function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Review open reports first — they surface harassment, scams, and impersonation.</p>
+            <p>Review open reports first - they surface harassment, scams, and impersonation.</p>
             <Link href="/admin/reports" className="inline-flex items-center gap-1 text-foreground underline-offset-4 hover:underline">
               Open reports queue
               <AlertTriangle className="size-3.5" />

@@ -172,7 +172,7 @@ export function AdminAddJobPanel({ onCreated }: { onCreated?: () => void }) {
                 {skills.map(skill => (
                   <Badge key={skill} variant="secondary" className="gap-1 text-xs">
                     {skill}
-                    <button type="button" className="ml-0.5" onClick={() => removeSkill(skill)}>✕</button>
+                    <button type="button" className="ml-0.5 active:opacity-60" onClick={() => removeSkill(skill)}>✕</button>
                   </Badge>
                 ))}
               </div>

@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { BriefcaseBusiness, Check, Layers, LayoutGrid, List, MapPin, SlidersHorizontal, X } from 'lucide-react'
+import { Bell, BellPlus, BriefcaseBusiness, Check, Layers, LayoutGrid, List, MapPin, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isLocalDemoMode } from '@/lib/demo-mode'
 import { DEMO_APPLICATIONS_STORAGE_KEY, DEMO_JOBS, DEMO_PROFILE, type DemoApplication } from '@/lib/demo-data'
@@ -10,6 +10,7 @@ import { CATEGORY_LABELS } from '@/lib/skills'
 import { BUDGET_BANDS, JOB_SORTS, WORK_TYPE_FILTERS, parseBudgetRange, type BudgetBand, type JobSort, type WorkTypeFilter } from '@/lib/job-discovery'
 import { buildApplicationNote, getJobMatchReasons, getJobMeta } from '@/lib/matching'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
+import { useReducedMotion } from '@/lib/use-reduced-motion'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { PageShell } from '@/components/layout/PageShell'
@@ -19,10 +20,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ApplicationPreviewDialog } from '@/components/talent/ApplicationPreviewDialog'
 import { JobCover } from '@/components/talent/JobCover'
 import { JobFilterSheet, type JobFilterValues } from '@/components/talent/JobFilterSheet'
+import type { JobAlert } from '@/lib/job-alerts'
 import posthog from 'posthog-js'
 import type { Job, Category, Profile, TalentSkill } from '@/types'
 
-type JobResult = Job & { hirer?: { full_name: string } | null }
+type JobResult = Job & { hirer?: { full_name: string } | null; match_score?: number | null }
 type JobFeedPage = { jobs: JobResult[]; nextCursor: string | null; total: number | null }
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[]
@@ -42,6 +44,7 @@ const BUDGET_OPTIONS: Record<BudgetBand, string> = {
 }
 
 const SORT_OPTIONS: Record<JobSort, string> = {
+  relevance: 'Best match',
   newest: 'Newest first',
   rate_high: 'Rate: high to low',
   rate_low: 'Rate: low to high',
@@ -70,6 +73,9 @@ function DiscoverPageContent() {
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [baselineCount, setBaselineCount] = useState<number | null>(null)
+  const [forYouJobs, setForYouJobs] = useState<JobResult[] | null>(null)
+  const [alerts, setAlerts] = useState<JobAlert[]>([])
+  const [savingAlert, setSavingAlert] = useState(false)
   const [passed, setPassed] = useState<Set<string>>(new Set())
   const [applied, setApplied] = useState<Set<string>>(new Set())
   const [applyingId, setApplyingId] = useState<string | null>(null)
@@ -77,7 +83,9 @@ function DiscoverPageContent() {
   // Filters and sort live in the URL so results are shareable, survive
   // reloads, and drive the server-side feed query.
   const search = searchParams.get('q') ?? ''
-  const sort = normalizeChoice(searchParams.get('sort'), JOB_SORTS, 'newest')
+  // Searching defaults to semantic "best match" ranking; browsing to newest.
+  const defaultSort: JobSort = search.trim() ? 'relevance' : 'newest'
+  const sort = normalizeChoice(searchParams.get('sort'), JOB_SORTS, defaultSort)
   const workType = normalizeChoice(searchParams.get('work'), WORK_TYPE_FILTERS, 'all')
   const budgetBand = normalizeChoice(searchParams.get('rate'), BUDGET_BANDS, 'any')
   const locationFilter = searchParams.get('loc') ?? 'all'
@@ -87,6 +95,7 @@ function DiscoverPageContent() {
   const selectedCat: 'mine' | 'all' | Category =
     catParam === 'all' ? 'all' : ALL_CATEGORIES.includes(catParam as Category) ? (catParam as Category) : 'mine'
   const requestIdRef = useRef(0)
+  const reducedMotion = useReducedMotion()
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [applicationJob, setApplicationJob] = useState<JobResult | null>(null)
@@ -142,6 +151,17 @@ function DiscoverPageContent() {
       }
       setCategoryCounts(counts)
       setLoading(false)
+
+      // Ranked stack + saved alerts load after the page is interactive;
+      // neither blocks the first paint and failures degrade silently.
+      void fetch('/api/jobs/for-you')
+        .then(res => (res.ok ? (res.json() as Promise<{ jobs: JobResult[] }>) : null))
+        .then(data => { if (data) setForYouJobs(data.jobs) })
+        .catch(() => {})
+      void fetch('/api/jobs/alerts')
+        .then(res => (res.ok ? (res.json() as Promise<{ alerts: JobAlert[] }>) : null))
+        .then(data => { if (data) setAlerts(data.alerts) })
+        .catch(() => {})
     }
     load()
   }, [router])
@@ -255,12 +275,13 @@ function DiscoverPageContent() {
 
     filtered = [...filtered].sort((a, b) => {
       switch (sort) {
-        case 'newest':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         case 'rate_high':
           return (parseBudgetRange(b.budget).max ?? 0) - (parseBudgetRange(a.budget).max ?? 0)
         case 'rate_low':
           return (parseBudgetRange(a.budget).min ?? 0) - (parseBudgetRange(b.budget).min ?? 0)
+        default:
+          // 'newest', and 'relevance' (demo mode has no embeddings to rank on)
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       }
     })
 
@@ -275,6 +296,14 @@ function DiscoverPageContent() {
   }, [categoryCounts])
   // Talent with no skills yet has no "For you" scope; the All chip is their reality.
   const displayCat = selectedCat === 'mine' && talentCategories.length === 0 ? 'all' : selectedCat
+  // "Best match" is semantic ranking of a search; without a search term it
+  // has nothing to rank, so hide it from the sort menu.
+  const sortOptions = useMemo<Record<string, string>>(
+    () => (search.trim()
+      ? SORT_OPTIONS
+      : Object.fromEntries(Object.entries(SORT_OPTIONS).filter(([key]) => key !== 'relevance'))),
+    [search],
+  )
 
   function applyFilterParams(update: (params: URLSearchParams) => void) {
     const params = new URLSearchParams(searchParams.toString())
@@ -303,7 +332,7 @@ function DiscoverPageContent() {
       if (values.workType === 'all') params.delete('work'); else params.set('work', values.workType)
       if (values.location === 'all') params.delete('loc'); else params.set('loc', values.location)
       if (values.budgetBand === 'any') params.delete('rate'); else params.set('rate', values.budgetBand)
-      if (values.sort === 'newest') params.delete('sort'); else params.set('sort', values.sort)
+      if (values.sort === defaultSort) params.delete('sort'); else params.set('sort', values.sort)
     })
   }
 
@@ -347,6 +376,64 @@ function DiscoverPageContent() {
       .catch(() => {})
     return () => { cancelled = true }
   }, [loading, total, hasActiveFilters, effectiveCategories, search])
+
+  // Save the current search + filters as a job alert (API-shaped params, so
+  // the stored filters double as the alert's count query).
+  async function saveCurrentSearch() {
+    if (savingAlert || isLocalDemoMode()) return
+    setSavingAlert(true)
+    try {
+      const filters: Record<string, string> = {}
+      if (effectiveCategories.length > 0) filters.category = effectiveCategories.join(',')
+      if (workType !== 'all') filters.work = workType
+      if (locationFilter !== 'all') filters.loc = locationFilter
+      if (budgetBand !== 'any') filters.rate = budgetBand
+      const name = (
+        search.trim() ||
+        [
+          workType !== 'all' ? WORK_TYPE_OPTIONS[workType] : null,
+          locationFilter !== 'all' ? locationFilter : null,
+          budgetBand !== 'any' ? BUDGET_OPTIONS[budgetBand] : null,
+        ].filter(Boolean).join(' · ') ||
+        'All roles'
+      ).slice(0, 80)
+      const res = await fetch('/api/jobs/alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, query: search.trim(), filters }),
+      })
+      if (res.ok) {
+        const data = await res.json() as { alert: JobAlert }
+        setAlerts(prev => [data.alert, ...prev])
+      }
+    } catch {
+      // Silent: the button re-enables and the user can retry.
+    } finally {
+      setSavingAlert(false)
+    }
+  }
+
+  function applyAlert(alert: JobAlert) {
+    const params = new URLSearchParams()
+    if (alert.query) params.set('q', alert.query)
+    if (alert.filters.work) params.set('work', alert.filters.work)
+    if (alert.filters.loc) params.set('loc', alert.filters.loc)
+    if (alert.filters.rate) params.set('rate', alert.filters.rate)
+    // The page URL holds one chip: a single stored category maps onto it; a
+    // multi-category alert that isn't just "my categories" widens to All.
+    const categories = (alert.filters.category ?? '').split(',').filter(Boolean)
+    if (categories.length === 1) params.set('cat', categories[0])
+    else if (categories.length > 1 && categories.join(',') !== talentCategories.join(',')) params.set('cat', 'all')
+    const query = params.toString()
+    router.replace(query ? `/discover?${query}` : '/discover', { scroll: false })
+    setAlerts(prev => prev.map(item => (item.id === alert.id ? { ...item, new_count: 0 } : item)))
+    void fetch(`/api/jobs/alerts/${alert.id}`, { method: 'PATCH' }).catch(() => {})
+  }
+
+  function deleteAlert(id: string) {
+    setAlerts(prev => prev.filter(alert => alert.id !== id))
+    void fetch(`/api/jobs/alerts/${id}`, { method: 'DELETE' }).catch(() => {})
+  }
 
   function openJob(job: JobResult) {
     router.push(`/discover/${job.id}`)
@@ -470,28 +557,38 @@ function DiscoverPageContent() {
     setDragX(0)
   }
 
-  const swipeJobs = visibleJobs.filter(job => !applied.has(job.id))
+  // The swipe deck is the ranked "Today's matches" stack when one exists and
+  // the talent is not mid-search/filter; otherwise it falls back to the
+  // regular feed. The stack is deliberately finite - finishing it is the
+  // point - so it never pages.
+  const forYouEligible =
+    !isLocalDemoMode() && (forYouJobs?.length ?? 0) > 0 && !hasActiveFilters && !search.trim() && selectedCat === 'mine'
+  const forYouActive = viewMode === 'swipe' && forYouEligible
+  const swipeJobs = (forYouActive && forYouJobs ? forYouJobs.filter(job => !passed.has(job.id)) : visibleJobs)
+    .filter(job => !applied.has(job.id))
   const current = swipeJobs[0]
   const next = swipeJobs[1]
-  // Count only jobs in the loaded deck: `applied` holds ALL of the talent's
+  // Count only jobs in the active deck: `applied` holds ALL of the talent's
   // applications (including closed/other-category jobs), so sizing the sets
   // directly would overshoot the "N / N" progress counter.
-  const reviewedCount = jobs.reduce(
+  const stackSource = forYouActive && forYouJobs ? forYouJobs : jobs
+  const reviewedCount = stackSource.reduce(
     (count, job) => count + (passed.has(job.id) || applied.has(job.id) ? 1 : 0),
     0,
   )
-  const deckSize = total ?? jobs.length
+  const deckSize = forYouActive && forYouJobs ? forYouJobs.length : total ?? jobs.length
   const progressPosition = Math.min(reviewedCount + 1, Math.max(deckSize, 1))
   const hasJobsForView = viewMode === 'swipe' ? swipeJobs.length > 0 : visibleJobs.length > 0
   const roleCount = total ?? visibleJobs.length
-  const rotation = dragging ? dragX * 0.06 : 0
+  const rotation = dragging && !reducedMotion ? dragX * 0.06 : 0
   const isRight = dragX > 40
   const isLeft = dragX < -40
 
   // Keep the swipe deck topped up: called from pass/apply/view-switch events
-  // so the next page arrives before the deck runs dry.
+  // so the next page arrives before the deck runs dry. The For You stack is
+  // finite by design and never tops up.
   function maybeTopUpDeck(nextMode: 'swipe' | 'grid' | 'list' = viewMode) {
-    if (nextMode !== 'swipe') return
+    if (nextMode !== 'swipe' || forYouEligible) return
     if (swipeJobs.length < 6 && nextCursor) void loadMore()
   }
 
@@ -570,12 +667,47 @@ function DiscoverPageContent() {
         ))}
       </div>
 
+      {/* Saved job alerts: applying one loads its search and clears its count */}
+      {alerts.length > 0 && (
+        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">
+            <Bell className="size-3.5" /> Alerts
+          </span>
+          {alerts.map(alert => (
+            <Badge key={alert.id} variant="secondary" className="shrink-0 gap-1 rounded-full pr-1 text-xs">
+              <button type="button" onClick={() => applyAlert(alert)} className="flex items-center gap-1.5 hover:underline">
+                {alert.name}
+                {(alert.new_count ?? 0) > 0 && (
+                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
+                    {alert.new_count} new
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteAlert(alert.id)}
+                aria-label={`Delete alert ${alert.name}`}
+                className="rounded-full p-0.5 hover:bg-foreground/10"
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+
       {/* Mobile: filter sheet trigger + applied-filter chips */}
       <div className="flex flex-wrap items-center gap-2 sm:hidden">
         <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => setFilterSheetOpen(true)}>
           <SlidersHorizontal className="size-3.5" />
           Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
         </Button>
+        {(hasActiveFilters || search.trim()) && !isLocalDemoMode() && alerts.length < 10 && (
+          <Button type="button" variant="ghost" size="sm" onClick={saveCurrentSearch} disabled={savingAlert}>
+            <BellPlus className="size-3.5" />
+            {savingAlert ? 'Saving...' : 'Save alert'}
+          </Button>
+        )}
         {workType !== 'all' && (
           <FilterChip label={WORK_TYPE_OPTIONS[workType]} onRemove={() => setFilterParam('work', 'all', 'all')} />
         )}
@@ -624,13 +756,19 @@ function DiscoverPageContent() {
             Clear filters
           </Button>
         )}
+        {(hasActiveFilters || search.trim()) && !isLocalDemoMode() && alerts.length < 10 && (
+          <Button type="button" variant="ghost" size="xs" onClick={saveCurrentSearch} disabled={savingAlert}>
+            <BellPlus className="size-3.5" />
+            {savingAlert ? 'Saving...' : 'Save alert'}
+          </Button>
+        )}
         <div className="ml-auto">
-          <Select items={SORT_OPTIONS} value={sort} onValueChange={value => setFilterParam('sort', value ?? 'newest', 'newest')}>
+          <Select items={sortOptions} value={sort} onValueChange={value => setFilterParam('sort', value ?? defaultSort, defaultSort)}>
             <SelectTrigger aria-label="Sort jobs" className="w-auto min-w-[7rem] rounded-xl">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(SORT_OPTIONS).map(([value, label]) => (
+              {Object.entries(sortOptions).map(([value, label]) => (
                 <SelectItem key={value} value={value}>{label}</SelectItem>
               ))}
             </SelectContent>
@@ -731,13 +869,19 @@ function DiscoverPageContent() {
         </>
       ) : (
         <div className="pb-20">
+          {forYouActive && (
+            <p className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium">
+              <Sparkles className="size-4 text-primary" />
+              Today&rsquo;s matches · ranked for you
+            </p>
+          )}
           <div className="relative select-none h-[460px]">
             {next && (
               <div
                 className="absolute inset-0 bg-card border rounded-3xl overflow-hidden"
                 style={{ transform: 'scale(0.95)', transformOrigin: 'bottom center', zIndex: 1 }}
               >
-                <JobCardContent job={next} matchReasons={getJobMatchReasons(next, talentProfile)} onViewBrief={() => openJob(next)} />
+                <JobCardContent job={next} matchScore={next.match_score ?? null} matchReasons={getJobMatchReasons(next, talentProfile)} onViewBrief={() => openJob(next)} />
               </div>
             )}
 
@@ -747,7 +891,7 @@ function DiscoverPageContent() {
                 className="absolute inset-0 bg-card border rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing shadow-2xl"
                 style={{
                   transform: `translateX(${dragX}px) rotate(${rotation}deg)`,
-                  transition: dragging ? 'none' : 'transform 0.3s ease',
+                  transition: dragging || reducedMotion ? 'none' : 'transform var(--duration-base) var(--ease-out)',
                   zIndex: 2,
                   touchAction: 'none',
                 }}
@@ -756,7 +900,7 @@ function DiscoverPageContent() {
                 onPointerUp={onDragEnd}
                 onPointerCancel={onDragEnd}
               >
-                <JobCardContent job={current} matchReasons={getJobMatchReasons(current, talentProfile)} onViewBrief={() => openJob(current)} />
+                <JobCardContent job={current} matchScore={current.match_score ?? null} matchReasons={getJobMatchReasons(current, talentProfile)} onViewBrief={() => openJob(current)} />
 
                 {isRight && (
                   <div className="absolute inset-0 bg-accent/20 flex items-center justify-center rounded-3xl">
@@ -823,7 +967,7 @@ function DiscoverPageContent() {
         workTypeOptions={WORK_TYPE_OPTIONS}
         locationOptions={locationOptions}
         budgetOptions={BUDGET_OPTIONS}
-        sortOptions={SORT_OPTIONS}
+        sortOptions={sortOptions}
         fetchCount={fetchFilterCount}
         onApply={applySheetFilters}
       />
@@ -873,14 +1017,20 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
   )
 }
 
-function JobCardContent({ job, matchReasons, onViewBrief }: { job: JobResult; matchReasons: string[]; onViewBrief: () => void }) {
+function JobCardContent({ job, matchScore, matchReasons, onViewBrief }: { job: JobResult; matchScore?: number | null; matchReasons: string[]; onViewBrief: () => void }) {
   const hirer = job.hirer as { full_name: string } | null
   return (
     <div className="h-full flex flex-col p-6">
-      <div className="mb-3">
+      <div className="mb-3 flex items-center gap-1.5">
         <Badge variant="outline" className="text-xs">
           {CATEGORY_LABELS[job.category]}
         </Badge>
+        {typeof matchScore === 'number' && (
+          <Badge className="gap-1 text-xs">
+            <Sparkles className="size-3" />
+            {matchScore}% match
+          </Badge>
+        )}
       </div>
       <h2 className="text-xl font-bold leading-tight mb-2">{job.title}</h2>
       {hirer && <p className="text-muted-foreground text-sm mb-3">Posted by {hirer.full_name}</p>}
@@ -942,12 +1092,18 @@ function JobGridCard({
           <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
             <Badge variant="secondary" className="bg-background/85 text-xs text-foreground shadow-sm backdrop-blur-sm">{CATEGORY_LABELS[job.category]}</Badge>
             {workTypeLabel && <Badge variant="secondary" className="bg-background/85 text-xs text-foreground shadow-sm backdrop-blur-sm">{workTypeLabel}</Badge>}
+            {typeof job.match_score === 'number' && (
+              <Badge className="gap-1 text-xs shadow-sm">
+                <Sparkles className="size-3" />
+                {job.match_score}% match
+              </Badge>
+            )}
           </div>
         </JobCover>
       </button>
       <div className="flex flex-1 flex-col p-5">
       <h3 className="text-base font-semibold leading-tight">
-        <button type="button" onClick={onViewBrief} className="text-left hover:underline focus-visible:underline focus-visible:outline-none">
+        <button type="button" onClick={onViewBrief} className="text-left hover:underline focus-visible:underline focus-visible:outline-none active:opacity-60">
           {job.title}
         </button>
       </h3>

@@ -315,7 +315,7 @@ export function TalentProfileEditor() {
         <Button
           onClick={saveProfile}
           disabled={saving}
-          className="w-full bg-accent text-accent-foreground hover:bg-accent/80 h-12 rounded-2xl font-semibold shadow-lg"
+          className="w-full bg-accent text-accent-foreground hover:bg-accent/80 h-12 rounded-2xl font-semibold shadow-sm"
         >
           {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Profile'}
         </Button>

@@ -123,6 +123,16 @@ describe('POST /api/reviews', () => {
     expect(res.status).toBe(403)
   })
 
+  it('returns 403 when the caller is suspended', async () => {
+    const client = makeClient({ user: { id: 'u1' }, accountType: 'hirer' })
+    client.rpc = vi.fn().mockResolvedValue({ data: true, error: null })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makeRequest(VALID_BODY))
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.error).toBe('Account suspended')
+  })
+
   it('returns 403 (never 404) when the hirer has no hired application with the talent', async () => {
     const client = makeClient({ user: { id: 'u1' }, accountType: 'hirer', hiredCount: 0 })
     mockCreateClient.mockResolvedValue(client)

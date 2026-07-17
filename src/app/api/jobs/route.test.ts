@@ -16,19 +16,25 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/job-embedding', () => ({
   embedJob: vi.fn().mockResolvedValue({ status: 'complete' }),
 }))
+vi.mock('@/lib/openai', () => ({
+  embedText: vi.fn(),
+}))
 vi.mock('@/lib/rate-limit', () => ({
   enforceRateLimit: vi.fn().mockResolvedValue(null),
   enforceAiQuota: vi.fn().mockResolvedValue(null),
 }))
 
 import { POST, GET } from './route'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { embedJob } from '@/lib/job-embedding'
+import { embedText } from '@/lib/openai'
 import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 import { DISCOVER_PAGE_SIZE } from '@/lib/job-discovery'
 
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>
+const mockCreateServiceClient = createServiceClient as ReturnType<typeof vi.fn>
 const mockEmbedJob = embedJob as ReturnType<typeof vi.fn>
+const mockEmbedText = embedText as ReturnType<typeof vi.fn>
 const mockEnforceRateLimit = enforceRateLimit as ReturnType<typeof vi.fn>
 const mockEnforceAiQuota = enforceAiQuota as ReturnType<typeof vi.fn>
 
@@ -346,10 +352,27 @@ function makeGetRequest(query = '') {
   return new Request(`http://localhost/api/jobs${query}`)
 }
 
+const mockServiceRpc = vi.fn()
+
 describe('GET /api/jobs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockEnforceRateLimit.mockResolvedValue(null)
+    mockEnforceAiQuota.mockResolvedValue(null)
+    mockEmbedText.mockResolvedValue(new Array(1536).fill(0))
+    mockServiceRpc.mockResolvedValue({ data: [], error: null })
+    // The service client serves both platform-admin lookups (from) and the
+    // semantic search RPC (rpc) on this path.
+    mockCreateServiceClient.mockImplementation(() => ({
+      from: vi.fn(() => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: () => Promise.resolve({ data: null }),
+          }),
+        }),
+      })),
+      rpc: mockServiceRpc,
+    }))
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -456,5 +479,51 @@ describe('GET /api/jobs', () => {
     // Count mode never orders or paginates
     expect(jobsQuery.order).not.toHaveBeenCalled()
     expect(jobsQuery.limit).not.toHaveBeenCalled()
+  })
+
+  it('ranks semantically when sorting by relevance with a search term', async () => {
+    const [jobA, jobB] = makeFeedJobs(2)
+    // The caller-side fetch returns rows in id order; the response must be
+    // re-ranked by similarity with real display scores attached.
+    const { client } = makeFeedClient({ id: 'talent-1' }, 'talent', { jobs: [jobA, jobB] })
+    mockCreateClient.mockResolvedValue(client)
+    mockServiceRpc.mockResolvedValue({
+      data: [
+        { job_id: jobB.id, similarity: 0.8 },
+        { job_id: jobA.id, similarity: 0.6 },
+      ],
+      error: null,
+    })
+    const res = await GET(makeGetRequest('?q=ballet&sort=relevance'))
+    expect(res.status).toBe(200)
+    const page = await res.json()
+    expect(page.jobs.map((job: { id: string }) => job.id)).toEqual([jobB.id, jobA.id])
+    expect(page.jobs[0].match_score).toBe(96)
+    expect(page.jobs[1].match_score).toBe(72)
+    expect(page.nextCursor).toBeNull()
+    expect(mockServiceRpc).toHaveBeenCalledWith('match_jobs_filtered', expect.objectContaining({
+      match_count: 50,
+    }))
+  })
+
+  it('falls back to the keyset feed when the query embedding fails', async () => {
+    const { client, jobsQuery } = makeFeedClient({ id: 'talent-1' }, 'talent', { jobs: makeFeedJobs(1) })
+    mockCreateClient.mockResolvedValue(client)
+    mockEmbedText.mockRejectedValue(new Error('upstream timeout'))
+    const res = await GET(makeGetRequest('?q=ballet&sort=relevance'))
+    expect(res.status).toBe(200)
+    const page = await res.json()
+    expect(page.jobs).toHaveLength(1)
+    // The fallback is the regular full-text-search feed
+    expect(jobsQuery.textSearch).toHaveBeenCalled()
+  })
+
+  it('returns 429 before embedding when the AI quota is exhausted on relevance sort', async () => {
+    const { client } = makeFeedClient({ id: 'talent-1' }, 'talent')
+    mockCreateClient.mockResolvedValue(client)
+    mockEnforceAiQuota.mockResolvedValue(Response.json({ error: 'Too many requests' }, { status: 429 }))
+    const res = await GET(makeGetRequest('?q=ballet&sort=relevance'))
+    expect(res.status).toBe(429)
+    expect(mockEmbedText).not.toHaveBeenCalled()
   })
 })

@@ -203,7 +203,7 @@ export function HirerProfileEditor() {
         <Button
           onClick={saveProfile}
           disabled={saving}
-          className="h-12 w-full rounded-2xl bg-accent font-semibold text-accent-foreground shadow-lg hover:bg-accent/80"
+          className="h-12 w-full rounded-2xl bg-accent font-semibold text-accent-foreground shadow-sm hover:bg-accent/80"
         >
           {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Profile'}
         </Button>
