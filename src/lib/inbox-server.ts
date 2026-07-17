@@ -94,7 +94,7 @@ export async function fetchInboxForUser(
           kind: 'application',
           title: `Application for ${job?.title ?? 'your job'}`,
           body: `${talent?.full_name ?? 'Someone'} applied`,
-          href: `/jobs/${app.job_id as string}`,
+          href: `/my-jobs/${app.job_id as string}`,
           createdAt: app.created_at as string,
           unread: true,
         })

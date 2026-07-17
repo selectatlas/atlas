@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SafetyActions } from '@/components/safety/SafetyActions'
 import { ApplicationPreviewDialog } from '@/components/talent/ApplicationPreviewDialog'
 import { JobCover } from '@/components/talent/JobCover'
+import { JobMetaItem } from '@/components/jobs/JobMetaItem'
 import type { Job, Profile, TalentSkill } from '@/types'
 
 type JobResult = Job & { hirer?: { full_name: string } | null }
@@ -207,14 +208,14 @@ export default function JobDetailPage() {
             </div>
 
             <div className="space-y-2">
-              {meta.dateLabel && <MetaItem icon={CalendarDays} label="Dates" value={meta.dateLabel} />}
-              {meta.deadlineLabel && <MetaItem icon={CalendarDays} label="Apply by" value={meta.deadlineLabel} />}
-              <MetaItem icon={MapPin} label="Location" value={job.location} />
-              {job.duration && <MetaItem icon={Clock3} label="Duration" value={job.duration} />}
+              {meta.dateLabel && <JobMetaItem icon={CalendarDays} label="Dates" value={meta.dateLabel} />}
+              {meta.deadlineLabel && <JobMetaItem icon={CalendarDays} label="Apply by" value={meta.deadlineLabel} />}
+              <JobMetaItem icon={MapPin} label="Location" value={job.location} />
+              {job.duration && <JobMetaItem icon={Clock3} label="Duration" value={job.duration} />}
               {job.travel_required !== null && job.travel_required !== undefined && (
-                <MetaItem icon={Plane} label="Travel" value={job.travel_required ? 'Travel may be required' : 'No travel expected'} />
+                <JobMetaItem icon={Plane} label="Travel" value={job.travel_required ? 'Travel may be required' : 'No travel expected'} />
               )}
-              {job.usage_rights && <MetaItem icon={ShieldCheck} label="Usage" value={job.usage_rights} />}
+              {job.usage_rights && <JobMetaItem icon={ShieldCheck} label="Usage" value={job.usage_rights} />}
             </div>
 
             <Button
@@ -286,18 +287,6 @@ export default function JobDetailPage() {
         onClose={() => { setApplicationJob(null); setApplicationError(null) }}
         onConfirm={confirmApplication}
       />
-    </div>
-  )
-}
-
-function MetaItem({ icon: Icon, label, value }: { icon: typeof MapPin; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl bg-muted/60 p-3">
-      <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
-      <div className="min-w-0">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="mt-0.5 text-sm font-medium">{value}</p>
-      </div>
     </div>
   )
 }

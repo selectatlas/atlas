@@ -214,7 +214,7 @@ export function ShortlistTable({ rows, jobs }: ShortlistTableProps) {
                       </DropdownMenuItem>
                     ))
                   ) : (
-                    <DropdownMenuItem onClick={() => router.push('/jobs/new')}>
+                    <DropdownMenuItem onClick={() => router.push('/my-jobs/new')}>
                       No open jobs yet. Post one
                     </DropdownMenuItem>
                   )}

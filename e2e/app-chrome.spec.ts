@@ -7,7 +7,7 @@ test.describe('app chrome', () => {
     const user = await seedUser(admin, 'hirer', 'chrome-hirer')
     await login(page, user.email)
 
-    await page.goto('/jobs')
+    await page.goto('/my-jobs')
     await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toContainText('My jobs')
     await expect(page.getByRole('heading', { name: 'My jobs', level: 1 })).toBeVisible()
   })

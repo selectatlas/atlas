@@ -30,7 +30,7 @@ export function SystemMessageCard({
   const { accountType } = useAppShell()
   const Icon = KIND_ICONS[kind]
   // Job detail pages only exist for hirers; talent see the card without a link.
-  const jobHref = accountType === 'hirer' && jobId ? `/jobs/${jobId}` : null
+  const jobHref = accountType === 'hirer' && jobId ? `/my-jobs/${jobId}` : null
 
   return (
     <div className="flex justify-center py-1">

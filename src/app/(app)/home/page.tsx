@@ -195,13 +195,13 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
         <StatCard value={shortlistCount ?? 0} label="Shortlisted" href="/shortlists" />
         <StatCard value={likesCount ?? 0} label="Liked" href="/shortlists?tab=liked" />
         <StatCard value={outreachCount ?? 0} label="Outreach sent" href="/outreach" />
-        <StatCard value={jobsCount ?? 0} label="Active jobs" href="/jobs" />
+        <StatCard value={jobsCount ?? 0} label="Active jobs" href="/my-jobs" />
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
         <QuickAction href="/search" icon={Search} title="Search talent" description="Run a natural-language search or browse the directory." />
         <QuickAction href="/shortlists" icon={Bookmark} title="Saved talent" description="Review shortlisted and liked profiles in one place." />
-        <QuickAction href="/jobs/new" icon={BriefcaseBusiness} title="Post a job" description="Publish a brief and collect applications." />
+        <QuickAction href="/my-jobs/new" icon={BriefcaseBusiness} title="Post a job" description="Publish a brief and collect applications." />
       </div>
 
       <SavedSearchesSection supabase={supabase} hirerId={userId} />
@@ -229,11 +229,11 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold">Your jobs</h2>
-            <Link href="/jobs" className="text-xs font-medium text-primary hover:underline">Manage jobs</Link>
+            <Link href="/my-jobs" className="text-xs font-medium text-primary hover:underline">Manage jobs</Link>
           </div>
           <div className="space-y-2">
             {(jobs ?? []).map(job => (
-              <Link key={job.id} href={`/jobs/${job.id}`}>
+              <Link key={job.id} href={`/my-jobs/${job.id}`}>
                 <Card className="border border-border/80 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">

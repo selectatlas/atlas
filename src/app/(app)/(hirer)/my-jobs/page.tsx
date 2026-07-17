@@ -40,7 +40,7 @@ export default async function JobsPage() {
     <div className="space-y-8">
       <PageShell
         actions={(
-          <Link href="/jobs/new">
+          <Link href="/my-jobs/new">
             <Button className="gap-2 rounded-lg bg-primary font-semibold text-primary-foreground hover:bg-primary/90">
               <Plus className="size-4" />
               Post a job
@@ -56,7 +56,7 @@ export default async function JobsPage() {
           </div>
           <p className="font-medium">No jobs posted yet</p>
           <p className="mb-5 mt-1 max-w-sm text-sm text-muted-foreground">Create a brief and start building your shortlist.</p>
-          <Link href="/jobs/new">
+          <Link href="/my-jobs/new">
             <Button className="gap-2 rounded-lg bg-primary font-semibold text-primary-foreground hover:bg-primary/90">
               <FilePlus2 className="size-4" />
               Post your first job
@@ -68,7 +68,7 @@ export default async function JobsPage() {
           {jobList.map(job => {
             const applicantCount = countMap.get(job.id) ?? 0
             return (
-              <Link key={job.id} href={`/jobs/${job.id}`}>
+              <Link key={job.id} href={`/my-jobs/${job.id}`}>
                 <Card className="border border-border/80 p-5 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">

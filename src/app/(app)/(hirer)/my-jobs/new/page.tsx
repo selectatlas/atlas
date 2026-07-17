@@ -117,7 +117,7 @@ export default function NewJobPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Failed to post job'); return }
-      router.push('/jobs')
+      router.push('/my-jobs')
     } catch {
       setError('Network error')
     } finally {

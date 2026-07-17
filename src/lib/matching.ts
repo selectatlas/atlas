@@ -26,9 +26,10 @@ function normalise(value: string | null | undefined) {
   return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
-function formatDate(value: string | null | undefined) {
+// Accepts both date-only columns ("2026-07-01") and timestamps.
+export function formatDate(value: string | null | undefined) {
   if (!value) return null
-  const date = new Date(`${value}T00:00:00`)
+  const date = new Date(value.includes('T') ? value : `${value}T00:00:00`)
   if (Number.isNaN(date.getTime())) return null
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }

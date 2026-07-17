@@ -58,7 +58,7 @@ export function CommandPalette() {
       accountType === 'hirer'
         ? [
             { id: 'search', label: 'Search talent', href: '/search', icon: Search, keywords: ['find', 'browse'] },
-            { id: 'jobs', label: 'My jobs', href: '/jobs', icon: BriefcaseBusiness },
+            { id: 'jobs', label: 'My jobs', href: '/my-jobs', icon: BriefcaseBusiness },
             { id: 'outreach', label: 'Outreach', href: '/outreach', icon: Send },
             { id: 'shortlists', label: 'Saved talent', href: '/shortlists', icon: Bookmark, keywords: ['liked', 'bookmarks'] },
           ]

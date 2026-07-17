@@ -26,14 +26,14 @@ const HIRER_STATIC: Record<string, PageMeta> = {
     title: 'Saved talent',
     description: 'Use the bookmark on a profile to shortlist someone for a cast. Use the heart to like a profile you want to revisit.',
   },
-  '/jobs': {
+  '/my-jobs': {
     breadcrumbs: [{ label: 'Workspace', href: '/home' }, { label: 'My jobs' }],
     eyebrow: 'Workspace',
     title: 'My jobs',
     description: 'Manage your briefs and keep great talent moving.',
   },
-  '/jobs/new': {
-    breadcrumbs: [{ label: 'Jobs', href: '/jobs' }, { label: 'Post a job' }],
+  '/my-jobs/new': {
+    breadcrumbs: [{ label: 'Jobs', href: '/my-jobs' }, { label: 'Post a job' }],
     eyebrow: 'Workspace',
     title: 'Post a job',
   },
@@ -114,10 +114,10 @@ const TALENT_STATIC: Record<string, PageMeta> = {
 
 function matchDynamicMeta(pathname: string, accountType: 'hirer' | 'talent'): PageMeta | null {
   if (accountType === 'hirer') {
-    const jobMatch = pathname.match(/^\/jobs\/([^/]+)$/)
+    const jobMatch = pathname.match(/^\/my-jobs\/([^/]+)$/)
     if (jobMatch && jobMatch[1] !== 'new') {
       return {
-        breadcrumbs: [{ label: 'Jobs', href: '/jobs' }, { label: 'Job' }],
+        breadcrumbs: [{ label: 'Jobs', href: '/my-jobs' }, { label: 'Job' }],
         title: 'Job',
       }
     }

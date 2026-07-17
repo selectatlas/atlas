@@ -232,7 +232,7 @@ export function ContextRail({
                 <div className="space-y-3 text-sm">
                   {origin.job_title && origin.job_id && (
                     <Link
-                      href={`/jobs/${origin.job_id}`}
+                      href={`/my-jobs/${origin.job_id}`}
                       className="flex items-center gap-2 rounded-lg border border-border/80 px-3 py-2 transition-colors hover:border-primary/35"
                     >
                       <BriefcaseBusiness className="size-4 shrink-0 text-muted-foreground" />

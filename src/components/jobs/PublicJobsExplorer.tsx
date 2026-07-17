@@ -1,0 +1,218 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import { PublicJobCard } from '@/components/jobs/PublicJobCard'
+import { CATEGORY_LABELS } from '@/lib/skills'
+import type { DiscoverPage, JobFeedItem } from '@/lib/job-discovery'
+import type { Category } from '@/types'
+
+const CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[]
+
+interface PublicJobsExplorerProps {
+  /** Default first page, server-rendered at build/revalidate time. */
+  initialPage: DiscoverPage
+  /** Open-job counts per category for the filter chips. */
+  categoryCounts: Partial<Record<Category, number>>
+}
+
+// Interactive layer over the ISR shell: category chips + search + load-more,
+// fetching live data from the public API. The initial (unfiltered) page comes
+// from the server so crawlers and first paint never wait on a fetch.
+//
+// Deliberately does NOT use useSearchParams(): on a static route that would
+// bail the whole tree out to client-side rendering and strip the job cards
+// from the prerendered HTML. Deep-linked filters (?category=...&q=...) are
+// read from window.location after hydration instead.
+export function PublicJobsExplorer({ initialPage, categoryCounts }: PublicJobsExplorerProps) {
+  const router = useRouter()
+  const [category, setCategory] = useState<Category | null>(null)
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [jobs, setJobs] = useState<JobFeedItem[]>(initialPage.jobs)
+  const [nextCursor, setNextCursor] = useState<string | null>(initialPage.nextCursor)
+  const [total, setTotal] = useState<number | null>(initialPage.total)
+  const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState(false)
+
+  const fetchPage = useCallback(
+    async (opts: { category: Category | null; search: string; cursor: string | null }) => {
+      const params = new URLSearchParams()
+      if (opts.category) params.set('category', opts.category)
+      if (opts.search) params.set('q', opts.search)
+      if (opts.cursor) params.set('cursor', opts.cursor)
+      const res = await fetch(`/api/jobs/public?${params.toString()}`)
+      if (!res.ok) throw new Error('fetch failed')
+      return (await res.json()) as DiscoverPage
+    },
+    []
+  )
+
+  const runFilteredFetch = useCallback(
+    (nextCategory: Category | null, nextSearch: string) => {
+      let cancelled = false
+      setLoading(true)
+      setError(false)
+      fetchPage({ category: nextCategory, search: nextSearch, cursor: null })
+        .then(page => {
+          if (cancelled) return
+          setJobs(page.jobs)
+          setNextCursor(page.nextCursor)
+          setTotal(page.total)
+        })
+        .catch(() => {
+          if (!cancelled) setError(true)
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+      return () => {
+        cancelled = true
+      }
+    },
+    [fetchPage]
+  )
+
+  // Apply deep-linked filters (shared/bookmarked URLs) once after hydration.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const linkedCategory = params.get('category')
+    const linkedSearch = params.get('q') ?? ''
+    const validCategory = CATEGORIES.includes(linkedCategory as Category) ? (linkedCategory as Category) : null
+    if (!validCategory && !linkedSearch) return
+    // The hydrate-then-apply re-render is deliberate: deep-linked filters are
+    // only knowable client-side (useSearchParams would bail the static HTML).
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setCategory(validCategory)
+    setSearchInput(linkedSearch)
+    setSearch(linkedSearch)
+    return runFilteredFetch(validCategory, linkedSearch)
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function applyFilters(nextCategory: Category | null, nextSearch: string) {
+    setCategory(nextCategory)
+    setSearch(nextSearch)
+    setSearchInput(nextSearch)
+    const params = new URLSearchParams()
+    if (nextCategory) params.set('category', nextCategory)
+    if (nextSearch) params.set('q', nextSearch)
+    const query = params.toString()
+    router.replace(query ? `/jobs?${query}` : '/jobs', { scroll: false })
+    runFilteredFetch(nextCategory, nextSearch)
+  }
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const page = await fetchPage({ category, search, cursor: nextCursor })
+      setJobs(current => [...current, ...page.jobs])
+      setNextCursor(page.nextCursor)
+      setError(false)
+    } catch {
+      setError(true)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <form
+        onSubmit={e => {
+          e.preventDefault()
+          applyFilters(category, searchInput.trim())
+        }}
+        className="flex gap-2"
+      >
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            placeholder="Search jobs by title, brief, or location"
+            className="pl-9"
+            aria-label="Search jobs"
+          />
+        </div>
+        <Button type="submit" variant="outline" className="rounded-xl">
+          Search
+        </Button>
+      </form>
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+        <FilterChip label="All" active={category === null} onClick={() => applyFilters(null, searchInput.trim())} />
+        {CATEGORIES.map(value => (
+          <FilterChip
+            key={value}
+            label={`${CATEGORY_LABELS[value]}${categoryCounts[value] ? ` (${categoryCounts[value]})` : ''}`}
+            active={category === value}
+            onClick={() => applyFilters(value, searchInput.trim())}
+          />
+        ))}
+      </div>
+
+      {total !== null && (
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {total} open {total === 1 ? 'job' : 'jobs'}
+        </p>
+      )}
+
+      {error && (
+        <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Jobs could not be loaded. Please try again.
+        </p>
+      )}
+
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="aspect-[16/12] rounded-xl" />
+          ))}
+        </div>
+      ) : jobs.length === 0 && !error ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-16 text-center">
+          <p className="font-medium">No open jobs match those filters</p>
+          <p className="mt-1 text-sm text-muted-foreground">Try a different category or clear your search.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {jobs.map(job => (
+            <PublicJobCard key={job.id} job={job} />
+          ))}
+        </div>
+      )}
+
+      {nextCursor && !loading && (
+        <div className="flex justify-center pt-2">
+          <Button onClick={loadMore} disabled={loadingMore} variant="outline" className="rounded-xl">
+            {loadingMore ? 'Loading...' : 'Load more jobs'}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <Button
+      type="button"
+      size="xs"
+      variant={active ? 'default' : 'outline'}
+      aria-pressed={active}
+      onClick={onClick}
+      className="rounded-full px-3"
+    >
+      {label}
+    </Button>
+  )
+}

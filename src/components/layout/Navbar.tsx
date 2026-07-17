@@ -43,7 +43,7 @@ const iconByHref: Record<string, typeof Search> = {
   '/discover': Compass,
   '/shortlists': Bookmark,
   '/activity': Activity,
-  '/jobs': BriefcaseBusiness,
+  '/my-jobs': BriefcaseBusiness,
   '/messages': MessageSquare,
   '/outreach': Send,
   '/profile': UserRound,

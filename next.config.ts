@@ -42,7 +42,7 @@ const NOINDEX_PATHS = [
   '/messages',
   '/home',
   '/activity',
-  '/jobs',
+  '/my-jobs',
   '/shortlists',
   '/outreach',
   '/talent',

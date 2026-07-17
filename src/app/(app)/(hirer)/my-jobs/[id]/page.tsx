@@ -113,7 +113,7 @@ export default function JobDetailPage() {
   const shellOverride = useMemo(() => {
     if (loadError) {
       return {
-        breadcrumbs: [{ label: 'Jobs', href: '/jobs' }, { label: 'Job' }],
+        breadcrumbs: [{ label: 'Jobs', href: '/my-jobs' }, { label: 'Job' }],
         title: 'Job',
       }
     }
@@ -121,7 +121,7 @@ export default function JobDetailPage() {
     const posted = new Date(job.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     const { workTypeLabel } = getJobMeta(job)
     return {
-      breadcrumbs: [{ label: 'Jobs', href: '/jobs' }, { label: job.title }],
+      breadcrumbs: [{ label: 'Jobs', href: '/my-jobs' }, { label: job.title }],
       eyebrow: CATEGORY_LABELS[job.category],
       title: job.title,
       description: [job.location, workTypeLabel, `Posted ${posted}`].filter(Boolean).join(' · '),

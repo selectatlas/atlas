@@ -178,7 +178,20 @@ export interface DiscoverQueryOptions {
   countOnly?: boolean
   /** Only jobs created after this ISO timestamp (used for alert new-match counts). */
   createdAfter?: string
+  /**
+   * 'public' queries the anon-facing public_open_jobs view (migration 026):
+   * no profiles embed (the view carries hirer_name) and no status/removed
+   * filters (the view enforces them). Default 'app' queries jobs directly.
+   */
+  source?: 'app' | 'public'
 }
+
+// Explicit column list for the public view: keeps the heavy search_tsv
+// vector out of the payload (textSearch filters on it without selecting it).
+export const PUBLIC_JOB_COLUMNS =
+  'id, hirer_id, title, description, category, skills_required, location, budget, budget_min, budget_max, ' +
+  'status, created_at, work_type, start_date, end_date, application_deadline, duration, usage_rights, ' +
+  'travel_required, cover_url, hirer_name, hirer_avatar_url'
 
 export async function fetchDiscoverJobs(
   supabase: SupabaseClient,
@@ -203,16 +216,21 @@ async function runDiscoverQuery(
   options: DiscoverQueryOptions,
   searchMode: 'fts' | 'ilike',
 ): Promise<{ ok: true; page: DiscoverPage } | { ok: false; code: string | null }> {
-  const { cursor, excludeJobIds = [], countOnly = false, createdAfter } = options
+  const { cursor, excludeJobIds = [], countOnly = false, createdAfter, source = 'app' } = options
   const { column, ascending } = sortColumn(filters.sort)
+  const table = source === 'public' ? 'public_open_jobs' : 'jobs'
 
   let query = countOnly
-    ? supabase.from('jobs').select('id', { count: 'exact', head: true })
-    : supabase
-        .from('jobs')
-        .select('*, hirer:profiles!hirer_id(full_name)', cursor ? undefined : { count: 'exact' })
+    ? supabase.from(table).select('id', { count: 'exact', head: true })
+    : source === 'public'
+      ? supabase.from(table).select(PUBLIC_JOB_COLUMNS, cursor ? undefined : { count: 'exact' })
+      : supabase
+          .from(table)
+          .select('*, hirer:profiles!hirer_id(full_name)', cursor ? undefined : { count: 'exact' })
 
-  query = query.eq('status', 'open').is('removed_at', null)
+  // The public view already enforces open + non-removed (and has no
+  // removed_at column to filter on).
+  if (source === 'app') query = query.eq('status', 'open').is('removed_at', null)
 
   if (filters.categories.length > 0) query = query.in('category', filters.categories)
   if (filters.workType !== 'all') query = query.eq('work_type', filters.workType)
@@ -254,7 +272,11 @@ async function runDiscoverQuery(
   const { data, error, count } = await query
   if (error) return { ok: false, code: error.code ?? null }
 
-  const rows = (data ?? []) as JobFeedItem[]
+  const rawRows = (data ?? []) as unknown as (JobFeedItem & { hirer_name?: string | null })[]
+  const rows =
+    source === 'public'
+      ? rawRows.map(row => ({ ...row, hirer: row.hirer_name ? { full_name: row.hirer_name } : null }))
+      : rawRows
   const jobs = rows.slice(0, DISCOVER_PAGE_SIZE)
   const last = jobs[jobs.length - 1]
   const nextCursor =

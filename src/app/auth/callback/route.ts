@@ -5,6 +5,7 @@ import { getPostHogClient } from '@/lib/posthog-server'
 import { logEvent } from '@/lib/log'
 import { ensurePlatformAdmin } from '@/lib/platform-admin'
 import { needsOnboarding } from '@/lib/onboarding'
+import { safeInternalPath } from '@/lib/safe-redirect'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import type { AccountType } from '@/types'
 
@@ -82,7 +83,9 @@ export async function GET(request: Request) {
   // Talent with an untouched profile (no headline, no skills) go through
   // onboarding instead of an empty dashboard - covers email-confirmation
   // and OAuth signups, which both land here rather than on the signup page.
-  let landingPath = '/home'
+  // A validated ?next= target (public job CTAs) replaces the /home default;
+  // the onboarding check below still overrides it.
+  let landingPath = safeInternalPath(url.searchParams.get('next'))
   if (accountType === 'talent' && !adminRole) {
     const { data: profile } = await supabase
       .from('profiles')

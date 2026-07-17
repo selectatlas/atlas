@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { safeInternalPath } from '@/lib/safe-redirect'
 
 export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
@@ -81,6 +82,10 @@ export default async function proxy(request: NextRequest) {
 
   const isPublicLandingRoute = pathname === '/' || pathname === '/terms' || pathname === '/privacy'
   const isSuspendedRoute = pathname === '/suspended'
+  // Public marketplace: anonymous visitors browse open jobs; the feed API
+  // behind the explorer is public too (anon-scoped by RLS + rate limited).
+  const isPublicJobsPage = pathname === '/jobs' || pathname.startsWith('/jobs/')
+  const isPublicJobsApi = pathname === '/api/jobs/public'
   const isAuthRoute =
     pathname === '/login' ||
     pathname === '/signup' ||
@@ -88,6 +93,10 @@ export default async function proxy(request: NextRequest) {
     pathname === '/reset-password'
 
   if (isPublicLandingRoute || isSuspendedRoute) {
+    return NextResponse.next()
+  }
+
+  if (!claims && (isPublicJobsPage || isPublicJobsApi)) {
     return NextResponse.next()
   }
 
@@ -107,6 +116,10 @@ export default async function proxy(request: NextRequest) {
     }
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    // Round-trip the gated destination so sign-in lands the user back where
+    // they were heading (validated by safeInternalPath before use).
+    url.search = ''
+    url.searchParams.set('next', pathname + request.nextUrl.search)
     return NextResponse.redirect(url)
   }
 
@@ -123,10 +136,13 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages. A validated ?next=
+  // (e.g. an already-signed-in user tapping "Sign in to apply" on a public
+  // job) is honored instead of dumping them on /home.
   if (claims && isAuthRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/home'
+    url.pathname = safeInternalPath(request.nextUrl.searchParams.get('next'))
+    url.search = ''
     return NextResponse.redirect(url)
   }
 
@@ -142,7 +158,7 @@ export default async function proxy(request: NextRequest) {
     const metadata = claims.user_metadata as { account_type?: string; platform_admin?: boolean } | undefined
     const accountType = metadata?.account_type
     const isPlatformAdmin = metadata?.platform_admin === true
-    const hirerOnlyPrefixes = ['/search', '/jobs', '/outreach', '/talent', '/shortlists']
+    const hirerOnlyPrefixes = ['/search', '/my-jobs', '/outreach', '/talent', '/shortlists']
     const talentOnlyPrefixes = ['/discover']
     const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/')
 
@@ -152,6 +168,15 @@ export default async function proxy(request: NextRequest) {
 
     if (isPlatformAdmin) {
       return supabaseResponse
+    }
+
+    // Signed-in talent get the authed job experience (apply flow, passes)
+    // instead of the public marketplace pages. Hirers/admins may browse the
+    // public pages freely.
+    if (accountType === 'talent' && isPublicJobsPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = pathname === '/jobs' ? '/discover' : pathname.replace(/^\/jobs/, '/discover')
+      return NextResponse.redirect(url)
     }
 
     if (accountType === 'talent' && hirerOnlyPrefixes.some(p => pathname.startsWith(p))) {

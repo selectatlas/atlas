@@ -19,13 +19,13 @@ test.describe('two-role job journey', () => {
     const hirerPage = await hirerContext.newPage()
     await login(hirerPage, hirer.email)
 
-    await hirerPage.goto('/jobs/new')
+    await hirerPage.goto('/my-jobs/new')
     await hirerPage.fill('input[placeholder*="Bollywood dancers"]', 'E2E: Dancers for showcase')
     await hirerPage.fill('textarea', 'Two-day shoot in London. Bring your best moves.')
     await hirerPage.getByRole('button', { name: 'Dancer', exact: true }).click()
     await hirerPage.fill('input[placeholder*="London, UK"]', 'London, UK')
     await hirerPage.getByRole('button', { name: /Post job/ }).click()
-    await hirerPage.waitForURL(/\/jobs$/)
+    await hirerPage.waitForURL(/\/my-jobs$/)
 
     // The job exists (embedding may be failed without an OpenAI key - the
     // job itself must still post; that failure path is by design retryable)
@@ -54,7 +54,7 @@ test.describe('two-role job journey', () => {
     expect(duplicate.status()).toBe(409)
 
     // --- Hirer sees the application on the job page ---
-    await hirerPage.goto(`/jobs/${job!.id}`)
+    await hirerPage.goto(`/my-jobs/${job!.id}`)
     await expect(hirerPage.getByText('E2E job-talent')).toBeVisible()
 
     await hirerContext.close()

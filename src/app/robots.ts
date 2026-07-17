@@ -16,7 +16,7 @@ export default function robots(): MetadataRoute.Robots {
           '/messages',
           '/home',
           '/activity',
-          '/jobs',
+          '/my-jobs',
           '/shortlists',
           '/outreach',
           '/talent/',

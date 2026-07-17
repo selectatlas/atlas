@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { clearLocalDemoCookies } from '@/lib/demo-mode'
+import { safeInternalPath } from '@/lib/safe-redirect'
 import posthog from 'posthog-js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,9 @@ function SignupForm() {
   // A brief typed into the landing-page hero arrives as ?q= so a new hirer
   // lands directly on their first search after signing up.
   const heroQuery = searchParams.get('q')?.trim() ?? ''
+  // Where to land after signup; set by "Sign in to apply" CTAs on public job
+  // pages. Validated before use. Talent onboarding still takes precedence.
+  const nextPath = searchParams.get('next')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -49,7 +53,9 @@ function SignupForm() {
           data: { full_name: fullName, account_type: accountType },
           // Confirmation emails must land back on the callback so the session
           // is established and the user reaches the dashboard, not the landing page.
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: nextPath
+            ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
+            : `${window.location.origin}/auth/callback`,
         },
       })
 
@@ -75,13 +81,14 @@ function SignupForm() {
       }
 
       // Fresh talent accounts go straight into profile onboarding. Hirers who
-      // arrived with a brief from the landing page land on that search.
+      // arrived with a brief from the landing page land on that search;
+      // otherwise a validated ?next= target (public job CTAs) wins over /home.
       if (accountType === 'talent') {
         router.push('/onboarding')
       } else if (heroQuery) {
         router.push(`/search?q=${encodeURIComponent(heroQuery)}`)
       } else {
-        router.push('/home')
+        router.push(safeInternalPath(nextPath))
       }
       router.refresh()
     } catch {
@@ -224,13 +231,13 @@ function SignupForm() {
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <GoogleSignInButton accountType={accountType} onError={setError} />
+            <GoogleSignInButton accountType={accountType} next={nextPath} onError={setError} />
           </CardContent>
         </Card>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link href="/login" className="text-primary hover:text-primary/80 font-medium">
+          <Link href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login'} className="text-primary hover:text-primary/80 font-medium">
             Sign in
           </Link>
         </p>

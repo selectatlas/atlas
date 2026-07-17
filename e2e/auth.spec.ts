@@ -49,8 +49,8 @@ test.describe('authentication journeys', () => {
 
     // A fresh tab in the same context stays authenticated
     const secondTab = await context.newPage()
-    await secondTab.goto('/jobs')
-    await expect(secondTab).toHaveURL(/\/jobs/)
+    await secondTab.goto('/my-jobs')
+    await expect(secondTab).toHaveURL(/\/my-jobs/)
     void PASSWORD
   })
 })

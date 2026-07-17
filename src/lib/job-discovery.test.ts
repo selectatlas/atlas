@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   parseBudgetRange,
   encodeCursor,
@@ -6,6 +7,8 @@ import {
   sanitizeSearchTerm,
   parseDiscoverParams,
   cursorPredicate,
+  fetchDiscoverJobs,
+  type DiscoverFilters,
 } from './job-discovery'
 
 const JOB_ID = 'a1b2c3d4-0000-4000-8000-000000000001'
@@ -134,5 +137,75 @@ describe('cursorPredicate', () => {
     expect(cursorPredicate('rate_high', { v: null, id: JOB_ID })).toBe(
       `and(budget_max.is.null,id.lt.${JOB_ID})`,
     )
+  })
+})
+
+describe('fetchDiscoverJobs public source', () => {
+  const FILTERS: DiscoverFilters = {
+    categories: [],
+    search: '',
+    workType: 'all',
+    location: null,
+    budgetBand: 'any',
+    sort: 'newest',
+  }
+
+  function makeClient(rows: Record<string, unknown>[]) {
+    const result = { data: rows, error: null, count: rows.length }
+    const query = {
+      eq: vi.fn(() => query),
+      is: vi.fn(() => query),
+      in: vi.fn(() => query),
+      lt: vi.fn(() => query),
+      lte: vi.fn(() => query),
+      gt: vi.fn(() => query),
+      gte: vi.fn(() => query),
+      not: vi.fn(() => query),
+      or: vi.fn(() => query),
+      textSearch: vi.fn(() => query),
+      order: vi.fn(() => query),
+      limit: vi.fn(() => query),
+      then: (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve),
+    }
+    const select = vi.fn((...args: unknown[]) => (void args, query))
+    const from = vi.fn(() => ({ select }))
+    return { client: { from } as unknown as SupabaseClient, from, select, query }
+  }
+
+  it('queries the public_open_jobs view without the profiles embed', async () => {
+    const { client, from, select } = makeClient([])
+    await fetchDiscoverJobs(client, FILTERS, { cursor: null, source: 'public' })
+    expect(from).toHaveBeenCalledWith('public_open_jobs')
+    const columns = select.mock.calls[0][0] as string
+    expect(columns).not.toContain('profiles')
+    expect(columns).toContain('hirer_name')
+    expect(columns).not.toContain('search_tsv')
+  })
+
+  it('skips the status/removed filters the view already enforces', async () => {
+    const { client, query } = makeClient([])
+    await fetchDiscoverJobs(client, FILTERS, { cursor: null, source: 'public' })
+    expect(query.eq).not.toHaveBeenCalledWith('status', 'open')
+    expect(query.is).not.toHaveBeenCalledWith('removed_at', null)
+  })
+
+  it('normalizes hirer_name into the JobFeedItem hirer shape', async () => {
+    const { client } = makeClient([
+      { id: JOB_ID, title: 'Open role', created_at: '2026-07-01T00:00:00Z', hirer_name: 'Riverside' },
+      { id: JOB_ID.replace('1', '2'), title: 'Anon role', created_at: '2026-07-01T00:00:00Z', hirer_name: null },
+    ])
+    const result = await fetchDiscoverJobs(client, FILTERS, { cursor: null, source: 'public' })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.page.jobs[0].hirer).toEqual({ full_name: 'Riverside' })
+    expect(result.page.jobs[1].hirer).toBeNull()
+  })
+
+  it('still queries jobs directly for the app source', async () => {
+    const { client, from, query } = makeClient([])
+    await fetchDiscoverJobs(client, FILTERS, { cursor: null })
+    expect(from).toHaveBeenCalledWith('jobs')
+    expect(query.eq).toHaveBeenCalledWith('status', 'open')
+    expect(query.is).toHaveBeenCalledWith('removed_at', null)
   })
 })

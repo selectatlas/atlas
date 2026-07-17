@@ -8,7 +8,7 @@ const links = [
   { href: '/home', label: 'Home' },
   { href: '/search', label: 'Search' },
   { href: '/shortlists', label: 'Saved' },
-  { href: '/jobs', label: 'Jobs' },
+  { href: '/my-jobs', label: 'Jobs' },
   { href: '/messages', label: 'Messages' },
   { href: '/outreach', label: 'Outreach' },
 ]
@@ -30,7 +30,7 @@ export function HirerNav() {
     <Navbar
       links={isPlatformAdmin ? [...links, ...adminLinks] : links}
       bottomLinks={bottomLinks}
-      primaryAction={{ href: '/jobs/new', label: 'Post a job' }}
+      primaryAction={{ href: '/my-jobs/new', label: 'Post a job' }}
       badgeCounts={navBadges}
     />
   )

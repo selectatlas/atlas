@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { login, seedUser, adminClient } from './helpers'
+import { login, seedUser, adminClient, PASSWORD } from './helpers'
 
 test.describe('private data non-disclosure', () => {
   test('no network response ever contains another user\'s email', async ({ page }) => {
@@ -64,5 +64,78 @@ test.describe('private data non-disclosure', () => {
     const response = await page.request.get(`/api/messages/threads/${thread!.id}`)
     expect(response.status()).toBe(403)
     expect((await response.text()).includes('Secret negotiation detail')).toBe(false)
+  })
+})
+
+test.describe('public job browsing', () => {
+  test('anonymous visitors browse jobs and are routed through auth to apply', async ({ page }) => {
+    const admin = adminClient()
+    const hirer = await seedUser(admin, 'hirer', 'pub-hirer')
+    const { data: job, error } = await admin
+      .from('jobs')
+      .insert({
+        hirer_id: hirer.id,
+        title: 'Public browse test role',
+        description: 'A role for the public browsing e2e test',
+        category: 'dancer',
+        location: 'London',
+        status: 'open',
+      })
+      .select('id, title')
+      .single()
+    expect(error).toBeNull()
+
+    // The anonymous list renders without a login redirect.
+    await page.goto('/jobs')
+    await expect(page).toHaveURL(/\/jobs$/)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Creative jobs')
+
+    // The list page is ISR-cached, so the just-seeded job may not be in it
+    // yet; the detail page renders on demand and is always fresh on first hit.
+    await page.goto(`/jobs/${job!.id}`)
+    await expect(page.getByRole('heading', { name: job!.title })).toBeVisible()
+
+    const cta = page.getByRole('link', { name: 'Sign up to apply' })
+    await expect(cta).toBeVisible()
+    await cta.click()
+    await expect(page).toHaveURL(new RegExp(`/signup\\?next=%2Fjobs%2F${job!.id}`))
+
+    // Signing in with the round-tripped next lands talent on the authed
+    // detail page (proxy redirects /jobs/{id} to /discover/{id} for talent).
+    const talent = await seedUser(admin, 'talent', 'pub-talent')
+    await page.goto(`/login?next=/jobs/${job!.id}`)
+    await page.fill('#email', talent.email)
+    await page.fill('#password', PASSWORD)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.waitForURL(new RegExp(`/discover/${job!.id}`))
+  })
+
+  test('closed jobs are invisible on the public surface', async ({ page }) => {
+    const admin = adminClient()
+    const hirer = await seedUser(admin, 'hirer', 'pub-closed-hirer')
+    const { data: job } = await admin
+      .from('jobs')
+      .insert({
+        hirer_id: hirer.id,
+        title: 'Closed test role',
+        description: 'Should never render publicly',
+        category: 'actor',
+        location: 'Leeds',
+        status: 'closed',
+      })
+      .select('id')
+      .single()
+
+    const response = await page.goto(`/jobs/${job!.id}`)
+    expect(response?.status()).toBe(404)
+  })
+
+  test('public jobs pages are indexable while my-jobs stays noindexed', async ({ page }) => {
+    const listResponse = await page.request.get('/jobs')
+    expect(listResponse.status()).toBe(200)
+    expect(listResponse.headers()['x-robots-tag']).toBeUndefined()
+
+    const myJobsResponse = await page.request.get('/my-jobs', { maxRedirects: 0 })
+    expect(myJobsResponse.headers()['x-robots-tag']).toContain('noindex')
   })
 })

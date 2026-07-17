@@ -3,7 +3,7 @@ import { login, seedUser, adminClient } from './helpers'
 
 test.describe('role and session isolation', () => {
   test('unauthenticated visitors are redirected to login', async ({ page }) => {
-    for (const path of ['/messages', '/search', '/discover', '/jobs', '/activity', '/profile', '/settings']) {
+    for (const path of ['/messages', '/search', '/discover', '/my-jobs', '/activity', '/profile', '/settings']) {
       await page.goto(path)
       await page.waitForURL(/\/login/)
     }
@@ -29,7 +29,7 @@ test.describe('role and session isolation', () => {
     const talent = await seedUser(admin, 'talent', 'isolation-talent')
     await login(page, talent.email)
 
-    for (const path of ['/search', '/jobs', '/outreach']) {
+    for (const path of ['/search', '/my-jobs', '/outreach']) {
       await page.goto(path)
       await page.waitForURL(/\/discover/)
     }

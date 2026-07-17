@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { clearLocalDemoCookies } from '@/lib/demo-mode'
+import { safeInternalPath } from '@/lib/safe-redirect'
 import posthog from 'posthog-js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,12 +14,24 @@ import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import { LegalFooterLinks } from '@/components/layout/LegalFooterLinks'
 
 export default function LoginPage() {
+  // useSearchParams requires a Suspense boundary during static rendering.
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Where to land after sign-in; set when an anonymous visitor hit a gated
+  // page (e.g. "Sign in to apply" on a public job). Validated before use.
+  const nextPath = searchParams.get('next')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null
-    const reason = new URLSearchParams(window.location.search).get('error')
+    const reason = searchParams.get('error')
     if (reason === 'oauth') return 'Google sign-in failed. Please try again.'
     if (reason === 'confirm') return 'That confirmation link is invalid or has expired. Sign in below, or sign up again to receive a new link.'
     return null
@@ -51,7 +64,7 @@ export default function LoginPage() {
       posthog.capture('user_signed_in', {
         account_type: accountType,
       })
-      router.push('/home')
+      router.push(safeInternalPath(nextPath))
       router.refresh()
     } catch {
       setError('Unable to reach the sign-in service. Check your Supabase configuration and try again.')
@@ -133,7 +146,7 @@ export default function LoginPage() {
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <GoogleSignInButton onError={setError} />
+            <GoogleSignInButton next={nextPath} onError={setError} />
 
             {demoLoginEnabled && (
               <div className="mt-5 border-t border-border/70 pt-5">
@@ -162,7 +175,7 @@ export default function LoginPage() {
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
           No account?{' '}
-          <Link href="/signup" className="text-primary hover:text-primary/80 font-medium">
+          <Link href={nextPath ? `/signup?next=${encodeURIComponent(nextPath)}` : '/signup'} className="text-primary hover:text-primary/80 font-medium">
             Sign up
           </Link>
         </p>

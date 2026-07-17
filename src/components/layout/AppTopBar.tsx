@@ -21,7 +21,7 @@ type QuickTab =
 // Notifications live in the bell (mobile: direct link, md+: preview popover),
 // so the quick tabs only carry destinations without their own entry point.
 const hirerQuickTabs: QuickTab[] = [
-  { title: 'Jobs', icon: Briefcase, href: '/jobs' },
+  { title: 'Jobs', icon: Briefcase, href: '/my-jobs' },
 ]
 
 const talentQuickTabs: QuickTab[] = []

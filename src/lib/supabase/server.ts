@@ -27,6 +27,20 @@ export async function createClient() {
   )
 }
 
+// Anonymous, cookie-free client - for public (unauthenticated) pages that
+// must stay statically renderable: calling cookies() would force dynamic
+// rendering, so ISR pages like /jobs use this instead of createClient().
+// Reads run as the anon role under RLS (open marketplace only).
+export function createAnonClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: { getAll: () => [], setAll: () => {} },
+    }
+  )
+}
+
 // Service-role client - use only in server-side code for admin operations (seed, embed)
 // Never expose the service role key to the client
 export function createServiceClient() {

@@ -9,10 +9,12 @@ interface GoogleSignInButtonProps {
   // Set on the signup page so the OAuth callback knows which workspace the
   // user picked; omit on login (returning users already have a type).
   accountType?: AccountType
+  // Internal path to land on after the OAuth callback (validated server-side).
+  next?: string | null
   onError: (message: string) => void
 }
 
-export function GoogleSignInButton({ accountType, onError }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({ accountType, next, onError }: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false)
 
   async function handleClick() {
@@ -21,6 +23,7 @@ export function GoogleSignInButton({ accountType, onError }: GoogleSignInButtonP
       const supabase = createClient()
       const redirectTo = new URL('/auth/callback', window.location.origin)
       if (accountType) redirectTo.searchParams.set('account_type', accountType)
+      if (next) redirectTo.searchParams.set('next', next)
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
