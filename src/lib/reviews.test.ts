@@ -21,6 +21,7 @@ describe('summarizeReviews', () => {
       count: 0,
       average: null,
       breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      sub_averages: { communication: null, reliability: null, craft: null },
     })
   })
 
@@ -39,6 +40,29 @@ describe('summarizeReviews', () => {
     const summary = summarizeReviews([{ rating: 5 }, { rating: 0 }, { rating: 9 }])
     expect(summary.count).toBe(1)
     expect(summary.average).toBe(5)
+  })
+
+  it('averages sub-ratings only over reviews that provide them', () => {
+    const summary = summarizeReviews([
+      { rating: 5, rating_communication: 5, rating_reliability: 4, rating_craft: 5 },
+      { rating: 4, rating_communication: 4, rating_reliability: null, rating_craft: 4 },
+      { rating: 5 },
+    ])
+    expect(summary.sub_averages).toEqual({ communication: 4.5, reliability: 4, craft: 4.5 })
+  })
+
+  it('returns null sub-averages when no review carries sub-ratings', () => {
+    const summary = summarizeReviews([{ rating: 5 }, { rating: 3 }])
+    expect(summary.sub_averages).toEqual({ communication: null, reliability: null, craft: null })
+  })
+
+  it('ignores out-of-range sub-ratings', () => {
+    const summary = summarizeReviews([
+      { rating: 5, rating_communication: 0 },
+      { rating: 5, rating_communication: 9 },
+      { rating: 5, rating_communication: 3 },
+    ])
+    expect(summary.sub_averages.communication).toBe(3)
   })
 })
 

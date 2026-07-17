@@ -162,6 +162,9 @@ export interface TalentReview {
   rating: number
   body: string
   project_title: string | null
+  rating_communication?: number | null
+  rating_reliability?: number | null
+  rating_craft?: number | null
   created_at: string
   reviewer?: { full_name: string; avatar_url: string | null } | null
 }
@@ -170,6 +173,11 @@ export interface ReviewSummary {
   count: number
   average: number | null
   breakdown: Record<1 | 2 | 3 | 4 | 5, number>
+  sub_averages: {
+    communication: number | null
+    reliability: number | null
+    craft: number | null
+  }
 }
 
 export interface TalentSensitivePreferences {

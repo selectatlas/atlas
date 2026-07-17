@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { getPlatformAdminRole } from '@/lib/platform-admin'
 import { DEMO_PROFILE, DEMO_REVIEWS, DEMO_TALENT_ATTRIBUTES, DEMO_TALENT_RESULTS } from '@/lib/demo-data'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
-import { summarizeReviews } from '@/lib/reviews'
+import { REVIEW_PUBLIC_COLUMNS, summarizeReviews } from '@/lib/reviews'
 import type { Profile, TalentSkill, Credit, PortfolioItem, TalentReview } from '@/types'
 import type { TalentDisplayDetails } from '@/components/talent/TalentProfileDetails'
 
@@ -121,10 +121,12 @@ export async function getTalentProfile(id: string) {
       .select('*')
       .eq('profile_id', id)
       .maybeSingle(),
-    // Two FKs point at profiles, so the reviewer join needs the explicit FK hint.
+    // Two FKs point at profiles, so the reviewer join needs the explicit FK
+    // hint. Columns are named because recommend_score is private (018): a
+    // '*' select would hit the revoked column grant for authenticated users.
     supabase
       .from('talent_reviews')
-      .select('*, reviewer:profiles!talent_reviews_reviewer_id_fkey(full_name, avatar_url)')
+      .select(`${REVIEW_PUBLIC_COLUMNS}, reviewer:profiles!talent_reviews_reviewer_id_fkey(full_name, avatar_url)`)
       .eq('talent_id', id)
       .order('created_at', { ascending: false })
       .limit(25),
