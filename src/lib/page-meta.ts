@@ -85,7 +85,7 @@ const TALENT_STATIC: Record<string, PageMeta> = {
     breadcrumbs: [{ label: 'Opportunities', href: '/discover' }, { label: 'Discover' }],
     eyebrow: 'Your opportunities',
     title: 'Discover jobs',
-    description: 'Swipe through roles matched to your skills and availability.',
+    description: 'Browse roles matched to your skills and availability.',
   },
   '/messages': {
     breadcrumbs: [{ label: 'Account', href: '/home' }, { label: 'Messages' }],
@@ -126,6 +126,15 @@ function matchDynamicMeta(pathname: string, accountType: 'hirer' | 'talent'): Pa
     if (talentMatch) {
       return {
         breadcrumbs: [{ label: 'Search', href: '/search' }, { label: 'Profile' }],
+      }
+    }
+  }
+
+  if (accountType === 'talent') {
+    const discoverMatch = pathname.match(/^\/discover\/([^/]+)$/)
+    if (discoverMatch) {
+      return {
+        breadcrumbs: [{ label: 'Discover', href: '/discover' }, { label: 'Job brief' }],
       }
     }
   }

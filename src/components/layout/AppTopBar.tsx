@@ -2,15 +2,30 @@
 
 import { FormEvent, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Command, Search } from 'lucide-react'
+import { Bell, Briefcase, Command, Search, type LucideIcon } from 'lucide-react'
 import { PageBreadcrumbs } from '@/components/layout/PageBreadcrumbs'
 import { MobileSearchSheet } from '@/components/layout/MobileSearchSheet'
 import { NotificationsBell } from '@/components/layout/NotificationsBell'
 import { useAppShell } from '@/components/layout/app-shell-context'
+import { useInbox } from '@/components/layout/inbox-context'
 import { getPageMeta, getSearchTarget } from '@/lib/page-meta'
 import { Button } from '@/components/ui/button'
+import { ExpandableTabs } from '@/components/ui/expandable-tabs'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+
+type QuickTab =
+  | { title: string; icon: LucideIcon; href: string; badge?: number }
+  | { type: 'separator' }
+
+const hirerQuickTabs: QuickTab[] = [
+  { title: 'Jobs', icon: Briefcase, href: '/jobs' },
+  { title: 'Notifications', icon: Bell, href: '/notifications' },
+]
+
+const talentQuickTabs: QuickTab[] = [
+  { title: 'Notifications', icon: Bell, href: '/notifications' },
+]
 
 function BreadcrumbSkeleton() {
   return (
@@ -26,6 +41,7 @@ export function AppTopBar() {
   const pathname = usePathname()
   const router = useRouter()
   const { accountType, override } = useAppShell()
+  const { navBadges } = useInbox()
   const [query, setQuery] = useState('')
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
@@ -56,6 +72,19 @@ export function AppTopBar() {
 
   function openCommandPalette() {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
+  }
+
+  const quickTabs = useMemo(() => {
+    const base = accountType === 'hirer' ? hirerQuickTabs : talentQuickTabs
+    return base.map(tab =>
+      'href' in tab ? { ...tab, badge: navBadges[tab.href] } : tab,
+    )
+  }, [accountType, navBadges])
+
+  function onQuickTabChange(index: number | null) {
+    if (index === null) return
+    const tab = quickTabs[index]
+    if (tab && 'href' in tab) router.push(tab.href)
   }
 
   return (
@@ -117,7 +146,16 @@ export function AppTopBar() {
               <Command className="size-4" />
             </Button>
 
-            <NotificationsBell />
+            {/* Below md the quick tabs are hidden, so keep the bell as the notifications entry point. */}
+            <div className="md:hidden">
+              <NotificationsBell />
+            </div>
+
+            <ExpandableTabs
+              tabs={quickTabs}
+              onChange={onQuickTabChange}
+              className="hidden shrink-0 flex-nowrap border-none shadow-none md:flex"
+            />
           </div>
         </div>
       </header>

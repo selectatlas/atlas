@@ -151,7 +151,9 @@ export async function getTalentProfile(id: string) {
   const viewsCount = stats?.views_count ?? 0
   const shortlistCount = stats?.shortlist_count ?? 0
 
-  const reviews = (reviewsResult.data ?? []) as TalentReview[]
+  // The reviewer embed is a to-one join (FK hint), but the inferred row type
+  // models it as an array, so route the cast through unknown.
+  const reviews = (reviewsResult.data ?? []) as unknown as TalentReview[]
   const localSummary = summarizeReviews(reviews)
   // Prefer the view's aggregates: they cover all reviews, not just the page we fetched.
   const reviewSummary = {

@@ -42,6 +42,16 @@ export function getJobMatchReasons(job: Job, profile: TalentProfile | null) {
   return reasons.length > 0 ? reasons.slice(0, 3) : [`Matches your ${CATEGORY_LABELS[job.category]} profile`]
 }
 
+export function buildApplicationNote(job: Job, profile: TalentProfile | null) {
+  const firstName = profile?.full_name.split(' ')[0] ?? 'there'
+  const matchingSkill = job.skills_required.find(required => profile?.talent_skills.some(skill => {
+    const currentSkill = skill.skill.toLowerCase()
+    const requiredSkill = required.toLowerCase()
+    return currentSkill.includes(requiredSkill) || requiredSkill.includes(currentSkill)
+  }))
+  return `Hi, I'm ${firstName}. I'd love to be considered for ${job.title}${matchingSkill ? ` - my experience in ${matchingSkill} feels like a strong fit` : ''}. Thanks for taking a look at my profile.`
+}
+
 export function getJobMeta(job: Job) {
   const dates = [formatDate(job.start_date), formatDate(job.end_date)].filter(Boolean)
   return {

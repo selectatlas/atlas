@@ -2,25 +2,48 @@
 
 import { Suspense, useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { BriefcaseBusiness, Check, Grid2X2, List, MapPin, X } from 'lucide-react'
+import { BriefcaseBusiness, Check, Layers, LayoutGrid, List, MapPin, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isLocalDemoMode } from '@/lib/demo-mode'
 import { DEMO_APPLICATIONS_STORAGE_KEY, DEMO_JOBS, DEMO_PROFILE, type DemoApplication } from '@/lib/demo-data'
 import { CATEGORY_LABELS } from '@/lib/skills'
-import { getJobMatchReasons } from '@/lib/matching'
+import { buildApplicationNote, getJobMatchReasons, getJobMeta } from '@/lib/matching'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { PageShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { JobBriefDialog } from '@/components/talent/JobBriefDialog'
 import { ApplicationPreviewDialog } from '@/components/talent/ApplicationPreviewDialog'
+import { JobCover } from '@/components/talent/JobCover'
 import posthog from 'posthog-js'
 import type { Job, Category, Profile, TalentSkill } from '@/types'
 
 type JobResult = Job & { hirer?: { full_name: string } | null }
 type SortOption = 'newest' | 'rate_high' | 'rate_low'
+type WorkTypeFilter = 'all' | 'in_person' | 'remote' | 'hybrid'
+type BudgetFilter = 'any' | 'under250' | '250to500' | 'over500'
+
+const WORK_TYPE_OPTIONS: Record<WorkTypeFilter, string> = {
+  all: 'All work types',
+  in_person: 'In person',
+  remote: 'Remote',
+  hybrid: 'Hybrid',
+}
+
+const BUDGET_OPTIONS: Record<BudgetFilter, string> = {
+  any: 'Any rate',
+  under250: 'Under £250',
+  '250to500': '£250 - £500',
+  over500: 'Over £500',
+}
+
+const SORT_OPTIONS: Record<SortOption, string> = {
+  newest: 'Newest first',
+  rate_high: 'Rate: high to low',
+  rate_low: 'Rate: low to high',
+}
 
 export default function DiscoverPage() {
   return (
@@ -40,12 +63,14 @@ function DiscoverPageContent() {
   const [passed, setPassed] = useState<Set<string>>(new Set())
   const [applied, setApplied] = useState<Set<string>>(new Set())
   const [applyingId, setApplyingId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'swipe' | 'list'>('swipe')
+  const [viewMode, setViewMode] = useState<'swipe' | 'grid' | 'list'>('grid')
   const search = searchParams.get('q') ?? ''
   const [sort, setSort] = useState<SortOption>('newest')
+  const [workType, setWorkType] = useState<WorkTypeFilter>('all')
+  const [locationFilter, setLocationFilter] = useState('all')
+  const [budgetBand, setBudgetBand] = useState<BudgetFilter>('any')
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
-  const [briefJob, setBriefJob] = useState<JobResult | null>(null)
   const [applicationJob, setApplicationJob] = useState<JobResult | null>(null)
   const [applicationNote, setApplicationNote] = useState('')
   const [advanceAfterApplication, setAdvanceAfterApplication] = useState(false)
@@ -58,6 +83,13 @@ function DiscoverPageContent() {
         setTalentProfile(DEMO_PROFILE)
         setTalentCategory('dancer')
         setJobs(DEMO_JOBS)
+        try {
+          const existing = window.sessionStorage.getItem(DEMO_APPLICATIONS_STORAGE_KEY)
+          const applications = existing ? JSON.parse(existing) as DemoApplication[] : []
+          setApplied(new Set(applications.map(application => application.job_id)))
+        } catch {
+          // Ignore unreadable preview storage; applications simply start empty.
+        }
         setLoading(false)
         return
       }
@@ -84,7 +116,7 @@ function DiscoverPageContent() {
 
       let query = supabase
         .from('jobs')
-        .select('*, profiles!hirer_id(full_name)')
+        .select('*, hirer:profiles!hirer_id(full_name)')
         .eq('status', 'open')
         .is('removed_at', null)
         .order('created_at', { ascending: false })
@@ -93,12 +125,26 @@ function DiscoverPageContent() {
         query = query.eq('category', primaryCategory)
       }
 
-      const { data: jobData } = await query
+      const [{ data: jobData }, { data: applicationData }] = await Promise.all([
+        query,
+        supabase.from('applications').select('job_id').eq('talent_id', user.id),
+      ])
       setJobs((jobData ?? []) as JobResult[])
+      setApplied(new Set((applicationData ?? []).map(application => application.job_id as string)))
       setLoading(false)
     }
     load()
   }, [router])
+
+  const locations = useMemo(
+    () => [...new Set(jobs.map(j => j.location))].sort((a, b) => a.localeCompare(b)),
+    [jobs]
+  )
+
+  const locationOptions = useMemo<Record<string, string>>(
+    () => ({ all: 'All locations', ...Object.fromEntries(locations.map(loc => [loc, loc])) }),
+    [locations]
+  )
 
   const visibleJobs = useMemo(() => {
     let filtered = jobs.filter(j => !passed.has(j.id))
@@ -110,6 +156,21 @@ function DiscoverPageContent() {
         j.description.toLowerCase().includes(q) ||
         j.location.toLowerCase().includes(q)
       )
+    }
+
+    if (workType !== 'all') {
+      filtered = filtered.filter(j => j.work_type === workType)
+    }
+    if (locationFilter !== 'all') {
+      filtered = filtered.filter(j => j.location === locationFilter)
+    }
+    if (budgetBand !== 'any') {
+      filtered = filtered.filter(j => {
+        const rate = parseBudget(j.budget)
+        if (budgetBand === 'under250') return rate > 0 && rate < 250
+        if (budgetBand === '250to500') return rate >= 250 && rate <= 500
+        return rate > 500
+      })
     }
 
     filtered = [...filtered].sort((a, b) => {
@@ -130,16 +191,18 @@ function DiscoverPageContent() {
     })
 
     return filtered
-  }, [jobs, passed, search, sort])
+  }, [jobs, passed, search, sort, workType, locationFilter, budgetBand])
 
-  function buildApplicationNote(job: JobResult) {
-    const firstName = talentProfile?.full_name.split(' ')[0] ?? 'there'
-    const matchingSkill = job.skills_required.find(required => talentProfile?.talent_skills.some(skill => {
-      const currentSkill = skill.skill.toLowerCase()
-      const requiredSkill = required.toLowerCase()
-      return currentSkill.includes(requiredSkill) || requiredSkill.includes(currentSkill)
-    }))
-    return `Hi, I'm ${firstName}. I'd love to be considered for ${job.title}${matchingSkill ? ` — my experience in ${matchingSkill} feels like a strong fit` : ''}. Thanks for taking a look at my profile.`
+  const hasActiveFilters = workType !== 'all' || locationFilter !== 'all' || budgetBand !== 'any'
+
+  function clearFilters() {
+    setWorkType('all')
+    setLocationFilter('all')
+    setBudgetBand('any')
+  }
+
+  function openJob(job: JobResult) {
+    router.push(`/discover/${job.id}`)
   }
 
   function requestApplication(job: JobResult, shouldAdvance = false) {
@@ -147,7 +210,7 @@ function DiscoverPageContent() {
     setDragX(0)
     setApplicationError(null)
     setAdvanceAfterApplication(shouldAdvance)
-    setApplicationNote(buildApplicationNote(job))
+    setApplicationNote(buildApplicationNote(job, talentProfile))
     setApplicationJob(job)
   }
 
@@ -263,18 +326,18 @@ function DiscoverPageContent() {
     return (
       <div className="space-y-6 py-2">
         <Skeleton className="h-7 rounded-xl w-1/2" />
-        <div className="border rounded-3xl h-[460px] overflow-hidden">
-          <Skeleton className="aspect-[4/3] rounded-none" />
-          <div className="p-6 space-y-3">
-            <Skeleton className="h-5 w-24 rounded-full" />
-            <Skeleton className="h-7 w-3/4 rounded-md" />
-            <Skeleton className="h-4 w-1/2 rounded-md" />
-            <div className="space-y-2 mt-4">
-              <Skeleton className="h-4 w-full rounded-md" />
-              <Skeleton className="h-4 w-full rounded-md" />
-              <Skeleton className="h-4 w-2/3 rounded-md" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className="overflow-hidden rounded-xl border">
+              <Skeleton className="aspect-video rounded-none" />
+              <div className="space-y-3 p-5">
+                <Skeleton className="h-6 w-3/4 rounded-md" />
+                <Skeleton className="h-4 w-1/2 rounded-md" />
+                <Skeleton className="h-4 w-full rounded-md" />
+                <Skeleton className="h-9 w-full rounded-xl" />
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     )
@@ -286,12 +349,12 @@ function DiscoverPageContent() {
         description={
           talentCategory
             ? `Matched for ${CATEGORY_LABELS[talentCategory]}`
-            : 'Swipe through roles matched to your skills and availability.'
+            : 'Browse roles matched to your skills and availability.'
         }
         actions={
           visibleJobs.length > 0 ? (
             <div className="flex gap-0.5 rounded-lg bg-muted p-1">
-              {(['swipe', 'list'] as const).map(mode => (
+              {(['grid', 'swipe', 'list'] as const).map(mode => (
                 <Button
                   type="button"
                   key={mode}
@@ -301,7 +364,7 @@ function DiscoverPageContent() {
                   aria-pressed={viewMode === mode}
                   className={viewMode === mode ? 'bg-background text-foreground shadow-sm' : ''}
                 >
-                  {mode === 'swipe' ? <Grid2X2 className="size-3.5" /> : <List className="size-3.5" />}
+                  {mode === 'swipe' ? <Layers className="size-3.5" /> : mode === 'grid' ? <LayoutGrid className="size-3.5" /> : <List className="size-3.5" />}
                   <span>{mode}</span>
                 </Button>
               ))}
@@ -313,25 +376,62 @@ function DiscoverPageContent() {
         <p className="-mt-4 inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">Local demo mode</p>
       )}
 
-      {/* Sort */}
-      <div className="flex justify-end">
-        <select
-          value={sort}
-          onChange={e => setSort(e.target.value as SortOption)}
-          aria-label="Sort jobs"
-          className="bg-muted border border-border rounded-xl px-3 py-2.5 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer"
-        >
-          <option value="newest">Newest</option>
-          <option value="rate_high">Rate ↑</option>
-          <option value="rate_low">Rate ↓</option>
-        </select>
+      {/* Filters + sort */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select items={WORK_TYPE_OPTIONS} value={workType} onValueChange={value => setWorkType((value ?? 'all') as WorkTypeFilter)}>
+          <SelectTrigger aria-label="Filter by work type" className="w-auto min-w-[8.5rem] rounded-xl">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(WORK_TYPE_OPTIONS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select items={locationOptions} value={locationFilter} onValueChange={value => setLocationFilter(value ?? 'all')}>
+          <SelectTrigger aria-label="Filter by location" className="w-auto min-w-[8.5rem] rounded-xl">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(locationOptions).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select items={BUDGET_OPTIONS} value={budgetBand} onValueChange={value => setBudgetBand((value ?? 'any') as BudgetFilter)}>
+          <SelectTrigger aria-label="Filter by rate" className="w-auto min-w-[7.5rem] rounded-xl">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(BUDGET_OPTIONS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {hasActiveFilters && (
+          <Button type="button" variant="ghost" size="xs" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        )}
+        <div className="ml-auto">
+          <Select items={SORT_OPTIONS} value={sort} onValueChange={value => setSort((value ?? 'newest') as SortOption)}>
+            <SelectTrigger aria-label="Sort jobs" className="w-auto min-w-[7rem] rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SORT_OPTIONS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {search.trim() && (
-        <p className="text-sm text-muted-foreground">
-          Filtering by “{search.trim()}” — use the top search bar to change.
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground">
+        {visibleJobs.length} open {visibleJobs.length === 1 ? 'role' : 'roles'}
+        {hasActiveFilters ? ' match your filters' : talentCategory ? ` in ${CATEGORY_LABELS[talentCategory]}` : ''}
+        {search.trim() && <> · filtering by &ldquo;{search.trim()}&rdquo; - use the top search bar to change.</>}
+      </p>
 
       {!hasJobsForView ? (
         <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center">
@@ -339,11 +439,35 @@ function DiscoverPageContent() {
           <p className="font-medium">
             {search.trim()
               ? 'No jobs match your search'
-              : jobs.length === 0
-                ? 'No open jobs yet'
-                : "You've reviewed all jobs"}
+              : hasActiveFilters
+                ? 'No jobs match your filters'
+                : jobs.length === 0
+                  ? 'No open jobs yet'
+                  : "You've reviewed all jobs"}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">Check back soon for new opportunities.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {hasActiveFilters ? 'Try widening or clearing your filters.' : 'Check back soon for new opportunities.'}
+          </p>
+          {hasActiveFilters && (
+            <Button type="button" variant="outline" size="sm" className="mt-4 rounded-xl" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 gap-4 card-stagger sm:grid-cols-2 lg:grid-cols-3">
+          {visibleJobs.map(job => (
+            <JobGridCard
+              key={job.id}
+              job={job}
+              matchReasons={getJobMatchReasons(job, talentProfile)}
+              applied={applied.has(job.id)}
+              applying={applyingId === job.id}
+              onApply={() => requestApplication(job)}
+              onViewBrief={() => openJob(job)}
+              onPass={() => passJob(job.id)}
+            />
+          ))}
         </div>
       ) : viewMode === 'list' ? (
         <div className="space-y-3 card-stagger">
@@ -354,7 +478,7 @@ function DiscoverPageContent() {
               applied={applied.has(job.id)}
               applying={applyingId === job.id}
               onApply={() => requestApplication(job)}
-              onViewBrief={() => setBriefJob(job)}
+              onViewBrief={() => openJob(job)}
               onPass={() => passJob(job.id)}
             />
           ))}
@@ -367,7 +491,7 @@ function DiscoverPageContent() {
                 className="absolute inset-0 bg-card border rounded-3xl overflow-hidden"
                 style={{ transform: 'scale(0.95)', transformOrigin: 'bottom center', zIndex: 1 }}
               >
-                <JobCardContent job={next} matchReasons={getJobMatchReasons(next, talentProfile)} onViewBrief={() => setBriefJob(next)} />
+                <JobCardContent job={next} matchReasons={getJobMatchReasons(next, talentProfile)} onViewBrief={() => openJob(next)} />
               </div>
             )}
 
@@ -386,7 +510,7 @@ function DiscoverPageContent() {
                 onPointerUp={onDragEnd}
                 onPointerCancel={onDragEnd}
               >
-                <JobCardContent job={current} matchReasons={getJobMatchReasons(current, talentProfile)} onViewBrief={() => setBriefJob(current)} />
+                <JobCardContent job={current} matchReasons={getJobMatchReasons(current, talentProfile)} onViewBrief={() => openJob(current)} />
 
                 {isRight && (
                   <div className="absolute inset-0 bg-accent/20 flex items-center justify-center rounded-3xl">
@@ -446,19 +570,6 @@ function DiscoverPageContent() {
         </div>
       )}
 
-      <JobBriefDialog
-        job={briefJob}
-        matchReasons={briefJob ? getJobMatchReasons(briefJob, talentProfile) : []}
-        applied={briefJob ? applied.has(briefJob.id) : false}
-        onClose={() => setBriefJob(null)}
-        onApply={() => {
-          if (!briefJob) return
-          const job = briefJob
-          setBriefJob(null)
-          requestApplication(job)
-        }}
-      />
-
       <ApplicationPreviewDialog
         job={applicationJob}
         profile={talentProfile}
@@ -508,6 +619,92 @@ function JobCardContent({ job, matchReasons, onViewBrief }: { job: JobResult; ma
         View full brief →
       </Button>
     </div>
+  )
+}
+
+function JobGridCard({
+  job, matchReasons, applied, applying, onApply, onViewBrief, onPass,
+}: {
+  job: JobResult
+  matchReasons: string[]
+  applied: boolean
+  applying: boolean
+  onApply: () => void
+  onViewBrief: () => void
+  onPass: () => void
+}) {
+  const hirer = job.hirer as { full_name: string } | null
+  const { workTypeLabel, deadlineLabel } = getJobMeta(job)
+  return (
+    <Card className="group/job flex h-full flex-col gap-0 overflow-hidden p-0 transition-shadow hover:shadow-md">
+      <button
+        type="button"
+        onClick={onViewBrief}
+        aria-label={`View full brief for ${job.title}`}
+        className="block w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <JobCover
+          coverUrl={job.cover_url}
+          category={job.category}
+          title={job.title}
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          className="aspect-video"
+        >
+          <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+            <Badge variant="secondary" className="bg-background/85 text-xs text-foreground shadow-sm backdrop-blur-sm">{CATEGORY_LABELS[job.category]}</Badge>
+            {workTypeLabel && <Badge variant="secondary" className="bg-background/85 text-xs text-foreground shadow-sm backdrop-blur-sm">{workTypeLabel}</Badge>}
+          </div>
+        </JobCover>
+      </button>
+      <div className="flex flex-1 flex-col p-5">
+      <h3 className="text-base font-semibold leading-tight">
+        <button type="button" onClick={onViewBrief} className="text-left hover:underline focus-visible:underline focus-visible:outline-none">
+          {job.title}
+        </button>
+      </h3>
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+        {hirer && <span>by {hirer.full_name}</span>}
+        <span className="inline-flex items-center gap-1">
+          <MapPin className="size-3.5 shrink-0" strokeWidth={1.5} />
+          {job.location}
+        </span>
+      </div>
+      <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{job.description}</p>
+      {matchReasons.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {matchReasons.slice(0, 2).map(reason => (
+            <Badge key={reason} variant="secondary" className="text-[11px]">{reason}</Badge>
+          ))}
+        </div>
+      )}
+      <div className="mt-auto pt-4">
+        <div className="flex items-baseline justify-between gap-2 border-t border-border pt-3">
+          <p className="truncate text-sm font-semibold">{job.budget ?? <span className="font-normal text-muted-foreground">Rate on application</span>}</p>
+          {deadlineLabel && <p className="shrink-0 text-[11px] text-muted-foreground">Apply by {deadlineLabel}</p>}
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onPass} aria-label={`Pass on ${job.title}`}>
+            Pass
+          </Button>
+          <Button variant="ghost" size="sm" className="px-3" onClick={onViewBrief} aria-label={`View full brief for ${job.title}`}>
+            Brief
+          </Button>
+          <Button
+            size="sm"
+            onClick={onApply}
+            disabled={applying || applied}
+            className={`flex-1 rounded-xl font-semibold ${
+              applied
+                ? 'bg-green-50 text-green-600 border border-green-200 hover:bg-green-50'
+                : 'bg-accent text-accent-foreground hover:bg-accent/80'
+            }`}
+          >
+            {applying ? 'Applying...' : applied ? 'Applied' : 'Apply'}
+          </Button>
+        </div>
+      </div>
+      </div>
+    </Card>
   )
 }
 

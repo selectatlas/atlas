@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { BriefcaseBusiness, ChevronDown, ExternalLink, Send } from 'lucide-react'
+import { BriefcaseBusiness, Check, ChevronDown, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppShell } from '@/components/layout/app-shell-context'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { nameInitial } from '@/lib/display'
+import { buildPreHireTimeline, type PreHireStage } from '@/lib/pre-hire-timeline'
 import { PUBLIC_PROFILE_WITH_SKILLS } from '@/lib/profile-fields'
 import type { ThreadOrigin } from '@/components/messages/types'
 
@@ -52,6 +53,55 @@ function Section({
       </button>
       {open && <div className="px-4 pb-4">{children}</div>}
     </div>
+  )
+}
+
+// Upwork-style pre-hire stepper: one dot per stage, connected by a vertical
+// line, driven by the linked outreach/application status.
+function StageTimeline({ stages, startedAt }: { stages: PreHireStage[]; startedAt: string | null }) {
+  return (
+    <ol className="mt-1">
+      {stages.map((stage, index) => (
+        <li key={stage.key} className="relative flex gap-3 pb-4 last:pb-0">
+          {index < stages.length - 1 && (
+            <span
+              aria-hidden
+              className={`absolute left-[8px] top-[18px] h-[calc(100%-18px)] w-px ${
+                stages[index + 1].complete ? 'bg-primary' : 'bg-border'
+              }`}
+            />
+          )}
+          <span
+            aria-hidden
+            className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full ${
+              stage.complete
+                ? 'bg-primary text-primary-foreground'
+                : 'border border-border bg-muted'
+            }`}
+          >
+            {stage.complete && <Check className="size-2.5" strokeWidth={3} />}
+          </span>
+          <div className="min-w-0">
+            <p
+              className={`text-xs leading-4 ${
+                stage.current
+                  ? 'font-semibold text-foreground'
+                  : stage.complete
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground'
+              }`}
+            >
+              {stage.label}
+            </p>
+            {stage.key === 'started' && startedAt && (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {new Date(startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              </p>
+            )}
+          </div>
+        </li>
+      ))}
+    </ol>
   )
 }
 
@@ -106,6 +156,7 @@ export function ContextRail({
 
   const isTalentProfile = profile?.account_type === 'talent'
   const location = [profile?.city, profile?.country].filter(Boolean).join(', ')
+  const timelineStages = buildPreHireTimeline(origin)
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
@@ -178,7 +229,7 @@ export function ContextRail({
 
             {(origin.job_title || origin.outreach_id) && (
               <Section title="How it started" defaultOpen>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-3 text-sm">
                   {origin.job_title && origin.job_id && (
                     <Link
                       href={`/jobs/${origin.job_id}`}
@@ -188,13 +239,8 @@ export function ContextRail({
                       <span className="truncate font-medium">{origin.job_title}</span>
                     </Link>
                   )}
-                  {origin.outreach_id && (
-                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Send className="size-3.5 shrink-0" />
-                      Started from outreach
-                      {origin.outreach_sent_at &&
-                        ` on ${new Date(origin.outreach_sent_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
-                    </p>
+                  {timelineStages.length > 0 && (
+                    <StageTimeline stages={timelineStages} startedAt={origin.outreach_sent_at ?? threadCreatedAt} />
                   )}
                 </div>
               </Section>

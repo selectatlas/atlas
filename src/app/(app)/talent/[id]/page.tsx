@@ -22,8 +22,11 @@ import { ReviewHighlights } from '@/components/talent/ReviewHighlights'
 import { ReviewsSection } from '@/components/talent/ReviewsSection'
 import { InlineShowreel } from '@/components/talent/InlineShowreel'
 import { BookingCard } from '@/components/talent/BookingCard'
+import { ReviewDialog } from '@/components/talent/ReviewDialog'
 import { getProfileStories } from '@/lib/stories'
 import { getTalentProfile } from '@/lib/talent'
+import { hasHiredTalent } from '@/lib/reviews-server'
+import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { DEMO_PROFILE } from '@/lib/demo-data'
 import { formatDayRate } from '@/lib/display'
@@ -75,6 +78,12 @@ export default async function TalentProfilePage({
   } = data
   const skills = profile.talent_skills as TalentSkill[]
   const categories = [...new Set(skills.map(s => s.category))]
+
+  // Review authoring is only offered to hirers who have actually hired this
+  // talent; the API route and RLS enforce the same eligibility server-side.
+  const canReview = !isOwner && accountType === 'hirer' && userId
+    ? await hasHiredTalent(await createClient(), userId, id)
+    : false
 
   const averageRating = formatRating(reviewSummary.average)
   const dayRate = formatDayRate(talentDetails.rate_min, talentDetails.rate_max)
@@ -229,6 +238,9 @@ export default async function TalentProfilePage({
             shortlistCount={shortlistCount}
             showActions={!isOwner}
           />
+          {canReview && (
+            <ReviewDialog talentId={profile.id} talentName={profile.full_name} />
+          )}
           {!isOwner && (
             <>
               <p className="px-1 text-xs leading-relaxed text-muted-foreground">Review their work, then send a tailored outreach message when the fit feels right.</p>

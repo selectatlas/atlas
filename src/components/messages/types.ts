@@ -18,8 +18,10 @@ export type ThreadListItem = {
 export type ThreadOrigin = {
   outreach_id: string | null
   outreach_sent_at: string | null
+  outreach_status?: string | null
   job_id: string | null
   job_title: string | null
+  application_status?: string | null
 }
 
 export type ThreadOther = {

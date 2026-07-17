@@ -108,6 +108,11 @@ export function seededPortfolioImageUrl(seed: string): string {
   return `https://picsum.photos/seed/${seed}/1200/800`;
 }
 
+// 16:9 job card cover, deterministic per job key so re-runs are stable.
+export function seededJobCoverUrl(seed: string): string {
+  return `https://picsum.photos/seed/${seed}/1280/720`;
+}
+
 interface MirrorOptions {
   bucket: "avatars" | "covers";
   path: string;

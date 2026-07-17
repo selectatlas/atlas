@@ -98,6 +98,7 @@ export interface Job {
   duration?: string | null
   usage_rights?: string | null
   travel_required?: boolean | null
+  cover_url?: string | null
 }
 
 export interface Credit {

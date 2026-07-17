@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isThreadUnread, sumInbox } from '@/lib/inbox'
+import { isThreadUnread, isYourMove, sumInbox } from '@/lib/inbox'
 
 describe('inbox helpers', () => {
   it('marks threads unread when the latest message is from someone else after last read', () => {
@@ -20,6 +20,24 @@ describe('inbox helpers', () => {
         'me',
       ),
     ).toBe(false)
+  })
+
+  it('is your move when the thread is unread', () => {
+    expect(isYourMove({ sender_id: 'other' }, true, 'me')).toBe(true)
+  })
+
+  it('stays your move after reading if the other side sent last', () => {
+    expect(isYourMove({ sender_id: 'other' }, false, 'me')).toBe(true)
+  })
+
+  it('is not your move once you sent the latest message', () => {
+    expect(isYourMove({ sender_id: 'me' }, false, 'me')).toBe(false)
+  })
+
+  it('is not your move without a message or a user', () => {
+    expect(isYourMove(null, false, 'me')).toBe(false)
+    expect(isYourMove({ sender_id: '' }, false, 'me')).toBe(false)
+    expect(isYourMove({ sender_id: 'other' }, false, null)).toBe(false)
   })
 
   it('sums unread counts', () => {

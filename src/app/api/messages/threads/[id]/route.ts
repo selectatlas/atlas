@@ -36,9 +36,24 @@ export async function GET(_request: Request, { params }: RouteParams) {
   // Thread origin context (outreach / job that started the conversation)
   const { data: thread } = await supabase
     .from('message_threads')
-    .select('created_at, origin_outreach_id, origin_job_id, jobs(title), outreach(created_at)')
+    .select('created_at, origin_outreach_id, origin_job_id, jobs(title), outreach(created_at, status)')
     .eq('id', threadId)
     .maybeSingle()
+
+  // Linked application status for the pre-hire timeline: the application on
+  // the origin job by whichever participant is the talent. RLS already scopes
+  // visibility to the applicant and the job's hirer.
+  let applicationStatus: string | null = null
+  if (thread?.origin_job_id) {
+    const participantIds = [user.id, other?.profile_id].filter((id): id is string => Boolean(id))
+    const { data: application } = await supabase
+      .from('applications')
+      .select('status')
+      .eq('job_id', thread.origin_job_id)
+      .in('talent_id', participantIds)
+      .maybeSingle()
+    applicationStatus = (application?.status as string | null) ?? null
+  }
 
   // Get messages (newest last, limited)
   const { data: messages } = await supabase
@@ -58,7 +73,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
   const otherProfile = (other?.profiles ?? null) as { full_name: string; avatar_url: string | null } | null
   const originJob = (thread?.jobs ?? null) as unknown as { title: string } | null
-  const originOutreach = (thread?.outreach ?? null) as unknown as { created_at: string } | null
+  const originOutreach = (thread?.outreach ?? null) as unknown as { created_at: string; status: string | null } | null
 
   return Response.json({
     thread_id: threadId,
@@ -76,8 +91,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
     origin: {
       outreach_id: thread?.origin_outreach_id ?? null,
       outreach_sent_at: originOutreach?.created_at ?? null,
+      outreach_status: originOutreach?.status ?? null,
       job_id: thread?.origin_job_id ?? null,
       job_title: originJob?.title ?? null,
+      application_status: applicationStatus,
     },
     messages: messages ?? [],
   })

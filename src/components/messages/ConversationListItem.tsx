@@ -5,6 +5,7 @@ import { BriefcaseBusiness } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { nameInitial } from '@/lib/display'
+import { isYourMove } from '@/lib/inbox'
 import { formatThreadTime } from '@/lib/messages-view'
 import { isSystemMessageKind } from '@/lib/system-messages'
 import type { ThreadListItem } from '@/components/messages/types'
@@ -18,6 +19,7 @@ export function ConversationListItem({
   userId: string | null
   active: boolean
 }) {
+  const yourMove = isYourMove({ sender_id: thread.lastSenderId }, thread.unread ?? false, userId)
   return (
     <Link
       href={`/messages/${thread.id}`}
@@ -39,6 +41,11 @@ export function ConversationListItem({
             {thread.otherName}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
+            {yourMove && (
+              <Badge className="rounded-md border-transparent bg-primary/10 px-1.5 py-0 text-[10px] font-semibold text-primary">
+                Your move
+              </Badge>
+            )}
             {thread.unread && <span className="size-2 rounded-full bg-primary" aria-label="Unread" />}
             <span className="text-xs text-muted-foreground">{formatThreadTime(thread.lastMessageAt)}</span>
           </div>

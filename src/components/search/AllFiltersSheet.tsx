@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { filtersForCategory } from '@/lib/filter-taxonomy'
 import { activeFilterCount, pruneFiltersForCategory, type SearchFilters } from '@/lib/search-filters'
 import { FilterSection } from './FilterSection'
@@ -16,9 +18,13 @@ interface AllFiltersSheetProps {
   previewCount: (filters: SearchFilters) => Promise<number>
 }
 
+const ALWAYS_OPEN_SECTIONS = new Set(['Category', 'Location', 'Availability'])
+
 export function AllFiltersSheet({ open, onOpenChange, filters, onApply, previewCount }: AllFiltersSheetProps) {
   const [draft, setDraft] = useState<SearchFilters>(filters)
   const [count, setCount] = useState<number | null>(null)
+  // Explicit user toggles win; otherwise sections open when primary or holding an active filter.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (!open) return
@@ -44,6 +50,10 @@ export function AllFiltersSheet({ open, onOpenChange, filters, onApply, previewC
     setDraft(nextCategory === category ? next : pruneFiltersForCategory(next, nextCategory))
   }
 
+  function sectionActiveCount(section: string) {
+    return definitions.filter(definition => definition.section === section && draft[definition.key as keyof SearchFilters] !== undefined).length
+  }
+
   return (
     <Dialog open={open} onOpenChange={next => {
       if (next) setDraft(filters)
@@ -52,18 +62,37 @@ export function AllFiltersSheet({ open, onOpenChange, filters, onApply, previewC
       <DialogContent className="!inset-y-0 !left-auto !right-0 !top-0 !h-dvh !max-w-xl !translate-x-0 !translate-y-0 !grid-rows-[auto_minmax(0,1fr)_auto] !rounded-none !p-0 sm:!max-w-xl" showCloseButton={false}>
         <DialogHeader className="flex-row items-center justify-between border-b border-border px-5 py-4"><DialogTitle className="text-lg">All filters</DialogTitle><Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Close</Button></DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          <div className="space-y-6">
-            {sections.map(section => (
-              <section key={section} className="space-y-4 border-b border-border/70 pb-6 last:border-0">
-                <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{section}</h3>
-                {definitions.filter(definition => definition.section === section).map(definition => <FilterSection key={definition.key} definition={definition} filters={draft} onChange={updateDraft} />)}
-              </section>
-            ))}
+          <div className="space-y-4">
+            {sections.map(section => {
+              const active = sectionActiveCount(section)
+              const isOpen = openSections[section] ?? (ALWAYS_OPEN_SECTIONS.has(section) || active > 0)
+              return (
+                <Collapsible
+                  key={section}
+                  open={isOpen}
+                  onOpenChange={next => setOpenSections(current => ({ ...current, [section]: next }))}
+                  className="border-b border-border/70 pb-4 last:border-0"
+                >
+                  <CollapsibleTrigger className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-md py-1.5 text-left">
+                    <span className="flex items-center gap-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-foreground">{section}</h3>
+                      {active > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] tabular-nums text-primary-foreground">{active}</span>}
+                    </span>
+                    <ChevronRight className="size-3.5 text-muted-foreground/60 transition-transform duration-200 group-data-panel-open:rotate-90" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="h-[var(--collapsible-panel-height)] overflow-hidden transition-[height] duration-200 ease-out data-ending-style:h-0 data-starting-style:h-0">
+                    <div className="space-y-4 pt-3">
+                      {definitions.filter(definition => definition.section === section).map(definition => <FilterSection key={definition.key} definition={definition} filters={draft} onChange={updateDraft} />)}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )
+            })}
           </div>
         </div>
         <div className="flex items-center gap-3 border-t border-border bg-background p-4">
           <Button type="button" variant="outline" onClick={() => updateDraft({})}>Reset</Button>
-          <Button type="button" className="flex-1" onClick={() => { onApply(draft); onOpenChange(false) }}>Show results{count !== null ? ` (${count})` : ''}</Button>
+          <Button type="button" className="flex-1 tabular-nums" onClick={() => { onApply(draft); onOpenChange(false) }}>Show results{count !== null ? ` (${count})` : ''}</Button>
         </div>
         <span className="sr-only">{activeFilterCount(draft)} active filters</span>
       </DialogContent>

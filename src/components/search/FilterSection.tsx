@@ -92,7 +92,7 @@ export function FilterSection({ definition, filters, onChange, compact = false }
       {visibleOptions.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2">
           {visibleOptions.map(option => (
-            <Label key={option.value} className="flex min-h-9 items-center gap-2 rounded-lg border border-border/80 bg-background px-3 text-xs font-normal">
+            <Label key={option.value} className="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-border/80 bg-background px-3 text-xs font-normal transition-colors hover:bg-muted/40">
               <Checkbox checked={selected.includes(option.value)} onCheckedChange={checked => update(checked ? [...selected, option.value] : selected.filter(item => item !== option.value))} />
               {option.label}
             </Label>

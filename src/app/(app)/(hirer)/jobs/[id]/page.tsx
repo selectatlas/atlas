@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { UsersRound } from 'lucide-react'
 import { CATEGORY_LABELS } from '@/lib/skills'
+import { getJobMeta } from '@/lib/matching'
 import {
   APPLICANT_TABS,
   APPLICATION_STATUS_LABELS,
@@ -16,7 +17,8 @@ import {
 import { PageShell } from '@/components/layout/PageShell'
 import { useSetPageShell } from '@/components/layout/use-set-page-shell'
 import { JobPipelineStepper } from '@/components/jobs/JobPipelineStepper'
-import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -116,30 +118,31 @@ export default function JobDetailPage() {
       }
     }
     if (!job) return null
+    const posted = new Date(job.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    const { workTypeLabel } = getJobMeta(job)
     return {
       breadcrumbs: [{ label: 'Jobs', href: '/jobs' }, { label: job.title }],
+      eyebrow: CATEGORY_LABELS[job.category],
       title: job.title,
-      actions: (
-        <Button
-          variant={job.status === 'open' ? 'default' : 'outline'}
-          size="sm"
-          onClick={toggleStatus}
-          disabled={toggling}
-        >
-          {toggling ? '...' : job.status === 'open' ? 'Close job' : 'Reopen job'}
-        </Button>
-      ),
+      description: [job.location, workTypeLabel, `Posted ${posted}`].filter(Boolean).join(' · '),
     }
-  }, [job, loadError, toggling, toggleStatus])
+  }, [job, loadError])
 
   useSetPageShell(loading ? LOADING_SHELL : shellOverride)
 
   if (loading) {
     return (
-      <div className="py-4 space-y-4 animate-pulse">
+      <div className="py-4 animate-pulse">
         <div className="h-7 bg-muted rounded-xl w-3/4" />
-        <Card className="h-32" />
-        <Card className="h-24" />
+        <div className="mt-4 flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+          <div className="space-y-4 lg:col-start-2 lg:row-start-1">
+            <Card className="h-48" />
+          </div>
+          <div className="space-y-4 lg:col-start-1 lg:row-start-1">
+            <Card className="h-32" />
+            <Card className="h-24" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -155,41 +158,93 @@ export default function JobDetailPage() {
 
   if (!job) return null
 
+  const jobMeta = getJobMeta(job)
+
   return (
-    <div className="space-y-4 pb-8">
+    <div className="pb-8">
       <PageShell />
 
-      {/* Pipeline stepper */}
-      <Card className="px-3 py-4">
-        <JobPipelineStepper stage={stage} />
-      </Card>
-
-      {/* Job details */}
-      <Card className="p-5 space-y-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="text-xs">
-            {CATEGORY_LABELS[job.category]}
-          </Badge>
-          <span className="text-muted-foreground text-xs">{job.location}</span>
-          {job.budget && <span className="text-muted-foreground text-xs">· {job.budget}</span>}
-        </div>
-        <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">{job.description}</p>
-        {job.skills_required.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {job.skills_required.map(s => (
-              <Badge key={s} variant="secondary" className="text-xs">
-                {s}
+      <div className="mt-4 flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
+        {/* Right rail: job overview + pipeline (first on mobile, sticky column on desktop) */}
+        <aside className="space-y-4 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-6">
+          <Card className="p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs">Budget</p>
+                <p className="text-lg font-semibold">{job.budget ?? 'Not set'}</p>
+              </div>
+              <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className="text-xs capitalize">
+                {job.status}
               </Badge>
-            ))}
-          </div>
-        )}
-      </Card>
+            </div>
 
-      {/* Applicants */}
-      <div>
-        <h2 className="text-sm font-semibold mb-3">
-          {applications.length} {applications.length === 1 ? 'Applicant' : 'Applicants'}
-        </h2>
+            <dl className="space-y-2 text-sm">
+              {jobMeta.dateLabel && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground text-xs">Dates</dt>
+                  <dd className="text-right">{jobMeta.dateLabel}</dd>
+                </div>
+              )}
+              {jobMeta.deadlineLabel && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground text-xs">Apply by</dt>
+                  <dd className="text-right">{jobMeta.deadlineLabel}</dd>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground text-xs">Location</dt>
+                <dd className="text-right">{job.location}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground text-xs">Applicants</dt>
+                <dd className="text-right tabular-nums">{applications.length}</dd>
+              </div>
+            </dl>
+
+            <Button
+              variant={job.status === 'open' ? 'outline' : 'default'}
+              className="w-full"
+              onClick={toggleStatus}
+              disabled={toggling}
+            >
+              {toggling ? '...' : job.status === 'open' ? 'Close job' : 'Reopen job'}
+            </Button>
+
+            {job.skills_required.length > 0 && (
+              <div className="border-t pt-3">
+                <p className="text-muted-foreground text-xs mb-2">Skills required</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {job.skills_required.map(s => (
+                    <Badge key={s} variant="secondary" className="text-xs">
+                      {s}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+
+          <Card className="px-3 py-4">
+            <JobPipelineStepper stage={stage} />
+          </Card>
+
+          <Link href="/search" className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
+            Search for talent
+          </Link>
+        </aside>
+
+        {/* Main column: description + applicants */}
+        <div className="space-y-4 lg:col-start-1 lg:row-start-1">
+          <Card className="p-5 space-y-2">
+            <h2 className="text-sm font-semibold">About this job</h2>
+            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">{job.description}</p>
+          </Card>
+
+          {/* Applicants */}
+          <div>
+            <h2 className="text-sm font-semibold mb-3">
+              {applications.length} {applications.length === 1 ? 'Applicant' : 'Applicants'}
+            </h2>
 
         {applications.length === 0 ? (
           <Card className="p-8 text-center">
@@ -279,7 +334,9 @@ export default function JobDetailPage() {
               </div>
             )}
           </div>
-        )}
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

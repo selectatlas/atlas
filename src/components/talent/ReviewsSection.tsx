@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { Star } from 'lucide-react'
 import { formatRating } from '@/lib/reviews'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -32,6 +33,11 @@ export function ReviewsSection({ reviews, summary }: ReviewsSectionProps) {
 
   const visible = expanded ? reviews : reviews.slice(0, INITIAL_VISIBLE)
   const average = formatRating(summary.average)
+  const subAverages = [
+    { label: 'Communication', value: summary.sub_averages.communication },
+    { label: 'Reliability', value: summary.sub_averages.reliability },
+    { label: 'Craft', value: summary.sub_averages.craft },
+  ].filter((row): row is { label: string; value: number } => row.value !== null)
 
   return (
     <section>
@@ -62,6 +68,20 @@ export function ReviewsSection({ reviews, summary }: ReviewsSectionProps) {
             })}
           </div>
         </div>
+
+        {subAverages.length > 0 && (
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {subAverages.map(row => (
+              <div key={row.label} className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2 text-xs">
+                <span className="text-muted-foreground">{row.label}</span>
+                <span className="inline-flex items-center gap-1 font-semibold">
+                  <Star className="size-3 fill-amber-400 text-amber-400" strokeWidth={1.5} />
+                  {formatRating(row.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="mt-5 divide-y divide-border/70">
           {visible.map(review => (
