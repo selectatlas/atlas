@@ -1,95 +1,127 @@
 'use client'
 
-import { useEffect, useState, KeyboardEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { SKILLS_BY_CATEGORY, CATEGORY_LABELS } from '@/lib/skills'
 import { isLocalDemoMode } from '@/lib/demo-mode'
 import { PageShell } from '@/components/layout/PageShell'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { LabeledField } from '@/components/ui/labeled-field'
-import { Switch } from '@/components/ui/switch'
-import type { Category, JobWorkType } from '@/types'
+import { JobForm, EMPTY_JOB_FORM, type JobFormValues } from '@/components/jobs/JobForm'
+import { JobDraftComposer } from '@/components/jobs/JobDraftComposer'
+import { JobDraftBanner } from '@/components/jobs/JobDraftBanner'
+import type { JobDraft } from '@/lib/job-draft'
 
-const CATEGORIES: Category[] = ['dancer', 'actor', 'photographer_videographer', 'content_creator']
-const WORK_TYPES: { value: JobWorkType; label: string }[] = [
-  { value: 'in_person', label: 'In person' },
-  { value: 'hybrid', label: 'Hybrid' },
-  { value: 'remote', label: 'Remote' },
-]
+// compose → drafting → review is the default path; manual is the escape hatch
+// and doubles as the edit surface for a draft.
+type Mode = 'compose' | 'drafting' | 'review' | 'manual'
+
+function draftToFormValues(draft: JobDraft): JobFormValues {
+  return {
+    title: draft.title ?? '',
+    description: draft.description ?? '',
+    category: draft.category ?? '',
+    skills: draft.skills_required,
+    location: draft.location ?? '',
+    budget: draft.budget ?? '',
+    workType: draft.work_type ?? '',
+    startDate: draft.start_date ?? '',
+    endDate: draft.end_date ?? '',
+    applicationDeadline: draft.application_deadline ?? '',
+    duration: draft.duration ?? '',
+    usageRights: draft.usage_rights ?? '',
+    travelRequired: draft.travel_required ?? false,
+  }
+}
 
 export default function NewJobPage() {
   const router = useRouter()
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [category, setCategory] = useState<Category | ''>('')
-  const [skillInput, setSkillInput] = useState('')
-  const [skills, setSkills] = useState<string[]>([])
-  const [location, setLocation] = useState('')
-  const [budget, setBudget] = useState('')
-  const [workType, setWorkType] = useState<JobWorkType | ''>('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [applicationDeadline, setApplicationDeadline] = useState('')
-  const [duration, setDuration] = useState('')
-  const [usageRights, setUsageRights] = useState('')
-  const [travelRequired, setTravelRequired] = useState(false)
+  const [mode, setMode] = useState<Mode>('compose')
+  const [values, setValues] = useState<JobFormValues>(EMPTY_JOB_FORM)
+  const [brief, setBrief] = useState('')
+  const [regenerating, setRegenerating] = useState(false)
+  const [draftError, setDraftError] = useState<string | null>(null)
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [defaultsLoaded, setDefaultsLoaded] = useState(false)
+  const defaultsRef = useRef<Partial<JobFormValues>>({})
+  const formRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
     async function loadDefaults() {
-      if (isLocalDemoMode()) {
-        if (!cancelled) setDefaultsLoaded(true)
-        return
-      }
+      if (isLocalDemoMode()) return
       try {
         const response = await fetch('/api/me/settings')
-        if (!response.ok || cancelled) {
-          if (!cancelled) setDefaultsLoaded(true)
-          return
-        }
+        if (!response.ok || cancelled) return
         const data = await response.json()
         if (cancelled) return
-        if (data.job_defaults?.category) setCategory(prev => prev || data.job_defaults.category)
-        if (Array.isArray(data.job_defaults?.skills_required)) {
-          setSkills(prev => prev.length > 0 ? prev : data.job_defaults.skills_required)
+        defaultsRef.current = {
+          category: data.job_defaults?.category ?? undefined,
+          skills: Array.isArray(data.job_defaults?.skills_required) ? data.job_defaults.skills_required : undefined,
+          location: data.job_defaults?.location ?? undefined,
+          budget: data.job_defaults?.budget ?? undefined,
         }
-        if (data.job_defaults?.location) setLocation(prev => prev || data.job_defaults.location)
-        if (data.job_defaults?.budget) setBudget(prev => prev || data.job_defaults.budget)
       } catch {
         // Prefill is best-effort; the form still works empty.
-      } finally {
-        if (!cancelled) setDefaultsLoaded(true)
       }
     }
     void loadDefaults()
     return () => { cancelled = true }
   }, [])
 
-  const availableSkills = category ? SKILLS_BY_CATEGORY[category as Category] : []
-
-  function addSkill(skill: string) {
-    const s = skill.trim()
-    if (s && !skills.includes(s)) setSkills(prev => [...prev, s])
-    setSkillInput('')
+  // Workspace defaults only fill a field the hirer left empty, and never
+  // overwrite a draft: what the AI understood from the brief wins.
+  function applyDefaults(current: JobFormValues): JobFormValues {
+    const defaults = defaultsRef.current
+    return {
+      ...current,
+      category: current.category || (defaults.category ?? ''),
+      skills: current.skills.length > 0 ? current.skills : (defaults.skills ?? []),
+      location: current.location || (defaults.location ?? ''),
+      budget: current.budget || (defaults.budget ?? ''),
+    }
   }
 
-  function removeSkill(skill: string) {
-    setSkills(prev => prev.filter(s => s !== skill))
+  // `isRegenerate` keeps a retry inside the review view: dropping back to the
+  // composer would hide the draft the hirer is still deciding about.
+  async function runDraft(nextBrief: string, isRegenerate = false) {
+    setDraftError(null)
+    if (isRegenerate) setRegenerating(true)
+    else setMode('drafting')
+    try {
+      const res = await fetch('/api/jobs/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brief: nextBrief }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setDraftError(data.error ?? 'Could not draft this brief. Try again or fill it in manually.')
+        if (!isRegenerate) setMode('compose')
+        return
+      }
+      setValues(applyDefaults(draftToFormValues(data.draft as JobDraft)))
+      setMode('review')
+    } catch {
+      setDraftError('Network error. Try again or fill it in manually.')
+      if (!isRegenerate) setMode('compose')
+    } finally {
+      if (isRegenerate) setRegenerating(false)
+    }
   }
 
-  function onSkillKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') { e.preventDefault(); addSkill(skillInput) }
+  function regenerate() {
+    if (brief.trim()) void runDraft(brief.trim(), true)
+  }
+
+  function goManual() {
+    setValues(current => applyDefaults(current))
+    setMode('manual')
+  }
+
+  function focusForm() {
+    formRef.current?.querySelector('input')?.focus()
   }
 
   async function handleSubmit() {
-    if (!title.trim() || !description.trim() || !category || !location.trim()) {
+    if (!values.title.trim() || !values.description.trim() || !values.category || !values.location.trim()) {
       setError('Title, description, category, and location are required.')
       return
     }
@@ -100,24 +132,25 @@ export default function NewJobPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title,
-          description,
-          category,
-          skills_required: skills,
-          location,
-          budget,
-          work_type: workType || null,
-          start_date: startDate || null,
-          end_date: endDate || null,
-          application_deadline: applicationDeadline || null,
-          duration: duration || null,
-          usage_rights: usageRights || null,
-          travel_required: travelRequired,
+          title: values.title,
+          description: values.description,
+          category: values.category,
+          skills_required: values.skills,
+          location: values.location,
+          budget: values.budget,
+          work_type: values.workType || null,
+          start_date: values.startDate || null,
+          end_date: values.endDate || null,
+          application_deadline: values.applicationDeadline || null,
+          duration: values.duration || null,
+          usage_rights: values.usageRights || null,
+          travel_required: values.travelRequired,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Failed to post job'); return }
-      router.push('/my-jobs')
+      // Land on the job itself: that is where the matched-talent shortlist is.
+      router.push(`/my-jobs/${data.job.id}?posted=1`)
     } catch {
       setError('Network error')
     } finally {
@@ -125,204 +158,50 @@ export default function NewJobPage() {
     }
   }
 
+  const showForm = mode === 'review' || mode === 'manual'
+
   return (
     <div className="space-y-4">
-      <PageShell
-        description={
-          defaultsLoaded && (category || location || budget || skills.length > 0)
-            ? 'Prefills from your workspace settings'
-            : undefined
-        }
-      />
+      <PageShell />
 
-      {error && (
-        <p className="text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">{error}</p>
+      {(mode === 'compose' || mode === 'drafting') && (
+        <JobDraftComposer
+          brief={brief}
+          onBriefChange={setBrief}
+          onDraft={runDraft}
+          drafting={mode === 'drafting'}
+          error={draftError}
+          onManual={goManual}
+        />
       )}
 
-      {/* Title + Description */}
-      <Card>
-        <CardContent className="p-5 space-y-4">
-          <LabeledField label="Job title">
-            <Input
-              placeholder="e.g. Bollywood dancers for music video"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-            />
-          </LabeledField>
-          <LabeledField label="Description">
-            <Textarea
-              className="min-h-[100px] resize-none"
-              placeholder="Describe the role, shoot dates, expectations..."
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-            />
-          </LabeledField>
-        </CardContent>
-      </Card>
-
-      {/* Category */}
-      <Card>
-        <CardContent className="p-5">
-          <label className="block text-xs font-medium text-muted-foreground mb-3">Category</label>
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map(cat => (
-              <Button
-                key={cat}
-                type="button"
-                variant="outline"
-                onClick={() => { setCategory(cat); setSkills([]) }}
-                className={`rounded-full ${category === cat ? 'bg-foreground text-background hover:bg-foreground/90' : ''}`}
-              >
-                {CATEGORY_LABELS[cat]}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Required skills */}
-      <Card>
-        <CardContent className="p-5 space-y-3">
-          <label className="block text-xs font-medium text-muted-foreground">Required skills</label>
-
-          {skills.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {skills.map(s => (
-                <Badge key={s} variant="secondary" className="gap-1 text-xs">
-                  {s}
-                  <Button type="button" variant="ghost" size="icon-xs" className="ml-0.5 size-auto p-0 hover:bg-transparent" onClick={() => removeSkill(s)}>✕</Button>
-                </Badge>
-              ))}
-            </div>
+      {mode === 'review' && (
+        <>
+          <JobDraftBanner
+            values={values}
+            onEdit={focusForm}
+            onRegenerate={regenerate}
+            regenerating={regenerating}
+          />
+          {draftError && (
+            <p className="text-destructive border-destructive/20 bg-destructive/10 rounded-xl border px-4 py-3 text-sm">
+              {draftError}
+            </p>
           )}
+        </>
+      )}
 
-          {category ? (
-            <div className="flex gap-2">
-              <select
-                aria-label="Pick a skill"
-                className="w-full bg-background border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value=""
-                onChange={e => { if (e.target.value) addSkill(e.target.value) }}
-              >
-                <option value="">Pick a skill...</option>
-                {availableSkills.filter(s => !skills.includes(s)).map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-xs">Select a category first</p>
-          )}
-
-          <div className="flex gap-2">
-            <Input
-              className="flex-1"
-              placeholder="Or type a custom skill + Enter"
-              value={skillInput}
-              onChange={e => setSkillInput(e.target.value)}
-              onKeyDown={onSkillKeyDown}
-            />
-            <Button
-              variant="outline"
-              onClick={() => addSkill(skillInput)}
-              disabled={!skillInput.trim()}
-            >
-              Add
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Location + Budget */}
-      <Card>
-        <CardContent className="p-5 space-y-4">
-          <LabeledField label="Location">
-            <Input
-              placeholder="e.g. London, UK"
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-            />
-          </LabeledField>
-          <LabeledField label={<>Budget <span className="text-muted-foreground/50">(optional)</span></>}>
-            <Input
-              placeholder="e.g. £500/day or negotiable"
-              value={budget}
-              onChange={e => setBudget(e.target.value)}
-            />
-          </LabeledField>
-        </CardContent>
-      </Card>
-
-      {/* Logistics — feeds the action card talent sees on the job brief */}
-      <Card>
-        <CardContent className="p-5 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-3">Work type <span className="text-muted-foreground/50">(optional)</span></label>
-            <div className="flex flex-wrap gap-2">
-              {WORK_TYPES.map(wt => (
-                <Button
-                  key={wt.value}
-                  type="button"
-                  variant="outline"
-                  onClick={() => setWorkType(prev => prev === wt.value ? '' : wt.value)}
-                  className={`rounded-full ${workType === wt.value ? 'bg-foreground text-background hover:bg-foreground/90' : ''}`}
-                >
-                  {wt.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <LabeledField label={<>Start date <span className="text-muted-foreground/50">(optional)</span></>}>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            </LabeledField>
-            <LabeledField label={<>End date <span className="text-muted-foreground/50">(optional)</span></>}>
-              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-            </LabeledField>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <LabeledField label={<>Apply by <span className="text-muted-foreground/50">(optional)</span></>}>
-              <Input type="date" value={applicationDeadline} onChange={e => setApplicationDeadline(e.target.value)} />
-            </LabeledField>
-            <LabeledField label={<>Duration <span className="text-muted-foreground/50">(optional)</span></>}>
-              <Input
-                placeholder="e.g. 2 rehearsal weeks + 12 tour dates"
-                value={duration}
-                onChange={e => setDuration(e.target.value)}
-              />
-            </LabeledField>
-          </div>
-
-          <LabeledField label={<>Usage rights <span className="text-muted-foreground/50">(optional)</span></>}>
-            <Input
-              placeholder="e.g. Tour visuals + social coverage, 18 months"
-              value={usageRights}
-              onChange={e => setUsageRights(e.target.value)}
-            />
-          </LabeledField>
-
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Travel required</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">Shown to talent on the job brief</p>
-            </div>
-            <Switch checked={travelRequired} onCheckedChange={setTravelRequired} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Submit */}
-      <div className="flex justify-end pt-2">
-        <Button
-          onClick={handleSubmit}
-          disabled={posting}
-          className="h-12 rounded-2xl bg-accent px-8 font-semibold text-accent-foreground hover:bg-accent/80"
-        >
-          {posting ? 'Posting...' : 'Post job'}
-        </Button>
-      </div>
+      {showForm && (
+        <div ref={formRef}>
+          <JobForm
+            values={values}
+            onChange={setValues}
+            onSubmit={handleSubmit}
+            submitting={posting}
+            error={error}
+          />
+        </div>
+      )}
     </div>
   )
 }

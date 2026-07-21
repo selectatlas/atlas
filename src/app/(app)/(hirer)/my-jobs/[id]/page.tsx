@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { UsersRound } from 'lucide-react'
+import { UsersRound, CheckCircle2 } from 'lucide-react'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import { getJobMeta } from '@/lib/matching'
 import {
@@ -17,6 +17,7 @@ import {
 import { PageShell } from '@/components/layout/PageShell'
 import { useSetPageShell } from '@/components/layout/use-set-page-shell'
 import { JobPipelineStepper } from '@/components/jobs/JobPipelineStepper'
+import { JobMatchesSection } from '@/components/jobs/JobMatchesSection'
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -37,6 +38,10 @@ const LOADING_SHELL = { breadcrumbsLoading: true }
 export default function JobDetailPage() {
   const params = useParams()
   const id = params.id as string
+  const searchParams = useSearchParams()
+  // Set by the post-job redirect so the hirer lands on a confirmation rather
+  // than an unexplained job page.
+  const [justPosted, setJustPosted] = useState(searchParams.get('posted') === '1')
 
   const [job, setJob] = useState<Job | null>(null)
   const [applications, setApplications] = useState<ApplicationRow[]>([])
@@ -164,6 +169,24 @@ export default function JobDetailPage() {
     <div className="pb-8">
       <PageShell />
 
+      {justPosted && (
+        <div className="border-primary/25 bg-primary/10 mt-4 flex items-start gap-3 rounded-xl border px-4 py-3">
+          <CheckCircle2 className="text-primary mt-0.5 size-4 shrink-0" />
+          <p className="flex-1 text-sm">
+            Job posted. Here is talent that matches this brief.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className="text-muted-foreground hover:text-foreground -mr-1"
+            onClick={() => setJustPosted(false)}
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
+
       <div className="mt-4 flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
         {/* Right rail: job overview + pipeline (first on mobile, sticky column on desktop) */}
         <aside className="space-y-4 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-6">
@@ -257,6 +280,8 @@ export default function JobDetailPage() {
             <h2 className="text-sm font-semibold">About this job</h2>
             <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">{job.description}</p>
           </Card>
+
+          <JobMatchesSection job={job} />
 
           {/* Applicants */}
           <div>

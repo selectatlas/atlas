@@ -20,12 +20,16 @@ test.describe('two-role job journey', () => {
     await login(hirerPage, hirer.email)
 
     await hirerPage.goto('/my-jobs/new')
+    // Posting now opens on the AI composer; the manual form is one click away
+    // and is what this journey exercises (the AI path needs a live model).
+    await hirerPage.getByRole('button', { name: /Fill it in manually/ }).click()
     await hirerPage.fill('input[placeholder*="Bollywood dancers"]', 'E2E: Dancers for showcase')
     await hirerPage.fill('textarea', 'Two-day shoot in London. Bring your best moves.')
     await hirerPage.getByRole('button', { name: 'Dancer', exact: true }).click()
     await hirerPage.fill('input[placeholder*="London, UK"]', 'London, UK')
     await hirerPage.getByRole('button', { name: /Post job/ }).click()
-    await hirerPage.waitForURL(/\/my-jobs$/)
+    // Posting lands on the job itself, where the matched-talent shortlist is.
+    await hirerPage.waitForURL(/\/my-jobs\/[0-9a-f-]{36}/)
 
     // The job exists (embedding may be failed without an OpenAI key - the
     // job itself must still post; that failure path is by design retryable)

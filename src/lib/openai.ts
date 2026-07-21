@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { buildJobDraftSystemPrompt, coerceJobDraft, EMPTY_JOB_DRAFT, type JobDraft } from '@/lib/job-draft'
 
 let openai: OpenAI | undefined
 
@@ -82,6 +83,32 @@ Only extract what is explicitly stated. Do not infer.`,
     }
   } catch {
     return { category: null, skills: [], location: null, availability: null, languages: [], gender: [], age_min: null, age_max: null, spact: null }
+  }
+}
+
+// Turns a hirer's one-line brief into a structured job draft. Same JSON-mode
+// contract as parseSearchQuery: a malformed or surprising response degrades to
+// an empty draft (the hirer just fills the form in by hand) rather than
+// throwing. Upstream API errors do propagate, so the route can answer 503.
+export async function parseJobDraft(brief: string, today: string): Promise<JobDraft> {
+  const openai = getOpenAI()
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    // Slightly above zero: the title and description are written, not
+    // extracted, and pure greedy decoding makes them read like templates.
+    temperature: 0.3,
+    max_tokens: 700,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: buildJobDraftSystemPrompt(today) },
+      { role: 'user', content: brief.slice(0, 1000) },
+    ],
+  })
+
+  try {
+    return coerceJobDraft(JSON.parse(response.choices[0].message.content ?? '{}'))
+  } catch {
+    return { ...EMPTY_JOB_DRAFT }
   }
 }
 
