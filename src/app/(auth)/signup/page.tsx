@@ -34,7 +34,11 @@ function SignupForm() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [accountType, setAccountType] = useState<AccountType>('hirer')
+  // ?as= preselects the account type so a "Sign up to apply" CTA does not
+  // greet talent with "I'm Hiring" highlighted. Still freely changeable.
+  const [accountType, setAccountType] = useState<AccountType>(
+    searchParams.get('as') === 'talent' ? 'talent' : 'hirer'
+  )
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [checkEmail, setCheckEmail] = useState(false)
@@ -80,11 +84,17 @@ function SignupForm() {
         return
       }
 
-      // Fresh talent accounts go straight into profile onboarding. Hirers who
-      // arrived with a brief from the landing page land on that search;
-      // otherwise a validated ?next= target (public job CTAs) wins over /home.
+      // Fresh talent accounts go straight into profile onboarding - the
+      // original destination rides along as ?next= so finishing (or skipping)
+      // the wizard resumes the task they signed up for. Hirers who arrived
+      // with a brief from the landing page land on that search; otherwise a
+      // validated ?next= target (public job CTAs) wins over /home.
       if (accountType === 'talent') {
-        router.push('/onboarding')
+        router.push(
+          nextPath
+            ? `/onboarding?next=${encodeURIComponent(safeInternalPath(nextPath))}`
+            : '/onboarding'
+        )
       } else if (heroQuery) {
         router.push(`/search?q=${encodeURIComponent(heroQuery)}`)
       } else {
@@ -107,7 +117,10 @@ function SignupForm() {
           <p className="text-muted-foreground text-sm">
             We sent a confirmation link to <span className="text-foreground font-medium">{email}</span>.
             Click it to activate your account, then{' '}
-            <Link href="/login" className="text-primary hover:text-primary/80">
+            <Link
+              href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login'}
+              className="text-primary hover:text-primary/80"
+            >
               sign in
             </Link>
             .

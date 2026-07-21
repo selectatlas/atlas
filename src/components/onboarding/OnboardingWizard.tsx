@@ -18,6 +18,9 @@ interface OnboardingWizardProps {
   profileId: string
   fullName: string
   initialAvatarUrl: string | null
+  // Validated destination from a pre-signup CTA; finishing or skipping the
+  // wizard resumes it instead of landing on the profile preview.
+  nextPath?: string | null
 }
 
 const CATEGORY_OPTIONS: Array<{ value: Category; emoji: string; description: string }> = [
@@ -36,7 +39,7 @@ const STEP_TITLES = [
   'Show your work',
 ]
 
-export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: OnboardingWizardProps) {
+export function OnboardingWizard({ profileId, fullName, initialAvatarUrl, nextPath }: OnboardingWizardProps) {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [category, setCategory] = useState<Category | null>(null)
@@ -120,7 +123,7 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: Onbo
       console.warn('Embedding regeneration failed')
     }
 
-    router.push(`/talent/${profileId}`)
+    router.push(nextPath ?? `/talent/${profileId}`)
     router.refresh()
   }
 
@@ -147,7 +150,7 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: Onbo
           </p>
           <h1 className="mt-1 text-xl font-bold">{STEP_TITLES[step]}</h1>
         </div>
-        <Link href="/home" className="shrink-0 text-xs font-medium text-muted-foreground hover:text-foreground">
+        <Link href={nextPath ?? '/home'} className="shrink-0 text-xs font-medium text-muted-foreground hover:text-foreground">
           Skip for now
         </Link>
       </div>
@@ -374,7 +377,7 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl }: Onbo
             disabled={saving || !canContinue}
             className="h-11 rounded-xl bg-accent px-6 font-semibold text-accent-foreground hover:bg-accent/80"
           >
-            {saving ? 'Setting up...' : workStepEmpty ? 'Skip and finish' : 'Finish and preview my profile'}
+            {saving ? 'Setting up...' : workStepEmpty ? 'Skip and finish' : nextPath ? 'Finish and continue' : 'Finish and preview my profile'}
           </Button>
         )}
       </div>

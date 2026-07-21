@@ -36,7 +36,7 @@ export function AuthAwareApplyCta({ jobId }: { jobId: string }) {
   if (viewer === 'talent') {
     return (
       <Button
-        render={<Link href={`/discover/${jobId}`} />}
+        render={<Link href={`/discover/${jobId}?intent=apply`} />}
         className="w-full rounded-xl bg-accent font-semibold text-accent-foreground hover:bg-accent/80"
       >
         Open in Discover to apply
@@ -44,11 +44,15 @@ export function AuthAwareApplyCta({ jobId }: { jobId: string }) {
     )
   }
 
-  const next = encodeURIComponent(`/jobs/${jobId}`)
+  // The intent rides inside next so it survives signup, email confirmation,
+  // OAuth, and onboarding; the discover page consumes it by opening the apply
+  // flow. as=talent preselects the right account type on the signup page.
+  // next stays the first param - e2e asserts on the /signup?next= prefix.
+  const next = encodeURIComponent(`/jobs/${jobId}?intent=apply`)
   return (
     <div className="space-y-2">
       <Button
-        render={<Link href={`/signup?next=${next}`} />}
+        render={<Link href={`/signup?next=${next}&as=talent`} />}
         className="w-full rounded-xl bg-accent font-semibold text-accent-foreground hover:bg-accent/80"
       >
         Sign up to apply

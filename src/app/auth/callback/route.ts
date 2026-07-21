@@ -84,7 +84,8 @@ export async function GET(request: Request) {
   // onboarding instead of an empty dashboard - covers email-confirmation
   // and OAuth signups, which both land here rather than on the signup page.
   // A validated ?next= target (public job CTAs) replaces the /home default;
-  // the onboarding check below still overrides it.
+  // the onboarding check below still takes precedence, but keeps the target
+  // as its own ?next= so the wizard can resume the original task on finish.
   let landingPath = safeInternalPath(url.searchParams.get('next'))
   if (accountType === 'talent' && !adminRole) {
     const { data: profile } = await supabase
@@ -92,7 +93,11 @@ export async function GET(request: Request) {
       .select('headline, talent_skills(id)')
       .eq('id', user.id)
       .maybeSingle()
-    if (needsOnboarding(profile)) landingPath = '/onboarding'
+    if (needsOnboarding(profile)) {
+      landingPath = landingPath === '/home'
+        ? '/onboarding'
+        : `/onboarding?next=${encodeURIComponent(landingPath)}`
+    }
   }
 
   const response = NextResponse.redirect(new URL(landingPath, url.origin))

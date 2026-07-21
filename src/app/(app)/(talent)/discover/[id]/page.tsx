@@ -38,16 +38,33 @@ export default function JobDetailPage() {
   const [applicationSent, setApplicationSent] = useState(false)
 
   useEffect(() => {
+    // ?intent=apply arrives from a pre-signup "Sign up to apply" CTA (round-
+    // tripped through auth and onboarding) or the public page's talent CTA:
+    // resume the task by opening the application preview once data is loaded
+    // (still editable and cancellable - nothing sends without confirm). Read
+    // via window.location instead of useSearchParams to avoid the Suspense-
+    // boundary requirement; stripped immediately so refresh/back does not
+    // reopen the dialog.
+    const applyIntent = new URLSearchParams(window.location.search).get('intent') === 'apply'
+    if (applyIntent) window.history.replaceState(null, '', window.location.pathname)
+
     async function load() {
       if (isLocalDemoMode()) {
-        setJob(DEMO_JOBS.find(demoJob => demoJob.id === jobId) ?? null)
+        const demoJob = DEMO_JOBS.find(job => job.id === jobId) ?? null
+        setJob(demoJob)
         setTalentProfile(DEMO_PROFILE)
+        let demoApplied = false
         try {
           const existing = window.sessionStorage.getItem(DEMO_APPLICATIONS_STORAGE_KEY)
           const applications = existing ? JSON.parse(existing) as DemoApplication[] : []
-          setApplied(applications.some(application => application.job_id === jobId))
+          demoApplied = applications.some(application => application.job_id === jobId)
         } catch {
-          setApplied(false)
+          demoApplied = false
+        }
+        setApplied(demoApplied)
+        if (applyIntent && demoJob?.status === 'open' && !demoApplied) {
+          setApplicationNote(buildApplicationNote(demoJob, DEMO_PROFILE))
+          setApplicationJob(demoJob)
         }
         setLoading(false)
         return
@@ -67,9 +84,15 @@ export default function JobDetailPage() {
         supabase.from('applications').select('id').eq('job_id', jobId).eq('talent_id', user.id).maybeSingle(),
       ])
 
-      setTalentProfile(profile as unknown as TalentProfile)
-      setJob((jobData as JobResult | null) ?? null)
+      const loadedProfile = profile as unknown as TalentProfile
+      const loadedJob = (jobData as JobResult | null) ?? null
+      setTalentProfile(loadedProfile)
+      setJob(loadedJob)
       setApplied(Boolean(application))
+      if (applyIntent && loadedJob?.status === 'open' && !application) {
+        setApplicationNote(buildApplicationNote(loadedJob, loadedProfile))
+        setApplicationJob(loadedJob)
+      }
       setLoading(false)
     }
     load()
