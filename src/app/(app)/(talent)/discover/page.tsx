@@ -846,7 +846,7 @@ function DiscoverPageContent() {
         </>
       ) : viewMode === 'list' ? (
         <>
-          <div className="space-y-3 card-stagger">
+          <div className="flex flex-col gap-4 card-stagger">
             {visibleJobs.map(job => (
               <JobCard
                 key={job.id}

@@ -4,12 +4,14 @@ import { useState } from 'react'
 import { ShieldCheck } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { filtersForCategory, type TalentFilterDefinition } from '@/lib/filter-taxonomy'
+import { filtersForCategories, type TalentFilterDefinition } from '@/lib/filter-taxonomy'
 import type { TalentAttributesPayload } from '@/lib/talent-profile-attributes'
 import type { Category } from '@/types'
 
 interface TalentAttributesEditorProps {
-  category: Category | null
+  // Every discipline the talent works in, not just one: picking a single
+  // category hid whole sections from multi-discipline talent.
+  categories: Category[]
   value: TalentAttributesPayload
   onChange: (value: TalentAttributesPayload) => void
 }
@@ -130,8 +132,8 @@ function MultiSelectField({ definition, selected, onChange }: {
   )
 }
 
-export function TalentAttributesEditor({ category, value, onChange }: TalentAttributesEditorProps) {
-  const definitions = filtersForCategory(category ?? 'all').filter(definition =>
+export function TalentAttributesEditor({ categories, value, onChange }: TalentAttributesEditorProps) {
+  const definitions = filtersForCategories(categories).filter(definition =>
     definition.storage === 'public_attributes' || definition.storage === 'sensitive_preferences'
   )
   const sections = [...new Set(definitions.map(definition => definition.section))]
@@ -233,7 +235,7 @@ export function TalentAttributesEditor({ category, value, onChange }: TalentAttr
               <option value="non_binary">Non-binary</option>
             </select>
           </Field>
-          {(category === 'actor' || category === 'dancer') && (
+          {(categories.includes('actor') || categories.includes('dancer') || categories.length === 0) && (
             <Field label="Height (cm)">
               <Input type="number" min={100} max={230} value={value.height_cm ?? ''} onChange={event => updateCore('height_cm', event.target.value ? Number(event.target.value) : null)} />
             </Field>

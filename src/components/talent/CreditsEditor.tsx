@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
-import type { Credit } from '@/types'
+import { CATEGORY_LABELS } from '@/lib/skills'
+import type { Credit, Category } from '@/types'
 
 const OUTCOME_MAX_LENGTH = 280
+const DESCRIPTION_MAX_LENGTH = 500
+const CATEGORY_OPTIONS: Category[] = ['dancer', 'actor', 'photographer_videographer', 'content_creator']
 
 interface CreditsEditorProps {
   profileId: string
@@ -50,7 +53,8 @@ export function CreditsEditor({ profileId, credits, onUpdate, onError }: Credits
       title: form.title.trim(), production: form.production.trim(),
       company: form.company.trim() || null,
       start_date: form.start_date || null, end_date: form.end_date || null,
-      description: form.description.trim() || null, media_url: form.media_url.trim() || null,
+      description: form.description.trim().slice(0, DESCRIPTION_MAX_LENGTH) || null,
+      media_url: form.media_url.trim() || null,
       category: form.category || null,
       outcome: form.outcome.trim().slice(0, OUTCOME_MAX_LENGTH) || null,
       client_logo_url: form.client_logo_url.trim() || null,
@@ -126,6 +130,49 @@ export function CreditsEditor({ profileId, credits, onUpdate, onError }: Credits
                 <Input value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} placeholder="Royal Ballet" />
               </div>
             </div>
+            {/* The public CreditsTimeline renders these dates, the category
+                and the description - without inputs they could never be set. */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Start date <span className="text-muted-foreground/60">(optional)</span>
+                </label>
+                <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  End date <span className="text-muted-foreground/60">(optional)</span>
+                </label>
+                <Input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                Discipline <span className="text-muted-foreground/60">(optional)</span>
+              </label>
+              <select
+                value={form.category}
+                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                className="w-full bg-background border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Not specified</option>
+                {CATEGORY_OPTIONS.map(category => (
+                  <option key={category} value={category}>{CATEGORY_LABELS[category]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                Description <span className="text-muted-foreground/60">(optional)</span>
+              </label>
+              <Textarea
+                value={form.description}
+                maxLength={DESCRIPTION_MAX_LENGTH}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="What was the work, and what did you bring to it?"
+                rows={2}
+              />
+            </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Outcome</label>
               <Textarea
@@ -136,6 +183,12 @@ export function CreditsEditor({ profileId, credits, onUpdate, onError }: Credits
                 rows={2}
               />
               <p className="mt-1 text-[11px] text-muted-foreground">Credits with an outcome are featured as case studies on your profile.</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                Media URL <span className="text-muted-foreground/60">(optional)</span>
+              </label>
+              <Input value={form.media_url} onChange={e => setForm(f => ({ ...f, media_url: e.target.value }))} placeholder="https://… still or poster image" />
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Client logo URL</label>

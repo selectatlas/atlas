@@ -2,12 +2,30 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { getPlatformAdminRole } from '@/lib/platform-admin'
 
+export type ShellAccountType = 'hirer' | 'talent'
+
 export interface SessionInfo {
   userId: string | null
   accountType: string | null
+  // Which workspace shell to render. Differs from accountType only for
+  // platform admins, who default to the hirer shell but can flip to talent
+  // via the sidebar switcher. Every surface that branches on role must use
+  // this, or the switcher leaves the nav and the page disagreeing.
+  shellAccountType: ShellAccountType
   isLocalDemo: boolean
   isPlatformAdmin: boolean
   adminRole: 'owner' | 'moderator' | 'support' | null
+}
+
+// Presentation only - the cookie never grants access, which stays gated on
+// isPlatformAdmin and the per-route checks.
+export function resolveShellAccountType(
+  accountType: string | null,
+  isPlatformAdmin: boolean,
+  adminView: string | undefined,
+): ShellAccountType {
+  if (isPlatformAdmin) return adminView === 'talent' ? 'talent' : 'hirer'
+  return accountType === 'hirer' ? 'hirer' : 'talent'
 }
 
 // Resolves the current session from the JWT via getClaims(), which verifies
@@ -48,22 +66,31 @@ export async function getSession(): Promise<SessionInfo> {
       getPlatformAdminRole(claims.sub),
       supabase.from('profiles').select('account_type').eq('id', claims.sub).maybeSingle(),
     ])
+    const accountType =
+      profile?.account_type ??
+      (claims.user_metadata as { account_type?: string } | undefined)?.account_type ??
+      null
+    const isPlatformAdmin = adminRole !== null
     return {
       userId: claims.sub,
-      accountType:
-        profile?.account_type ??
-        (claims.user_metadata as { account_type?: string } | undefined)?.account_type ??
-        null,
+      accountType,
+      shellAccountType: resolveShellAccountType(
+        accountType,
+        isPlatformAdmin,
+        isPlatformAdmin ? cookieStore.get('atlas_admin_view')?.value : undefined,
+      ),
       isLocalDemo: false,
-      isPlatformAdmin: adminRole !== null,
+      isPlatformAdmin,
       adminRole,
     }
   }
 
   if (hasDemoCookie(cookieStore)) {
+    const demoRole = cookieStore.get('atlas_demo_role')?.value ?? 'talent'
     return {
       userId: null,
-      accountType: cookieStore.get('atlas_demo_role')?.value ?? 'talent',
+      accountType: demoRole,
+      shellAccountType: resolveShellAccountType(demoRole, false, undefined),
       isLocalDemo: true,
       isPlatformAdmin: false,
       adminRole: null,
@@ -73,6 +100,7 @@ export async function getSession(): Promise<SessionInfo> {
   return {
     userId: null,
     accountType: null,
+    shellAccountType: 'talent',
     isLocalDemo: false,
     isPlatformAdmin: false,
     adminRole: null,

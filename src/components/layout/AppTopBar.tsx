@@ -1,17 +1,17 @@
 'use client'
 
-import { FormEvent, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Briefcase, Command, Search, type LucideIcon } from 'lucide-react'
+import { Briefcase, Search, type LucideIcon } from 'lucide-react'
 import { PageBreadcrumbs } from '@/components/layout/PageBreadcrumbs'
-import { MobileSearchSheet } from '@/components/layout/MobileSearchSheet'
 import { NotificationsBell } from '@/components/layout/NotificationsBell'
 import { useAppShell } from '@/components/layout/app-shell-context'
 import { useInbox } from '@/components/layout/inbox-context'
-import { getPageMeta, getSearchTarget } from '@/lib/page-meta'
+import { useSearch } from '@/components/search/search-context'
+import { getPageMeta } from '@/lib/page-meta'
+import { scopeTriggerLabel } from '@/lib/search-scope'
 import { Button } from '@/components/ui/button'
 import { ExpandableTabs } from '@/components/ui/expandable-tabs'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 
 type QuickTab =
@@ -41,8 +41,7 @@ export function AppTopBar() {
   const router = useRouter()
   const { accountType, override } = useAppShell()
   const { navBadges } = useInbox()
-  const [query, setQuery] = useState('')
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const { scope, setOpen } = useSearch()
 
   const meta = useMemo(() => {
     const base = getPageMeta(pathname, accountType)
@@ -55,23 +54,9 @@ export function AppTopBar() {
     }
   }, [pathname, accountType, override])
 
-  const searchTarget = getSearchTarget(accountType)
-  const searchPlaceholder =
-    accountType === 'hirer' ? 'Search talent…' : 'Search jobs…'
-
-  function onSearchSubmit(event: FormEvent) {
-    event.preventDefault()
-    const trimmed = query.trim()
-    if (!trimmed) {
-      router.push(searchTarget)
-      return
-    }
-    router.push(`${searchTarget}?q=${encodeURIComponent(trimmed)}`)
-  }
-
-  function openCommandPalette() {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
-  }
+  // The top bar no longer owns a search input: it is a trigger for the one
+  // search surface (SearchCommand), which owns the query, scope and results.
+  const searchLabel = scopeTriggerLabel(scope)
 
   const quickTabs = useMemo(() => {
     const base = accountType === 'hirer' ? hirerQuickTabs : talentQuickTabs
@@ -98,51 +83,31 @@ export function AppTopBar() {
             )}
           </div>
 
-          <form
-            onSubmit={onSearchSubmit}
-            className="hidden min-w-0 flex-1 max-w-sm lg:block xl:max-w-md"
-            role="search"
+          {/* Styled as an input but is a button: one search surface, opened
+              here or with ⌘K, never a second place to type. */}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="hidden min-w-0 flex-1 max-w-sm items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-left text-sm text-muted-foreground transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-ring/40 hover:text-foreground lg:flex xl:max-w-md"
+            aria-label={searchLabel}
+            aria-keyshortcuts="Meta+K Control+K"
           >
-            <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={event => setQuery(event.target.value)}
-                placeholder={searchPlaceholder}
-                className="h-9 pl-9 pr-16"
-                aria-label={searchPlaceholder}
-              />
-              <button
-                type="button"
-                onClick={openCommandPalette}
-                className="absolute top-1/2 right-2 hidden -translate-y-1/2 items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-[color,border-color] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:text-foreground active:opacity-60 xl:flex"
-                aria-label="Open command palette"
-              >
-                <Command className="size-3" />
-                ⌘K
-              </button>
-            </div>
-          </form>
+            <Search className="size-4 shrink-0" />
+            <span className="truncate">{searchLabel}</span>
+            <kbd className="ml-auto hidden shrink-0 items-center gap-0.5 rounded-md border border-border px-1.5 py-0.5 font-mono text-[10px] xl:flex">
+              ⌘K
+            </kbd>
+          </button>
 
           <div className="flex shrink-0 items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               className="lg:hidden"
-              aria-label={searchPlaceholder}
-              onClick={() => setMobileSearchOpen(true)}
+              aria-label={searchLabel}
+              onClick={() => setOpen(true)}
             >
               <Search className="size-4" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden sm:inline-flex lg:hidden"
-              aria-label="Open command palette"
-              onClick={openCommandPalette}
-            >
-              <Command className="size-4" />
             </Button>
 
             {/* The bell handles its own breakpoints: direct link below md,
@@ -159,8 +124,6 @@ export function AppTopBar() {
           </div>
         </div>
       </header>
-
-      <MobileSearchSheet open={mobileSearchOpen} onOpenChange={setMobileSearchOpen} />
     </>
   )
 }

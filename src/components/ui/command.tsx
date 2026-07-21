@@ -39,12 +39,16 @@ function CommandDialog({
   children,
   className,
   showCloseButton = false,
+  commandProps,
   ...props
 }: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
   title?: string
   description?: string
   className?: string
   showCloseButton?: boolean
+  /** Forwarded to the inner cmdk root, e.g. `shouldFilter: false` when the
+      result list is filtered server-side rather than by cmdk. */
+  commandProps?: React.ComponentProps<typeof Command>
   children: React.ReactNode
 }) {
   return (
@@ -63,7 +67,7 @@ function CommandDialog({
         {/* cmdk sub-components (CommandInput/List/Item) read the Command
             root's store from context; without this wrapper the palette
             crashed the whole shell on open (upstream shadcn includes it). */}
-        <Command>{children}</Command>
+        <Command {...commandProps}>{children}</Command>
       </DialogContent>
     </Dialog>
   )

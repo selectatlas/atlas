@@ -83,7 +83,7 @@ export function SavedTalentView({ activeTab, shortlisted, liked, jobs = [] }: Sa
           )}
 
           {/* Card list: the mobile default, and the only Liked-tab layout. */}
-          <div className={`space-y-2 card-stagger ${activeTab === 'shortlisted' ? 'md:hidden' : ''}`}>
+          <div className={`flex flex-col gap-4 card-stagger ${activeTab === 'shortlisted' ? 'md:hidden' : ''}`}>
             {rows.map(row => {
               const talent = row.profiles
               if (!talent) return null

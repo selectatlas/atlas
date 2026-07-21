@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { SUGGESTED_SEARCHES } from './suggested-searches'
+import { SUGGESTED_SEARCHES, examplesForScope } from './suggested-searches'
 
 describe('SUGGESTED_SEARCHES', () => {
   it('has between 4 and 6 suggestions', () => {
@@ -31,5 +31,39 @@ describe('SUGGESTED_SEARCHES', () => {
     const allQueries = SUGGESTED_SEARCHES.map(s => s.query.toLowerCase()).join(' | ')
     expect(allQueries).toMatch(/combat|boxing|martial/)
     expect(allQueries).toMatch(/food/)
+  })
+})
+
+describe('examplesForScope', () => {
+  it('gives two or three examples for every scope', () => {
+    for (const scope of ['talent', 'jobs', 'global'] as const) {
+      const examples = examplesForScope(scope)
+      expect(examples.length).toBeGreaterThanOrEqual(2)
+      expect(examples.length).toBeLessThanOrEqual(3)
+    }
+  })
+
+  it('leads the talent scope with the flagship demo query', () => {
+    expect(examplesForScope('talent')[0].query).toMatch(/bollywood/i)
+  })
+
+  it('keeps job examples job-shaped rather than talent-shaped', () => {
+    const queries = examplesForScope('jobs').map(e => e.query.toLowerCase())
+    expect(queries.every(q => /job|work|role/.test(q))).toBe(true)
+  })
+
+  it('spans more than one surface in the global scope', () => {
+    const labels = examplesForScope('global').map(e => e.label.toLowerCase()).join(' | ')
+    expect(labels).toMatch(/job/)
+    expect(labels).toMatch(/setting/)
+  })
+
+  it('never returns an empty label or query', () => {
+    for (const scope of ['talent', 'jobs', 'global'] as const) {
+      for (const example of examplesForScope(scope)) {
+        expect(example.label.trim().length).toBeGreaterThan(0)
+        expect(example.query.trim().length).toBeGreaterThan(0)
+      }
+    }
   })
 })

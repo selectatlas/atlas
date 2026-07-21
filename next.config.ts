@@ -17,6 +17,14 @@ const contentSecurityPolicy = [
   `img-src 'self' data: blob: ${supabaseOrigin}`.trim(),
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin} ${supabaseWsOrigin}`.trim(),
+  // Portfolio video. Without these two, frame-src and media-src fall back to
+  // default-src 'self' and every player is silently blanked by the CSP.
+  // Keep in lockstep with the providers in src/lib/video-embed.ts. Instagram
+  // is deliberately absent: it sends X-Frame-Options: DENY, so allowlisting it
+  // would not help - that path prompts for a file upload instead.
+  "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com https://www.tiktok.com",
+  // blob: covers the local preview shown while an upload is still in flight.
+  `media-src 'self' blob: data: ${supabaseOrigin}`.trim(),
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -62,7 +70,7 @@ const nextConfig: NextConfig = {
     // optimized variants cached instead of re-transforming per visit.
     minimumCacheTTL: 2678400,
     remotePatterns: [
-      // Supabase storage (avatars/covers). Hostname derived from the project URL.
+      // Supabase storage (avatars/covers/portfolio). Hostname derived from the project URL.
       ...(supabaseOrigin.startsWith('https://')
         ? [{ protocol: 'https' as const, hostname: new URL(supabaseOrigin).hostname }]
         : []),

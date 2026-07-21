@@ -38,6 +38,19 @@ const OUTREACH_STATUS_VARIANTS: Record<OutreachStatus, 'outline' | 'secondary' |
   draft: 'outline', sent: 'secondary', viewed: 'default', responded: 'default',
 }
 
+// Shared interactive-card treatment for every full-card Link on the dashboard:
+// hover lifts and tints the border, active confirms the press with a quick
+// scale-down (CRISP /crisp-design-eng - press feedback was previously hover-only).
+const INTERACTIVE_CARD =
+  'border border-border/80 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35 active:translate-y-0 active:scale-[0.99] active:duration-75'
+
+// Job status badge colour - only 'open' | 'closed' exist today, so a plain
+// ternary is clearer than a lookup map. 'open' gets the semantic success tint
+// per the "Inline status badges" pattern in DESIGN.md; 'closed' stays neutral.
+function jobStatusBadgeClass(status: string) {
+  return status === 'open' ? 'border-success/20 bg-success/10 text-success' : ''
+}
+
 type ThreadPreview = {
   id: string
   otherName: string
@@ -94,7 +107,7 @@ function DashboardHeader({ title, subtitle }: { title: string; subtitle: string 
 
 function StatCard({ value, label, href }: { value: number | string; label: string; href?: string }) {
   const content = (
-    <Card className={`border border-border/80 p-4 shadow-none ${href ? 'transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35' : ''}`}>
+    <Card className={href ? INTERACTIVE_CARD : 'border border-border/80 p-4 shadow-none'}>
       <p className="text-2xl font-bold">{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{label}</p>
     </Card>
@@ -114,9 +127,9 @@ function QuickAction({
   description: string
 }) {
   return (
-    <Link href={href}>
-      <Card className="border border-border/80 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
-        <div className="flex items-start gap-3">
+    <Link href={href} className="group block h-full">
+      <Card className={`${INTERACTIVE_CARD} h-full`}>
+        <div className="flex h-full items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Icon className="size-4" />
           </div>
@@ -124,7 +137,7 @@ function QuickAction({
             <p className="text-sm font-semibold">{title}</p>
             <p className="mt-1 text-xs text-muted-foreground">{description}</p>
           </div>
-          <ArrowUpRight className="ml-auto size-4 shrink-0 text-muted-foreground" />
+          <ArrowUpRight className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </div>
       </Card>
     </Link>
@@ -139,10 +152,10 @@ function ThreadList({ threads }: { threads: ThreadPreview[] }) {
         <h2 className="text-sm font-semibold">Recent conversations</h2>
         <Link href="/messages" className="text-xs font-medium text-primary hover:underline">View all</Link>
       </div>
-      <div className="space-y-2">
+      <div className="flex flex-col gap-4 card-stagger">
         {threads.map(thread => (
           <Link key={thread.id} href={`/messages/${thread.id}`}>
-            <Card className="border border-border/80 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
+            <Card className={INTERACTIVE_CARD}>
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 rounded-xl">
                   <AvatarImage src={thread.otherAvatar ?? ''} alt={thread.otherName} />
@@ -186,20 +199,20 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
   }>
 
   return (
-    <div className="space-y-8 py-2">
+    <div className="flex flex-col gap-6 py-2">
       <DashboardHeader
         title="Hirer workspace"
         subtitle="Pick up search, outreach, and hiring from one place."
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 card-stagger">
         <StatCard value={shortlistCount ?? 0} label="Shortlisted" href="/shortlists" />
         <StatCard value={likesCount ?? 0} label="Liked" href="/shortlists?tab=liked" />
         <StatCard value={outreachCount ?? 0} label="Outreach sent" href="/outreach" />
         <StatCard value={jobsCount ?? 0} label="Active jobs" href="/my-jobs" />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 card-stagger">
         <QuickAction href="/search" icon={Search} title="Search talent" description="Run a natural-language search or browse the directory." />
         <QuickAction href="/shortlists" icon={Bookmark} title="Saved talent" description="Review shortlisted and liked profiles in one place." />
         <QuickAction href="/my-jobs/new" icon={BriefcaseBusiness} title="Post a job" description="Publish a brief and collect applications." />
@@ -207,8 +220,13 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
 
       <SavedSearchesSection supabase={supabase} hirerId={userId} />
 
-      <Link href="/pro">
-        <Card className="border border-primary/20 bg-primary/5 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
+      {/* Conversion surface, not a neutral data row - gets its own hover
+          treatment (background intensifies, not just border) plus the arrow
+          nudge so it doesn't read identically to the cards below it. */}
+      <Link href="/pro" className="group block w-full">
+        <Card
+          className={`${INTERACTIVE_CARD} border-primary/20 bg-primary/5 hover:bg-primary/10`}
+        >
           <div className="flex items-center gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Crown className="size-4" />
@@ -219,7 +237,7 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
                 Vetted talent access, saved-search alerts, and priority support - see the plan.
               </p>
             </div>
-            <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
+            <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </div>
         </Card>
       </Link>
@@ -232,16 +250,16 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
             <h2 className="text-sm font-semibold">Your jobs</h2>
             <Link href="/my-jobs" className="text-xs font-medium text-primary hover:underline">Manage jobs</Link>
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-4 card-stagger">
             {(jobs ?? []).map(job => (
               <Link key={job.id} href={`/my-jobs/${job.id}`}>
-                <Card className="border border-border/80 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
+                <Card className={INTERACTIVE_CARD}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{job.title}</p>
                       <p className="text-xs text-muted-foreground">{job.location}</p>
                     </div>
-                    <Badge variant="outline">{job.status}</Badge>
+                    <Badge variant="outline" className={jobStatusBadgeClass(job.status)}>{job.status}</Badge>
                   </div>
                 </Card>
               </Link>
@@ -256,13 +274,13 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
             <h2 className="text-sm font-semibold">Shortlisted talent</h2>
             <Link href="/shortlists" className="text-xs font-medium text-primary hover:underline">View all saved</Link>
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-4 card-stagger">
             {shortlisted.map(item => {
               const talent = item.profiles
               if (!talent) return null
               return (
                 <Link key={item.talent_id} href={`/talent/${item.talent_id}`}>
-                  <Card className="border border-border/80 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
+                  <Card className={INTERACTIVE_CARD}>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10 rounded-xl">
                         <AvatarImage src={talent.avatar_url ?? ''} alt={talent.full_name} />
@@ -350,7 +368,7 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
   }
 
   return (
-    <div className="space-y-8 py-2">
+    <div className="flex flex-col gap-6 py-2">
       <DashboardHeader
         title="Talent workspace"
         subtitle="Finish your profile, track applications, and reply to hirers."
@@ -377,7 +395,7 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
         <ProfileCompletenessCard profile={profile} attributes={talentAttributes} editHref="/profile" />
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 card-stagger">
         <StatCard value={appsCountResult.count ?? applications.length} label="Applications" href="/applications" />
         <StatCard value={outreachCountResult.count ?? outreachItems.length} label="Inbound outreach" />
         <StatCard value={recentThreads.length} label="Open threads" />
@@ -386,7 +404,7 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
         <StatCard value={interestStats.shortlist_count} label="Shortlisted by" />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 card-stagger">
         <QuickAction href="/discover" icon={Compass} title="Discover jobs" description="Swipe or browse opportunities matched to your profile." />
         <QuickAction href="/messages" icon={MessageSquare} title="Open messages" description="Continue conversations with hirers." />
         <QuickAction href="/profile" icon={UserRound} title="Edit profile" description="Update skills, portfolio, and availability." />
@@ -399,10 +417,10 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
       {outreachWithThreads.length > 0 && (
         <div>
           <h2 className="mb-3 text-sm font-semibold">Recent outreach</h2>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-4 card-stagger">
             {outreachWithThreads.map(item => {
               const content = (
-                <Card className="border border-border/80 p-4 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
+                <Card className={INTERACTIVE_CARD}>
                   <div className="flex items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                       <Mail className="size-4" />
@@ -431,7 +449,7 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
             <h2 className="text-sm font-semibold">Recent applications</h2>
             <Link href="/applications" className="text-xs font-medium text-primary hover:underline">View all</Link>
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-4 card-stagger">
             {applications.map(app => (
               <Card key={app.id} className="border border-border/80 p-4 shadow-none">
                 <div className="flex items-center gap-3">
@@ -472,13 +490,15 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
 }
 
 export default async function HomePage() {
-  const { userId, accountType, isLocalDemo, isPlatformAdmin } = await getSession()
+  const { userId, shellAccountType, isLocalDemo } = await getSession()
   if (isLocalDemo) return <DemoActivity />
   if (!userId) redirect('/login')
 
   const supabase = await createClient()
 
-  return accountType === 'hirer' || isPlatformAdmin ? (
+  // Same shell resolution as the nav, so an admin in the talent workspace
+  // gets the talent dashboard rather than the hirer one.
+  return shellAccountType === 'hirer' ? (
     <HirerDashboard userId={userId} supabase={supabase} />
   ) : (
     <TalentDashboard userId={userId} supabase={supabase} />

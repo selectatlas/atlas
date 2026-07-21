@@ -1,0 +1,51 @@
+<div style="max-width:380px;margin:0 auto;background:#1D2B3A;border-radius:10px;overflow:hidden;font-family:-apple-system,sans-serif;">
+  <div style="position:relative;height:280px;">
+    <img id="bt-img" src="https://picsum.photos/seed/tiaterm1/500/500" style="width:100%;height:100%;object-fit:cover;display:block;">
+    <div id="bt-left" style="position:absolute;top:0;bottom:0;left:0;width:50%;cursor:pointer;"></div>
+    <div id="bt-right" style="position:absolute;top:0;bottom:0;right:0;width:50%;cursor:pointer;"></div>
+    <div style="position:absolute;top:10px;left:10px;font-size:10px;font-weight:600;padding:4px 8px;border-radius:4px;background:rgba(0,0,0,0.55);color:#fff;">Content Creator</div>
+    <div style="position:absolute;top:10px;right:10px;font-size:10px;font-weight:600;padding:4px 8px;border-radius:4px;background:#2F6FE0;color:#fff;">Available Dec</div>
+  </div>
+  <div id="bt-strip" style="display:flex;gap:4px;padding:8px;background:#16212C;"></div>
+  <div style="padding:14px 16px 16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:#fff;">Tia Jackson</div>
+        <div style="font-size:11px;color:#7d90a5;margin-top:2px;">London, UK</div>
+      </div>
+      <div style="text-align:right;font-size:14px;font-weight:700;color:#fff;">&pound;400<span style="display:block;font-size:10px;font-weight:400;color:#7d90a5;">per day</span></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">
+      <span style="font-size:10px;font-weight:500;color:#cfe0f5;background:rgba(47,111,224,0.18);padding:4px 9px;border-radius:4px;">Fitness content</span>
+      <span style="font-size:10px;font-weight:500;color:#cfe0f5;background:rgba(47,111,224,0.18);padding:4px 9px;border-radius:4px;">Short-form video</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);">
+      <div style="font-size:11px;color:#7d90a5;">0 views &middot; 0 saves</div>
+      <div style="font-size:12px;font-weight:600;color:#fff;background:#2F6FE0;padding:7px 14px;border-radius:6px;cursor:pointer;">Request booking</div>
+    </div>
+  </div>
+</div>
+<script>
+  const seeds = ['tiaterm1','tiaterm2','tiaterm3','tiaterm4'];
+  let idx = 0;
+  const strip = document.getElementById('bt-strip');
+  seeds.forEach((s,i)=>{
+    const t = document.createElement('div');
+    t.style.cssText = 'flex:1;height:42px;border-radius:4px;overflow:hidden;cursor:pointer;opacity:' + (i===0?'1':'0.5') + ';border:1.5px solid ' + (i===0?'#2F6FE0':'transparent') + ';';
+    const im = document.createElement('img');
+    im.src = 'https://picsum.photos/seed/' + s + '/120/120';
+    im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    t.appendChild(im);
+    t.addEventListener('click', ()=>{ idx = i; render(); });
+    strip.appendChild(t);
+  });
+  function render(){
+    document.getElementById('bt-img').src = 'https://picsum.photos/seed/' + seeds[idx] + '/500/500';
+    Array.from(strip.children).forEach((t,i)=>{
+      t.style.opacity = i===idx ? '1' : '0.5';
+      t.style.borderColor = i===idx ? '#2F6FE0' : 'transparent';
+    });
+  }
+  document.getElementById('bt-left').addEventListener('click', ()=>{ idx = (idx+3)%4; render(); });
+  document.getElementById('bt-right').addEventListener('click', ()=>{ idx = (idx+1)%4; render(); });
+</script>

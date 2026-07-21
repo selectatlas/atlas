@@ -55,6 +55,24 @@ describe('validateOnboardingPayload', () => {
     }
   })
 
+  // The wizard used to skip this column entirely, so a talent who completed
+  // onboarding could never reach 100% profile completeness.
+  it('captures free-text availability', () => {
+    const result = validateOnboardingPayload({ ...VALID, availability: '  Available December and January  ' })
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value.availability).toBe('Available December and January')
+  })
+
+  it('treats a missing availability as null rather than failing', () => {
+    const result = validateOnboardingPayload(VALID)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value.availability).toBeNull()
+  })
+
+  it('rejects an over-long availability', () => {
+    expect(validateOnboardingPayload({ ...VALID, availability: 'x'.repeat(201) }).ok).toBe(false)
+  })
+
   it('trims and dedupes skills', () => {
     const result = validateOnboardingPayload({ ...VALID, skills: [' Bollywood ', 'Bollywood', 'Kathak'] })
     expect(result.ok).toBe(true)

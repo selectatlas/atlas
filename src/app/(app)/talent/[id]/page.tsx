@@ -128,7 +128,11 @@ export default async function TalentProfilePage({
       )}
 
       {/* Hero Section */}
-      <CoverPhoto coverUrl={profile.cover_url}>
+      <CoverPhoto
+        coverUrl={profile.cover_url}
+        coverImages={profile.cover_images}
+        layout={profile.cover_layout}
+      >
         <div className="flex items-end gap-4">
           <StoryAvatar
             avatarUrl={profile.avatar_url}

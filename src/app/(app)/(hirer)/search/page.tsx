@@ -14,12 +14,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { parsedIntentChips } from '@/lib/search-intent'
 import { rosterFreshnessLabel } from '@/lib/roster-freshness'
-import type { ParsedQuery } from '@/lib/openai'
-import { isActiveLocalDemoMode } from '@/lib/demo-mode'
-import { searchDemoTalent } from '@/lib/demo-data'
 import { serializeSearchFilters, type SearchFilters } from '@/lib/search-filters'
 import type { TalentLevel } from '@/lib/talent-level'
 import { useSearchFilters } from '@/components/search/useSearchFilters'
+import { useSearch } from '@/components/search/search-context'
 import posthog from 'posthog-js'
 import type { Profile, TalentSkill, TalentSearchResult } from '@/types'
 
@@ -49,21 +47,19 @@ function SearchPageContent() {
   const [browseError, setBrowseError] = useState<string | null>(null)
   const [browseRetry, setBrowseRetry] = useState(0)
 
-  const [query, setQuery] = useState('')
-  const [aiResults, setAiResults] = useState<TalentSearchResult[] | null>(null)
-  const [searching, setSearching] = useState(false)
-  const [searchTime, setSearchTime] = useState<number | null>(null)
-  const [aiError, setAiError] = useState<string | null>(null)
-  const [parsedIntent, setParsedIntent] = useState<ParsedQuery | null>(null)
-  // Roster freshness describes the dataset, not the query, so it survives
-  // query changes and only clears when AI mode exits or a search errors.
-  const [roster, setRoster] = useState<{ total: number | null; added_this_week: number | null } | null>(null)
+  // Query, debounce, in-flight request and parsed intent all live in the
+  // shared search context so the nav palette and this page are two views onto
+  // one search - not two searches racing for the same AI quota.
+  const {
+    query, setQuery, ai, patchAi, abortAi, runAiSearch, isLocalDemo,
+    publishFilters, setOpen: setSearchOpen,
+  } = useSearch()
+  const { results: aiResults, searching, searchTime, error: aiError, parsed: parsedIntent, roster } = ai
+
   const [deepSearching, setDeepSearching] = useState(false)
   const [deepStatus, setDeepStatus] = useState<string | null>(null)
   const [agentSummary, setAgentSummary] = useState<string | null>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const aiAbortRef = useRef<AbortController | null>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [outreachTalent, setOutreachTalent] = useState<(Profile & { talent_skills: TalentSkill[] }) | null>(null)
@@ -71,21 +67,21 @@ function SearchPageContent() {
 
   useEffect(() => {
     const q = searchParams.get('q')
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync query input from the URL
     if (q) setQuery(q)
-  }, [searchParams])
+  }, [searchParams, setQuery])
 
   const [talentStats, setTalentStats] = useState<Record<string, { views: number; likes: number; level?: TalentLevel }>>({})
-  const [isLocalDemo, setIsLocalDemo] = useState(false)
   const filterSortKey = useMemo(
     () => `${sortMode}:${serializeSearchFilters(filters).toString()}`,
     [filters, sortMode],
   )
   const prevFilterSortKey = useRef(filterSortKey)
 
+  // The filter row is the sole owner of filters; publishing them upward lets
+  // a search run from the nav palette respect what this page has applied.
   useEffect(() => {
-    void isActiveLocalDemoMode().then(demo => setIsLocalDemo(demo))
-  }, [])
+    publishFilters(filters)
+  }, [filters, publishFilters])
 
   useEffect(() => {
     const filtersChanged = prevFilterSortKey.current !== filterSortKey
@@ -165,68 +161,18 @@ function SearchPageContent() {
       .catch(() => { /* silent */ })
   }, [allTalent, aiResults])
 
-  const runAiSearch = useCallback(async (q: string) => {
-    aiAbortRef.current?.abort()
-    if (!q.trim()) { setAiResults(null); setSearchTime(null); setParsedIntent(null); setRoster(null); setSearching(false); return }
-    const controller = new AbortController()
-    aiAbortRef.current = controller
-    setSearching(true)
-    setAiError(null)
-    const t0 = Date.now()
-
-    if (isLocalDemo) {
-      setAiResults(searchDemoTalent(q, filters))
-      setParsedIntent(null)
-      setRoster(null)
-      setSearchTime(Date.now() - t0)
-      setSearching(false)
-      return
-    }
-
-    try {
-      const res = await fetch('/api/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q, filters }),
-        signal: controller.signal,
-      })
-      const data = await res.json()
-      if (data.error) {
-        setAiResults(null)
-        setSearchTime(null)
-        setParsedIntent(null)
-        setRoster(null)
-        setAiError(data.error)
-      } else {
-        const results = data.results ?? []
-        setAiResults(results)
-        setParsedIntent((data.parsed as ParsedQuery | undefined) ?? null)
-        setRoster((data.roster as { total: number | null; added_this_week: number | null } | undefined) ?? null)
-        const elapsed = Date.now() - t0
-        setSearchTime(elapsed)
-        posthog.capture('ai_search_performed', {
-          result_count: results.length,
-          search_time_ms: elapsed,
-        })
-      }
-    } catch (error) {
-      if (!(error instanceof Error && error.name === 'AbortError')) setAiError('Search failed')
-    }
-    if (aiAbortRef.current === controller) setSearching(false)
-  }, [filters, isLocalDemo])
-
   // Agentic "deep search": streams NDJSON progress events from the agent
   // loop, then swaps its curated shortlist into the normal AI results path.
   const runDeepSearch = useCallback(async () => {
     const q = query.trim()
     if (!q || deepSearching) return
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+    // Deep search supersedes any pending or in-flight quick search.
+    abortAi()
     aiAbortRef.current?.abort()
     const controller = new AbortController()
     aiAbortRef.current = controller
     setDeepSearching(true)
-    setSearching(false)
-    setAiError(null)
+    patchAi({ searching: false, error: null })
     setAgentSummary(null)
     setDeepStatus('Planning the search…')
     const t0 = Date.now()
@@ -260,10 +206,9 @@ function SearchPageContent() {
           else if (event.type === 'error') throw new Error(event.error ?? 'Deep search failed')
           else if (event.type === 'results') {
             const results = event.results ?? []
-            setAiResults(results)
             setAgentSummary(event.summary || null)
             const elapsed = Date.now() - t0
-            setSearchTime(elapsed)
+            patchAi({ results, searchTime: elapsed })
             posthog.capture('agent_search_performed', {
               result_count: results.length,
               search_time_ms: elapsed,
@@ -273,28 +218,22 @@ function SearchPageContent() {
       }
     } catch (error) {
       if (!(error instanceof Error && error.name === 'AbortError')) {
-        setAiError(error instanceof Error ? error.message : 'Deep search failed')
+        patchAi({ error: error instanceof Error ? error.message : 'Deep search failed' })
       }
     }
     if (aiAbortRef.current === controller) {
       setDeepSearching(false)
       setDeepStatus(null)
     }
-  }, [query, filters, deepSearching])
+  }, [query, filters, deepSearching, abortAi, patchAi])
 
+  // The quick-search debounce lives in the search context. This page only
+  // clears the agent summary, which belongs to the deep-search path.
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a summary must not outlive the query it described
     setAgentSummary(null)
-    // Stale parse must clear when the query changes (covered by the disable above).
-    setParsedIntent(null)
-    if (!query.trim()) { setAiResults(null); setSearchTime(null); return }
-    debounceRef.current = setTimeout(() => runAiSearch(query), 500)
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      aiAbortRef.current?.abort()
-    }
-  }, [query, runAiSearch])
+    return () => aiAbortRef.current?.abort()
+  }, [query])
 
   const isAiMode = query.trim().length > 0
   // Browse results are already stably ordered by the filtered SQL function.
@@ -334,8 +273,6 @@ function SearchPageContent() {
       <PageShell />
       <SearchHeader
         query={query}
-        onQueryChange={setQuery}
-        onClearQuery={() => { setQuery(''); setAiResults(null); setParsedIntent(null); setRoster(null) }}
         searching={searching}
         isAiMode={isAiMode}
         filters={filters}
@@ -350,7 +287,6 @@ function SearchPageContent() {
         aiResultCount={aiResults?.length ?? 0}
         searchTime={searchTime}
         rosterFreshness={rosterFreshnessLabel(roster?.total, roster?.added_this_week)}
-        inputRef={searchInputRef}
       />
 
       {isAiMode && !searching && !deepSearching && !agentSummary && intentChips.length > 0 && (
@@ -363,7 +299,7 @@ function SearchPageContent() {
               variant="ghost"
               size="xs"
               className="ml-auto text-muted-foreground hover:text-foreground"
-              onClick={() => searchInputRef.current?.focus()}
+              onClick={() => setSearchOpen(true)}
             >
               <Pencil className="size-3" />
               Edit

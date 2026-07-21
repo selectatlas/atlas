@@ -33,6 +33,9 @@ export interface HirerOutreachDefaults {
   tone_context: string | null
 }
 
+/** A talent's cover is either one wide photo or a three-up grid. */
+export type CoverLayout = 'single' | 'grid'
+
 export interface Profile {
   id: string
   account_type: AccountType
@@ -40,6 +43,9 @@ export interface Profile {
   email: string
   avatar_url: string | null
   cover_url: string | null
+  /** Backs the three-up grid cover. Ignored when cover_layout is 'single'. */
+  cover_images?: string[] | null
+  cover_layout?: CoverLayout | null
   headline: string | null
   city: string | null
   country: string | null

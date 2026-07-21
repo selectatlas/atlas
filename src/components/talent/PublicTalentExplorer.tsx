@@ -1,13 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PublicTalentCard } from '@/components/talent/PublicTalentCard'
+import { useSearch } from '@/components/search/search-context'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import type { PublicTalentPage, PublicTalentRow } from '@/lib/talent-discovery'
 import type { Category } from '@/types'
@@ -27,7 +26,6 @@ interface PublicTalentExplorerProps {
 export function PublicTalentExplorer({ initialPage }: PublicTalentExplorerProps) {
   const router = useRouter()
   const [category, setCategory] = useState<Category | null>(null)
-  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [talent, setTalent] = useState<PublicTalentRow[]>(initialPage.talent)
   const [nextCursor, setNextCursor] = useState<string | null>(initialPage.nextCursor)
@@ -103,17 +101,29 @@ export function PublicTalentExplorer({ initialPage }: PublicTalentExplorerProps)
     // only knowable client-side (useSearchParams would bail the static HTML).
     /* eslint-disable react-hooks/set-state-in-effect */
     setCategory(validCategory)
-    setSearchInput(linkedSearch)
     setSearch(linkedSearch)
     return runFilteredFetch(validCategory, linkedSearch)
     /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // The nav search surface is the only query input. A commit there must reach
+  // this list even when it does not change the route - navigating to the page
+  // we are already on will not remount, so the URL alone cannot signal it.
+  const { committed } = useSearch()
+  const lastCommitRef = useRef(committed.nonce)
+  useEffect(() => {
+    if (committed.nonce === lastCommitRef.current) return
+    lastCommitRef.current = committed.nonce
+    applyFilters(category, committed.query)
+    // applyFilters is stable for this purpose: it only reads props/state it
+    // is given explicitly, and re-running on identity churn would refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [committed.nonce, committed.query])
+
   function applyFilters(nextCategory: Category | null, nextSearch: string) {
     setCategory(nextCategory)
     setSearch(nextSearch)
-    setSearchInput(nextSearch)
     const params = new URLSearchParams()
     if (nextCategory) params.set('category', nextCategory)
     if (nextSearch) params.set('q', nextSearch)
@@ -144,37 +154,14 @@ export function PublicTalentExplorer({ initialPage }: PublicTalentExplorerProps)
 
   return (
     <div className="space-y-5">
-      <form
-        onSubmit={e => {
-          e.preventDefault()
-          applyFilters(category, searchInput.trim())
-        }}
-        className="flex gap-2"
-      >
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            placeholder="Search talent by name, skill, or location"
-            className="pl-9"
-            aria-label="Search talent"
-          />
-        </div>
-        <Button type="submit" variant="outline" className="rounded-xl">
-          Search
-        </Button>
-      </form>
-
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
-        <FilterChip label="All" active={category === null} onClick={() => applyFilters(null, searchInput.trim())} />
+        <FilterChip label="All" active={category === null} onClick={() => applyFilters(null, search)} />
         {CATEGORIES.map(value => (
           <FilterChip
             key={value}
             label={CATEGORY_LABELS[value]}
             active={category === value}
-            onClick={() => applyFilters(value, searchInput.trim())}
+            onClick={() => applyFilters(value, search)}
           />
         ))}
       </div>

@@ -5,7 +5,7 @@ import NextImage from 'next/image'
 import { CalendarDays, ExternalLink, ImageIcon, Link2, Play, TrendingUp, User } from 'lucide-react'
 import type { PortfolioItem } from '@/types'
 import { portfolioImageAlt } from '@/lib/display'
-import { getVideoEmbedUrl } from '@/lib/video-embed'
+import { resolveVideoSource, type VideoSource } from '@/lib/video-embed'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -43,23 +43,68 @@ function formatProjectDate(date: string | null): string | null {
   return parsed.toLocaleDateString('en-GB', { year: 'numeric', month: 'short' })
 }
 
+// Plays the item in place wherever the platform allows it. The caller decides
+// whether there is a playable source at all, so this always renders something.
+function VideoPlayer({ item, source }: { item: PortfolioItem; source: VideoSource }) {
+  if (source.kind === 'file') {
+    return (
+      <video
+        src={source.src}
+        poster={item.thumbnail_url ?? undefined}
+        controls
+        playsInline
+        preload="metadata"
+        className="aspect-video w-full rounded-lg bg-black"
+      >
+        {/* Only reached if the browser cannot decode the container. */}
+        <track kind="captions" />
+      </video>
+    )
+  }
+
+  if (source.kind === 'blocked') {
+    // Instagram sends X-Frame-Options: DENY, so an iframe here would render a
+    // browser "refused to connect" box. Say so plainly instead of faking it.
+    return (
+      <div className="space-y-2 rounded-lg border border-border bg-muted/40 p-4">
+        <p className="text-sm font-medium">Instagram blocks in-app playback</p>
+        <p className="text-sm text-muted-foreground">
+          Instagram does not allow its posts to be played inside other sites. Open it on
+          Instagram, or ask for the video file to be uploaded here instead.
+        </p>
+      </div>
+    )
+  }
+
+  // Portrait players get a capped width rather than a capped height: sizing the
+  // container off the iframe while the iframe sizes off the container collapses
+  // it to zero width.
+  return (
+    <div
+      className={`overflow-hidden rounded-lg bg-black ${
+        source.portrait ? 'mx-auto w-full max-w-[340px]' : ''
+      }`}
+    >
+      <iframe
+        src={source.src}
+        title={item.title ?? 'Portfolio video'}
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className={`w-full ${source.portrait ? 'aspect-[9/16]' : 'aspect-video'}`}
+      />
+    </div>
+  )
+}
+
 function ItemDetail({ item }: { item: PortfolioItem }) {
-  const embedUrl = item.type === 'video' ? getVideoEmbedUrl(item.url) : null
+  const source = item.type === 'video' ? resolveVideoSource(item.url) : null
   const projectDate = formatProjectDate(item.project_date)
 
   return (
     <div className="space-y-4">
-      {embedUrl ? (
-        <div className="overflow-hidden rounded-lg bg-black">
-          <iframe
-            src={embedUrl}
-            title={item.title ?? 'Portfolio video'}
-            loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="aspect-video w-full"
-          />
-        </div>
+      {source ? (
+        <VideoPlayer item={item} source={source} />
       ) : item.thumbnail_url ? (
         <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
           <NextImage

@@ -150,3 +150,20 @@ export function filtersForCategory(category: Category | 'all'): readonly TalentF
     return filter.categories.includes(category)
   })
 }
+
+// Union across every discipline the talent works in. Talent are routinely
+// more than one thing (a dancer who also acts), and picking a single category
+// hides whole sections - SPACT and stunts for actors, measurements for
+// dancers - that the person genuinely needs to fill in.
+//
+// With no declared discipline yet, offer everything rather than nothing:
+// filtersForCategory('all') returns only the universal filters, which would
+// hide physical attributes entirely from a talent who has not added skills.
+export function filtersForCategories(
+  categories: readonly Category[],
+): readonly TalentFilterDefinition[] {
+  if (categories.length === 0) return TALENT_FILTERS
+  return TALENT_FILTERS.filter(
+    filter => filter.categories === 'all' || filter.categories.some(c => categories.includes(c)),
+  )
+}

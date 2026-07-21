@@ -1,11 +1,9 @@
 'use client'
 
-import { useRef, useEffect, useState, type Ref } from 'react'
-import { Grid2X2, List, MoveHorizontal, Sparkles, X } from 'lucide-react'
+import { useRef, useEffect, useState } from 'react'
+import { Grid2X2, List, MoveHorizontal } from 'lucide-react'
 import { FilterBar } from '@/components/search/FilterBar'
 import { SaveSearchButton } from '@/components/search/SaveSearchButton'
-import { SearchSuggestionChips } from '@/components/search/SearchSuggestionChips'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { SearchFilters } from '@/lib/search-filters'
@@ -18,10 +16,11 @@ const SORT_OPTIONS: Record<SortMode, string> = {
   available: 'Available first',
 }
 
+// The query input lives in the nav search surface (SearchCommand), not here.
+// This header owns only the structured controls - filters, save, view and
+// sort - plus the result meta line describing the current AI result set.
 interface SearchHeaderProps {
   query: string
-  onQueryChange: (q: string) => void
-  onClearQuery: () => void
   searching: boolean
   isAiMode: boolean
   filters: SearchFilters
@@ -37,22 +36,19 @@ interface SearchHeaderProps {
   searchTime: number | null
   /** Computed roster provenance, e.g. "from 2,400 profiles · 34 added this week". */
   rosterFreshness?: string | null
-  /** Lets the page focus the query input (parsed-intent artefact "Edit" action). */
-  inputRef?: Ref<HTMLInputElement>
 }
 
 export function SearchHeader({
-  query, onQueryChange, onClearQuery, searching, isAiMode,
+  query, searching, isAiMode,
   filters, onFiltersChange, previewCount,
   browseResultCount,
   viewMode, sortMode, onViewModeChange, onSortModeChange, hasResults,
-  aiResultCount, searchTime, rosterFreshness, inputRef,
+  aiResultCount, searchTime, rosterFreshness,
 }: SearchHeaderProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const [isSticky, setIsSticky] = useState(false)
   const [stickyHeight, setStickyHeight] = useState(0)
-  const [inputFocused, setInputFocused] = useState(false)
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -91,45 +87,6 @@ export function SearchHeader({
             <h1 className="text-2xl font-semibold tracking-tight">Find the right talent</h1>
             <p className="mt-1 max-w-xl text-sm text-muted-foreground">Describe the brief in your own words. Atlas will surface the people most likely to fit.</p>
           </div>
-        )}
-
-        {/* AI Search bar */}
-        <div className="relative max-w-3xl">
-          <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2">
-            {searching ? (
-              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Sparkles className="size-4 text-primary" strokeWidth={2.2} />
-            )}
-          </div>
-          <Input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={e => onQueryChange(e.target.value)}
-            placeholder='Try "Bollywood dancers in London, available December"'
-            aria-label="Search talent with AI"
-            className="h-12 rounded-xl border-primary/20 bg-card pl-10 pr-10 text-sm shadow-sm focus-visible:border-primary focus-visible:ring-primary/30"
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-          />
-          {query && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              onClick={onClearQuery}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
-            >
-              <X className="size-4" />
-            </Button>
-          )}
-        </div>
-
-        {/* Suggested searches: shown when the input is focused and empty */}
-        {inputFocused && !query.trim() && (
-          <SearchSuggestionChips onSelect={onQueryChange} className="max-w-3xl" />
         )}
 
         {/* AI mode: result meta */}

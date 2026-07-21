@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Eye, Heart, MapPin } from "lucide-react";
 import type { Profile, TalentSkill } from "@/types";
 import { CATEGORY_LABELS } from "@/lib/skills";
-import { nameInitial } from "@/lib/display";
+import { nameInitial, splitRate } from "@/lib/display";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShortlistButton } from "@/components/talent/ShortlistButton";
@@ -12,7 +12,7 @@ import { TalentLevelBadge } from "@/components/talent/TalentLevelBadge";
 import type { TalentLevel } from "@/lib/talent-level";
 import { hasCardBadges, type TalentCardBadges } from "@/lib/talent-card-badges";
 import { TalentCardMedia } from "@/components/talent/TalentCardMedia";
-import { MessageNowButton } from "@/components/talent/MessageNowButton";
+import { RequestBookingButton } from "@/components/talent/RequestBookingButton";
 
 interface TalentCardProps {
   profile: Profile & { talent_skills: TalentSkill[] };
@@ -60,37 +60,47 @@ export function TalentCard({
   const topSkills = profile.talent_skills.slice(0, 3);
   const primaryCategory = profile.talent_skills[0]?.category;
   const location = locationFor(profile);
+  const rate = splitRate(profile.rates);
+
+  // Role sits top-left, status top-right, save bottom-right - the same corner
+  // grammar the reference layout uses, so the eye always finds them in one place.
+  const mediaOverlay = (
+    <>
+      {primaryCategory && (
+        <Badge variant="overlay" shape="chip" className="absolute left-3 top-3">
+          {CATEGORY_LABELS[primaryCategory]}
+        </Badge>
+      )}
+
+      <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
+        {matchScore !== undefined && (
+          <Badge shape="chip" className="bg-brand-lime font-bold text-foreground">
+            {matchScore}% match
+          </Badge>
+        )}
+        {profile.availability && (
+          <Badge shape="chip" className="max-w-40 font-semibold">
+            <span className="truncate">{profile.availability}</span>
+          </Badge>
+        )}
+      </div>
+
+      <div className="pointer-events-auto absolute bottom-3 right-3 flex items-center gap-1.5 opacity-100 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out)] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+        <ShortlistButton
+          talentId={profile.id}
+          className="rounded-full bg-background/90 shadow-sm backdrop-blur-sm hover:bg-background"
+        />
+      </div>
+    </>
+  );
 
   const cardContent = (
     <Card className="group gap-0 overflow-hidden border border-border/80 pt-0 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
-      <div className="relative">
-        <TalentCardMedia
-          images={images ?? (profile.avatar_url ? [profile.avatar_url] : [])}
-          name={profile.full_name}
-        />
-
-        {matchScore !== undefined && (
-          <div className="absolute right-3 top-3 rounded-full bg-brand-lime px-2.5 py-1 text-xs font-bold text-black">
-            {matchScore}% match
-          </div>
-        )}
-
-        {primaryCategory && (
-          <div className="absolute left-3 top-3 rounded-md border border-white/60 bg-background/85 px-2 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm">
-            {CATEGORY_LABELS[primaryCategory]}
-          </div>
-        )}
-
-        <div className="absolute bottom-3 right-3 flex items-center gap-1.5 opacity-100 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out)] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-          {onMessage && (
-            <MessageNowButton name={profile.full_name} onMessage={onMessage} />
-          )}
-          <ShortlistButton
-            talentId={profile.id}
-            className="rounded-full bg-background/90 shadow-sm backdrop-blur-sm hover:bg-background"
-          />
-        </div>
-      </div>
+      <TalentCardMedia
+        images={images ?? (profile.avatar_url ? [profile.avatar_url] : [])}
+        name={profile.full_name}
+        overlay={mediaOverlay}
+      />
 
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
@@ -118,9 +128,16 @@ export function TalentCard({
               </p>
             )}
           </div>
-          {profile.rates && (
-            <span className="shrink-0 whitespace-nowrap text-xs font-medium text-foreground/75">
-              {profile.rates.split("/")[0].trim()}
+          {rate && (
+            <span className="shrink-0 whitespace-nowrap text-right">
+              <span className="block text-sm font-bold leading-tight">
+                {rate.amount}
+              </span>
+              {rate.unit && (
+                <span className="block text-2xs text-muted-foreground">
+                  {rate.unit}
+                </span>
+              )}
             </span>
           )}
         </div>
@@ -134,7 +151,8 @@ export function TalentCard({
               <Badge
                 key={reason}
                 variant="secondary"
-                className="max-w-full text-[11px]"
+                shape="chip"
+                className="max-w-full"
               >
                 <span className="truncate">{reason}</span>
               </Badge>
@@ -145,37 +163,35 @@ export function TalentCard({
         {hasCardBadges(badges) && (
           <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Capabilities">
             {badges.spact && (
-              <Badge variant="secondary" className="text-[11px]">SPAC</Badge>
+              <Badge variant="secondary" shape="chip">SPAC</Badge>
             )}
             {badges.stuntRegistered && (
-              <Badge variant="secondary" className="text-[11px]">Stunt registered</Badge>
+              <Badge variant="secondary" shape="chip">Stunt registered</Badge>
             )}
           </div>
         )}
 
         {topSkills.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {topSkills.map((skill) => (
               <Badge
                 key={skill.id}
                 variant={proficiencyVariant[skill.proficiency] ?? "outline"}
-                className="text-[11px]"
+                shape="chip"
               >
                 {skill.skill}
               </Badge>
             ))}
             {profile.talent_skills.length > 3 && (
-              <Badge variant="outline" className="text-[11px]">
+              <Badge variant="outline" shape="chip">
                 +{profile.talent_skills.length - 3}
               </Badge>
             )}
           </div>
         )}
 
-        {(views !== undefined ||
-          likes !== undefined ||
-          profile.availability) && (
-          <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3 text-[11px] text-muted-foreground">
+        {(views !== undefined || likes !== undefined || onMessage) && (
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3 text-[11px] text-muted-foreground">
             <div className="flex items-center gap-3">
               {views !== undefined && (
                 <span className="inline-flex items-center gap-1">
@@ -188,11 +204,11 @@ export function TalentCard({
                 </span>
               )}
             </div>
-            {profile.availability && (
-              <span className="inline-flex max-w-[50%] items-center gap-1 truncate text-success">
-                <span className="size-1.5 shrink-0 rounded-full bg-success" />
-                <span className="truncate">{profile.availability}</span>
-              </span>
+            {onMessage && (
+              <RequestBookingButton
+                name={profile.full_name}
+                onRequest={onMessage}
+              />
             )}
           </div>
         )}

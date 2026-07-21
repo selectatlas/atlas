@@ -23,6 +23,7 @@ export type OnboardingPayload = {
   city: string | null
   country: string | null
   rates: string | null
+  availability: string | null
   availableNow: boolean | null
   showreelUrl: string | null
   firstCredit: { title: string; production: string } | null
@@ -76,6 +77,9 @@ export function validateOnboardingPayload(input: unknown): OnboardingValidationR
   const rates = optionalText(source.rates, 120)
   if (rates === undefined) return { ok: false, error: 'Rates must be 120 characters or fewer' }
 
+  const availability = optionalText(source.availability, 200)
+  if (availability === undefined) return { ok: false, error: 'Availability must be 200 characters or fewer' }
+
   const availableNow = source.availableNow === null || source.availableNow === undefined
     ? null
     : typeof source.availableNow === 'boolean' ? source.availableNow : undefined
@@ -105,5 +109,5 @@ export function validateOnboardingPayload(input: unknown): OnboardingValidationR
     }
   }
 
-  return { ok: true, value: { category, skills, headline, bio, city, country, rates, availableNow, showreelUrl, firstCredit } }
+  return { ok: true, value: { category, skills, headline, bio, city, country, rates, availability, availableNow, showreelUrl, firstCredit } }
 }

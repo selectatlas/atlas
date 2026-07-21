@@ -86,6 +86,72 @@ Only extract what is explicitly stated. Do not infer.`,
   }
 }
 
+export interface ParsedJobQuery {
+  category: string | null       // dancer | actor | photographer_videographer | content_creator | null
+  role: string | null           // "backing dancer", "lead actor"
+  location: string | null       // "London"
+  work_type: string | null      // in_person | remote | hybrid
+  availability: string | null   // "December", "this month"
+  rate_min: number | null       // day rate floor, in whole currency units
+  rate_max: number | null       // day rate ceiling
+  keywords: string[]            // free-text terms for the FTS pass
+}
+
+const EMPTY_JOB_QUERY: ParsedJobQuery = {
+  category: null, role: null, location: null, work_type: null,
+  availability: null, rate_min: null, rate_max: null, keywords: [],
+}
+
+/**
+ * The jobs-side mirror of parseSearchQuery: turns a talent's natural-language
+ * job search into the structured fields the discover feed already filters on.
+ * Same JSON-mode contract - a malformed response degrades to an empty parse so
+ * the caller falls back to plain keyword search rather than failing.
+ */
+export async function parseJobQuery(query: string): Promise<ParsedJobQuery> {
+  const openai = getOpenAI()
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    temperature: 0,
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content: `Extract structured search intent from a job search query written by a performer or creative looking for work.
+Return a JSON object with exactly these keys:
+- category: one of "dancer", "actor", "photographer_videographer", "content_creator", or null
+- role: the specific role or job title mentioned (e.g. "backing dancer"), or null
+- location: city or region string, or null
+- work_type: one of "in_person", "remote", "hybrid", or null
+- availability: timing text (month, season, "this week"), or null
+- rate_min: minimum day rate as a number with no currency symbol, or null
+- rate_max: maximum day rate as a number with no currency symbol, or null
+- keywords: array of remaining meaningful search terms, or []
+
+"paying over 300" sets rate_min to 300. "under 500 a day" sets rate_max to 500.
+Only extract what is explicitly stated. Do not infer.`,
+      },
+      { role: 'user', content: query },
+    ],
+  })
+
+  try {
+    const raw = JSON.parse(response.choices[0].message.content ?? '{}')
+    return {
+      category: raw.category ?? null,
+      role: typeof raw.role === 'string' ? raw.role : null,
+      location: typeof raw.location === 'string' ? raw.location : null,
+      work_type: typeof raw.work_type === 'string' ? raw.work_type : null,
+      availability: typeof raw.availability === 'string' ? raw.availability : null,
+      rate_min: typeof raw.rate_min === 'number' ? raw.rate_min : null,
+      rate_max: typeof raw.rate_max === 'number' ? raw.rate_max : null,
+      keywords: Array.isArray(raw.keywords) ? raw.keywords.filter((k: unknown) => typeof k === 'string') : [],
+    }
+  } catch {
+    return { ...EMPTY_JOB_QUERY }
+  }
+}
+
 // Turns a hirer's one-line brief into a structured job draft. Same JSON-mode
 // contract as parseSearchQuery: a malformed or surprising response degrades to
 // an empty draft (the hirer just fills the form in by hand) rather than

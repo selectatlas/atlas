@@ -52,6 +52,7 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl, nextPa
   const [country, setCountry] = useState('')
   const [rates, setRates] = useState('')
   const [availableNow, setAvailableNow] = useState<boolean | null>(null)
+  const [availability, setAvailability] = useState('')
   const [showreelUrl, setShowreelUrl] = useState('')
   const [creditTitle, setCreditTitle] = useState('')
   const [creditProduction, setCreditProduction] = useState('')
@@ -92,6 +93,7 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl, nextPa
           city,
           country,
           rates,
+          availability,
           availableNow,
           showreelUrl: showreelUrl.trim() || null,
           firstCredit: creditTitle.trim() && creditProduction.trim()
@@ -289,6 +291,16 @@ export function OnboardingWizard({ profileId, fullName, initialAvatarUrl, nextPa
               </div>
               <LabeledField label="Indicative rate (optional)">
                 <Input value={rates} onChange={e => setRates(e.target.value)} placeholder="£300 per day" />
+              </LabeledField>
+              {/* Free-text availability is what hirers read on the profile and
+                  what the completeness meter scores - the available-now toggle
+                  below is the structured filter and does not replace it. */}
+              <LabeledField label="When are you available? (optional)">
+                <Input
+                  value={availability}
+                  onChange={e => setAvailability(e.target.value)}
+                  placeholder="Available December and January, two weeks notice"
+                />
               </LabeledField>
               <div>
                 <p className="mb-1.5 text-xs font-medium text-muted-foreground">Available for work right now?</p>

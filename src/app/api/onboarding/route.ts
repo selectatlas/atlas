@@ -35,9 +35,11 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Profile is already set up' }, { status: 409 })
   }
 
-  const { category, skills, headline, bio, city, country, rates, availableNow, showreelUrl, firstCredit } = parsed.value
+  const { category, skills, headline, bio, city, country, rates, availability, availableNow, showreelUrl, firstCredit } = parsed.value
 
-  const profilePatch: Record<string, string | null> = { headline, bio, city, country, rates }
+  // availability is the free-text column hirers read and the completeness
+  // meter scores; available_now below is the structured search filter.
+  const profilePatch: Record<string, string | null> = { headline, bio, city, country, rates, availability }
   if (showreelUrl) profilePatch.showreel_url = showreelUrl
 
   const { error: profileError } = await supabase

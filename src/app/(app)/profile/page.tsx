@@ -3,8 +3,11 @@ import { HirerProfileEditor } from '@/components/profile/HirerProfileEditor'
 import { TalentProfileEditor } from '@/components/profile/TalentProfileEditor'
 
 export default async function ProfilePage() {
-  const { accountType } = await getSession()
+  // Follows the workspace shell, not the raw account type: an admin viewing
+  // the talent workspace must get the talent profile builder, not the hirer
+  // one behind a talent nav.
+  const { shellAccountType } = await getSession()
 
-  if (accountType === 'hirer') return <HirerProfileEditor />
+  if (shellAccountType === 'hirer') return <HirerProfileEditor />
   return <TalentProfileEditor />
 }

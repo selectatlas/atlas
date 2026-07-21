@@ -50,7 +50,7 @@ export default async function OutreachPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-2 card-stagger">
+        <div className="flex flex-col gap-4 card-stagger">
           {rows.map(row => {
             const talent = row.profiles
             const date = new Date(row.created_at).toLocaleDateString('en-GB', {

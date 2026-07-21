@@ -102,7 +102,7 @@ export function SettingsPage() {
   const [jobDefaults, setJobDefaults] = useState<HirerJobDefaults>(DEFAULT_HIRER_JOB_DEFAULTS)
   const [outreachDefaults, setOutreachDefaults] = useState<HirerOutreachDefaults>(DEFAULT_HIRER_OUTREACH_DEFAULTS)
   const [talentAttributes, setTalentAttributes] = useState<TalentAttributesPayload>(EMPTY_TALENT_ATTRIBUTES)
-  const [talentCategory, setTalentCategory] = useState<Category | null>(null)
+  const [talentCategories, setTalentCategories] = useState<Category[]>([])
   const [skillInput, setSkillInput] = useState('')
 
   const availableSections = useMemo(
@@ -161,9 +161,11 @@ export function SettingsPage() {
           const payload = await attributesResponse.json()
           if (payload.attributes) setTalentAttributes(payload.attributes)
         }
-        const category = (profileResult.data as { talent_skills?: Array<{ category: Category }> } | null)
-          ?.talent_skills?.[0]?.category ?? null
-        setTalentCategory(category)
+        // Every discipline they work in, not just whichever skill row came
+        // back first - a single category hides sections that apply to them.
+        const skills = (profileResult.data as { talent_skills?: Array<{ category: Category }> } | null)
+          ?.talent_skills ?? []
+        setTalentCategories([...new Set(skills.map(skill => skill.category))])
       }
     } catch {
       setError('Unable to load settings')
@@ -622,7 +624,7 @@ export function SettingsPage() {
             </CardContent>
           </Card>
           <TalentAttributesEditor
-            category={talentCategory}
+            categories={talentCategories}
             value={talentAttributes}
             onChange={setTalentAttributes}
           />

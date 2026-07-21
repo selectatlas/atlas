@@ -10,6 +10,7 @@ import { summarizeReviews } from '@/lib/reviews'
 import { buildTalentLevelMetrics, type TalentLevelMetrics } from '@/lib/talent-level'
 import { TalentLevelPanel } from '@/components/talent/TalentLevelPanel'
 import { PhotoUpload } from '@/components/talent/PhotoUpload'
+import { CoverEditor } from '@/components/talent/CoverEditor'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -227,18 +228,15 @@ export function TalentProfileEditor() {
       </div>
 
       <Card>
-        <CardContent className="p-5 space-y-3">
-          <h2 className="text-sm font-semibold">Cover photo</h2>
-          <PhotoUpload
-            variant="cover"
-            bucket="covers"
-            currentUrl={profile.cover_url}
-            initials={profile.full_name[0]}
-            onUploaded={async (url) => {
-              update('cover_url', url)
-              const supabase = createClient()
-              await supabase.from('profiles').update({ cover_url: url }).eq('id', profile.id)
-            }}
+        <CardContent className="p-5">
+          <CoverEditor
+            profileId={profile.id}
+            initials={profile.full_name[0]!}
+            coverUrl={profile.cover_url}
+            coverImages={profile.cover_images ?? []}
+            layout={profile.cover_layout ?? 'single'}
+            onChange={patch => setProfile(p => (p ? { ...p, ...patch } : p))}
+            onError={setError}
           />
         </CardContent>
       </Card>
@@ -288,7 +286,7 @@ export function TalentProfileEditor() {
       />
 
       <TalentAttributesEditor
-        category={profile.talent_skills[0]?.category ?? null}
+        categories={[...new Set(profile.talent_skills.map(skill => skill.category))]}
         value={talentAttributes}
         onChange={setTalentAttributes}
       />

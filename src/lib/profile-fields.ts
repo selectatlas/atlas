@@ -8,13 +8,13 @@
 // These stay as string literals (rather than runtime joins) so Supabase's
 // compile-time select parser can infer the returned shape.
 export const PUBLIC_PROFILE_FIELDS =
-  'id, account_type, full_name, avatar_url, cover_url, headline, city, country, bio, rates, availability, showreel_url, profile_visibility, verified_at, verified_categories, membership_tier, created_at' as const
+  'id, account_type, full_name, avatar_url, cover_url, cover_images, cover_layout, headline, city, country, bio, rates, availability, showreel_url, profile_visibility, verified_at, verified_categories, membership_tier, created_at' as const
 
 export const PUBLIC_TALENT_SKILL_FIELDS =
   'id, profile_id, category, skill, proficiency, created_at' as const
 
 export const PUBLIC_PROFILE_WITH_SKILLS =
-  'id, account_type, full_name, avatar_url, cover_url, headline, city, country, bio, rates, availability, showreel_url, profile_visibility, verified_at, verified_categories, membership_tier, created_at, talent_skills(id, profile_id, category, skill, proficiency, created_at)' as const
+  'id, account_type, full_name, avatar_url, cover_url, cover_images, cover_layout, headline, city, country, bio, rates, availability, showreel_url, profile_visibility, verified_at, verified_categories, membership_tier, created_at, talent_skills(id, profile_id, category, skill, proficiency, created_at)' as const
 
 export const OWN_PROFILE_FIELDS =
-  'id, account_type, full_name, avatar_url, cover_url, headline, city, country, bio, rates, availability, showreel_url, profile_visibility, verified_at, verified_categories, membership_tier, created_at' as const
+  'id, account_type, full_name, avatar_url, cover_url, cover_images, cover_layout, headline, city, country, bio, rates, availability, showreel_url, profile_visibility, verified_at, verified_categories, membership_tier, created_at' as const

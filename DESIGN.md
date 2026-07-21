@@ -6,6 +6,36 @@ Each pattern states the problem it solves, the solution, and when NOT to use it.
 
 ---
 
+## Layout
+
+### Spacing scale by role
+
+**Problem.** `docs/design.md` defines the spacing tiers in prose ("16px card inset, 24px to separate related groups, 32-48px to separate sections") but never says which Tailwind class each maps to. Three different values ended up doing similar jobs across pages, and a page-by-page audit could not tell drift from intent.
+
+**Solution.** Pick the class by the *role* the gap plays, not by eye. The role, not the visual size, is what makes it consistent.
+
+| Role | Class | Value |
+|---|---|---|
+| Card inset (padding inside any card) | `p-4` | 16px |
+| Icon-to-text inside a card row | `gap-3` | 12px |
+| Heading to the content it labels | `mb-3` | 12px |
+| Cards in a grid (stat tiles, quick actions, result cards) | `gap-4` | 16px |
+| Stacked list rows in one column (conversations, jobs, shortlists) | `flex flex-col gap-4` | 16px |
+| Related groups within one flow | `space-y-6` | 24px |
+| Independent sections on a page | `flex flex-col gap-6` | 24px |
+
+Grid gap matches the card's own inset (both 16px), so a grid of cards reads as evenly spaced inside and out.
+
+Use `flex flex-col gap-4` (not `space-y-4`) for stacked card lists: rows are usually wrapped in `<Link>`, which renders as an inline `<a>` and ignores vertical margin from `space-y`.
+
+Use `flex flex-col gap-6` (not `space-y-6` / `space-y-8`) for page-level section stacks for the same reason when any section is a bare `<Link>`.
+
+**Related groups vs sections.** These are the two most confused tiers. A *related group* is a continuous flow the user reads as one thing - on `/search`, the query header, parsed-intent chips and results are one group at `gap-6`. A *section* is an independent block that would still make sense on its own - on `/home`, the stat grid and the conversations list are separate sections at `gap-6`. When in doubt, ask whether a heading between the two blocks would feel natural; if yes, it is a section.
+
+**When NOT to use it.** These rules govern layout containers only. Spacing *inside* a skeleton placeholder mirrors the real content it stands in for, so a `space-y-3` between skeleton lines inside a card is correct and is not list-row spacing. Do not normalise skeletons to this table.
+
+---
+
 ## Data display
 
 ### Metric cards with context
