@@ -10,6 +10,7 @@ import { rankingSimilarity } from '@/lib/matching'
 import { cardBadgesFromAttributes } from '@/lib/talent-card-badges'
 import { buildCardImages } from '@/lib/talent-card-media'
 import { cardPreviewImageCap } from '@/lib/membership'
+import { weekCutoffIso } from '@/lib/roster-freshness'
 
 function normalise(value: string | null | undefined) {
   return (value ?? '').toLowerCase().trim()
@@ -98,11 +99,27 @@ export async function POST(request: Request) {
   const validatedCombined = parseSearchFilterObject(combinedFilters)
   const effectiveFilters = validatedCombined.ok ? validatedCombined.filters : requestedFilters.filters
 
-  const { data: matches, error } = await serviceClient.rpc('match_talent_filtered', {
-    query_embedding: queryEmbedding,
-    filters: filtersToDatabase(effectiveFilters),
-    match_count: 20,
-  })
+  // Roster freshness runs alongside the vector search so it adds no latency.
+  const visibleTalent = () =>
+    serviceClient
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_type', 'talent')
+      .neq('profile_visibility', 'private')
+
+  const [{ data: matches, error }, totalResult, addedResult] = await Promise.all([
+    serviceClient.rpc('match_talent_filtered', {
+      query_embedding: queryEmbedding,
+      filters: filtersToDatabase(effectiveFilters),
+      match_count: 20,
+    }),
+    visibleTalent(),
+    visibleTalent().gte('created_at', weekCutoffIso()),
+  ])
+  const roster = {
+    total: totalResult.count ?? null,
+    added_this_week: addedResult.count ?? null,
+  }
 
   if (error) {
     logEvent('error', 'search_pgvector_error', { user_id: user.id, code: error.code ?? null })
@@ -114,7 +131,7 @@ export async function POST(request: Request) {
   const profileIds = matchRows.map(m => m.profile_id)
   const similarityMap = new Map(matchRows.map(m => [m.profile_id, m.similarity]))
 
-  if (profileIds.length === 0) return Response.json({ results: [], parsed, filters: effectiveFilters })
+  if (profileIds.length === 0) return Response.json({ results: [], parsed, filters: effectiveFilters, roster })
 
   const { data: profiles } = await serviceClient
     .from('profiles')
@@ -123,7 +140,7 @@ export async function POST(request: Request) {
     .eq('account_type', 'talent')
     .neq('profile_visibility', 'private')
 
-  if (!profiles) return Response.json({ results: [] })
+  if (!profiles) return Response.json({ results: [], roster })
 
   const filtered = profiles as Array<Record<string, unknown> & { talent_skills: Array<{ category: string; skill: string }> }>
 
@@ -189,5 +206,5 @@ export async function POST(request: Request) {
     ),
   }))
 
-  return Response.json({ results: payload, parsed, filters: effectiveFilters })
+  return Response.json({ results: payload, parsed, filters: effectiveFilters, roster })
 }

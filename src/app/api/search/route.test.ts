@@ -53,15 +53,25 @@ function makeServiceClient() {
           }),
         }
       }
-      return {
-        select: () => ({
-          in: () => ({
-            eq: () => ({
-              neq: () => Promise.resolve({ data: [] }),
-            }),
-          }),
-        }),
+      // One thenable chain covers both the profile-detail fetch
+      // (select().in().eq().neq()) and the roster count queries
+      // (select(count).eq().neq()[.gte()]).
+      const result = Promise.resolve({ data: [], count: 12, error: null })
+      type QueryChain = {
+        in: () => QueryChain
+        eq: () => QueryChain
+        neq: () => QueryChain
+        gte: () => QueryChain
+        then: typeof result.then
       }
+      const chain: QueryChain = {
+        in: () => chain,
+        eq: () => chain,
+        neq: () => chain,
+        gte: () => chain,
+        then: result.then.bind(result),
+      }
+      return { select: () => chain }
     }),
   }
 }
@@ -151,5 +161,13 @@ describe('POST /api/search', () => {
     const data = await res.json()
     expect(data.results).toEqual([])
     expect(service.rpc).toHaveBeenCalledWith('match_talent_filtered', expect.objectContaining({ filters: { gender: ['female'] } }))
+  })
+
+  it('includes computed roster freshness counts in the response', async () => {
+    mockCreateClient.mockResolvedValue(makeClient({ id: 'u1' }, 'hirer'))
+    const res = await POST(makeRequest({ query: 'dancers in London' }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.roster).toEqual({ total: 12, added_this_week: 12 })
   })
 })

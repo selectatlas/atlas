@@ -35,6 +35,8 @@ interface SearchHeaderProps {
   hasResults: boolean
   aiResultCount: number
   searchTime: number | null
+  /** Computed roster provenance, e.g. "from 2,400 profiles · 34 added this week". */
+  rosterFreshness?: string | null
   /** Lets the page focus the query input (parsed-intent artefact "Edit" action). */
   inputRef?: Ref<HTMLInputElement>
 }
@@ -44,7 +46,7 @@ export function SearchHeader({
   filters, onFiltersChange, previewCount,
   browseResultCount,
   viewMode, sortMode, onViewModeChange, onSortModeChange, hasResults,
-  aiResultCount, searchTime, inputRef,
+  aiResultCount, searchTime, rosterFreshness, inputRef,
 }: SearchHeaderProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -135,6 +137,7 @@ export function SearchHeader({
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="text-primary font-medium">{aiResultCount} AI matches</span>
             {searchTime && <span>in {searchTime}ms</span>}
+            {rosterFreshness && <span className="hidden sm:inline">{rosterFreshness}</span>}
             <span className="ml-auto text-muted-foreground/60">Ranked by relevance</span>
           </div>
         )}

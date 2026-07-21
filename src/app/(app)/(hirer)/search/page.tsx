@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { parsedIntentChips } from '@/lib/search-intent'
+import { rosterFreshnessLabel } from '@/lib/roster-freshness'
 import type { ParsedQuery } from '@/lib/openai'
 import { isActiveLocalDemoMode } from '@/lib/demo-mode'
 import { searchDemoTalent } from '@/lib/demo-data'
@@ -54,6 +55,9 @@ function SearchPageContent() {
   const [searchTime, setSearchTime] = useState<number | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
   const [parsedIntent, setParsedIntent] = useState<ParsedQuery | null>(null)
+  // Roster freshness describes the dataset, not the query, so it survives
+  // query changes and only clears when AI mode exits or a search errors.
+  const [roster, setRoster] = useState<{ total: number | null; added_this_week: number | null } | null>(null)
   const [deepSearching, setDeepSearching] = useState(false)
   const [deepStatus, setDeepStatus] = useState<string | null>(null)
   const [agentSummary, setAgentSummary] = useState<string | null>(null)
@@ -163,7 +167,7 @@ function SearchPageContent() {
 
   const runAiSearch = useCallback(async (q: string) => {
     aiAbortRef.current?.abort()
-    if (!q.trim()) { setAiResults(null); setSearchTime(null); setParsedIntent(null); setSearching(false); return }
+    if (!q.trim()) { setAiResults(null); setSearchTime(null); setParsedIntent(null); setRoster(null); setSearching(false); return }
     const controller = new AbortController()
     aiAbortRef.current = controller
     setSearching(true)
@@ -173,6 +177,7 @@ function SearchPageContent() {
     if (isLocalDemo) {
       setAiResults(searchDemoTalent(q, filters))
       setParsedIntent(null)
+      setRoster(null)
       setSearchTime(Date.now() - t0)
       setSearching(false)
       return
@@ -190,11 +195,13 @@ function SearchPageContent() {
         setAiResults(null)
         setSearchTime(null)
         setParsedIntent(null)
+        setRoster(null)
         setAiError(data.error)
       } else {
         const results = data.results ?? []
         setAiResults(results)
         setParsedIntent((data.parsed as ParsedQuery | undefined) ?? null)
+        setRoster((data.roster as { total: number | null; added_this_week: number | null } | undefined) ?? null)
         const elapsed = Date.now() - t0
         setSearchTime(elapsed)
         posthog.capture('ai_search_performed', {
@@ -328,7 +335,7 @@ function SearchPageContent() {
       <SearchHeader
         query={query}
         onQueryChange={setQuery}
-        onClearQuery={() => { setQuery(''); setAiResults(null); setParsedIntent(null) }}
+        onClearQuery={() => { setQuery(''); setAiResults(null); setParsedIntent(null); setRoster(null) }}
         searching={searching}
         isAiMode={isAiMode}
         filters={filters}
@@ -342,6 +349,7 @@ function SearchPageContent() {
         hasResults={displayResults.length > 0}
         aiResultCount={aiResults?.length ?? 0}
         searchTime={searchTime}
+        rosterFreshness={rosterFreshnessLabel(roster?.total, roster?.added_this_week)}
         inputRef={searchInputRef}
       />
 

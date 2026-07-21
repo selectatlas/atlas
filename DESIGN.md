@@ -34,6 +34,7 @@ Each pattern states the problem it solves, the solution, and when NOT to use it.
 - **Solution**: Two techniques, used together where space allows:
   1. **Cohort provenance** - describe what the number was computed against: "ranked against 214 dancers in London available this month" beats a bare confidence percentage.
   2. **Labelled range** - when showing where a value sits (e.g. day rate vs typical range), print the low/typical/high values at the ends of a linear bar with the talent's value as a labelled marker and a signed delta.
+  3. **Freshness** - roster size and recency are provenance too: "from 2,400 profiles · 34 added this week" beside a result count signals a live dataset, which is itself a trust signal. Freshness numbers must be computed from real rows, never hardcoded.
 - **Use for**: Match scores in search results, rate expectations on profiles, any AI-derived ranking.
 - **Do NOT** hardcode or fabricate the provenance - Atlas match scores are real (pgvector similarity + structured boosts); describe the actual computation inputs.
 
