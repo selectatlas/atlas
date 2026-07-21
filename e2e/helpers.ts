@@ -41,7 +41,8 @@ export async function login(page: Page, email: string) {
   await page.fill('#email', email)
   await page.fill('#password', PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.waitForURL(/\/(discover|search)/)
+  // Login lands on the role workspace dashboard (safeInternalPath fallback).
+  await page.waitForURL(/\/home/)
 }
 
 export async function signupViaUi(

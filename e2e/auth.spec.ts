@@ -2,16 +2,16 @@ import { test, expect } from '@playwright/test'
 import { signupViaUi, login, seedUser, adminClient, PASSWORD } from './helpers'
 
 test.describe('authentication journeys', () => {
-  test('talent can sign up and lands on discover', async ({ page }) => {
+  test('talent can sign up and lands on onboarding', async ({ page }) => {
     await signupViaUi(page, 'talent', 'signup-talent')
-    await page.waitForURL(/\/discover/)
-    await expect(page).toHaveURL(/\/discover/)
+    await page.waitForURL(/\/onboarding/)
+    await expect(page).toHaveURL(/\/onboarding/)
   })
 
-  test('hirer can sign up and lands on search', async ({ page }) => {
+  test('hirer can sign up and lands on the workspace home', async ({ page }) => {
     await signupViaUi(page, 'hirer', 'signup-hirer')
-    await page.waitForURL(/\/search/)
-    await expect(page).toHaveURL(/\/search/)
+    await page.waitForURL(/\/home/)
+    await expect(page).toHaveURL(/\/home/)
   })
 
   test('login rejects a wrong password without leaking detail', async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe('authentication journeys', () => {
     const user = await seedUser(admin, 'talent', 'roundtrip')
 
     await login(page, user.email)
-    await expect(page).toHaveURL(/\/discover/)
+    await expect(page).toHaveURL(/\/home/)
 
     await page.getByRole('button', { name: 'Sign out' }).click()
     await page.waitForURL(/\/login/)
