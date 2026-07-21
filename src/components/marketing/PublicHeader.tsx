@@ -15,6 +15,9 @@ export function PublicHeader() {
           <Button render={<Link href="/jobs" />} variant="ghost" className="rounded-xl text-sm font-medium">
             Jobs
           </Button>
+          <Button render={<Link href="/talent" />} variant="ghost" className="rounded-xl text-sm font-medium">
+            Talent
+          </Button>
           <Button render={<Link href="/login" />} variant="ghost" className="rounded-xl text-sm font-medium">
             Sign in
           </Button>

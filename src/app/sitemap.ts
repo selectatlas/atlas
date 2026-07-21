@@ -10,6 +10,9 @@ export const revalidate = 3600
 const STATIC_ENTRIES: MetadataRoute.Sitemap = [
   { url: `${SITE_URL}/`, changeFrequency: 'weekly', priority: 1 },
   { url: `${SITE_URL}/jobs`, changeFrequency: 'hourly', priority: 0.9 },
+  // The talent LIST is public; individual profiles are gated, so they are
+  // deliberately not enumerated here.
+  { url: `${SITE_URL}/talent`, changeFrequency: 'hourly', priority: 0.9 },
   { url: `${SITE_URL}/login`, changeFrequency: 'monthly', priority: 0.5 },
   { url: `${SITE_URL}/signup`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `${SITE_URL}/terms`, changeFrequency: 'yearly', priority: 0.3 },

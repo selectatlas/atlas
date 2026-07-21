@@ -82,10 +82,15 @@ export default async function proxy(request: NextRequest) {
 
   const isPublicLandingRoute = pathname === '/' || pathname === '/terms' || pathname === '/privacy'
   const isSuspendedRoute = pathname === '/suspended'
-  // Public marketplace: anonymous visitors browse open jobs; the feed API
-  // behind the explorer is public too (anon-scoped by RLS + rate limited).
+  // Public marketplace: anonymous visitors browse open jobs and the reduced
+  // talent directory; the feed APIs behind the explorers are public too
+  // (anon-scoped by RLS/views + rate limited). Only the /talent LIST is
+  // public - /talent/{id} full profiles stay gated, so an anonymous click
+  // falls through to the login redirect below with ?next= preserved.
   const isPublicJobsPage = pathname === '/jobs' || pathname.startsWith('/jobs/')
   const isPublicJobsApi = pathname === '/api/jobs/public'
+  const isPublicTalentPage = pathname === '/talent'
+  const isPublicTalentApi = pathname === '/api/talent/public'
   const isAuthRoute =
     pathname === '/login' ||
     pathname === '/signup' ||
@@ -96,7 +101,7 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  if (!claims && (isPublicJobsPage || isPublicJobsApi)) {
+  if (!claims && (isPublicJobsPage || isPublicJobsApi || isPublicTalentPage || isPublicTalentApi)) {
     return NextResponse.next()
   }
 
