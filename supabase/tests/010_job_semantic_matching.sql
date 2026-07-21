@@ -30,9 +30,10 @@ reset role;
 insert into public.job_embeddings (job_id, embedding)
 select id, ('[' || array_to_string(array_fill(0.1::float, array[1536]), ',') || ']')::extensions.vector(1536)
 from public.jobs;
-insert into public.profile_embeddings (profile_id, embedding)
+insert into public.profile_embeddings (profile_id, embedding, source_text)
 values ('20000000-0000-0000-0000-000000000002',
-        ('[' || array_to_string(array_fill(0.1::float, array[1536]), ',') || ']')::extensions.vector(1536));
+        ('[' || array_to_string(array_fill(0.1::float, array[1536]), ',') || ']')::extensions.vector(1536),
+        'test profile embedding source');
 insert into public.job_passes (talent_id, job_id)
 values ('20000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000005');
 

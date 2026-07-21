@@ -36,6 +36,9 @@ values ('60000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-0000000
         'Removed role', 'Moderation takedown', 'dancer', 'Bristol', 'open', now());
 
 set local role anon;
+-- Clear the hirer JWT set earlier: a real anon request carries no claims,
+-- and a leftover sub would satisfy jobs_manage_own for the hirer's rows.
+select set_config('request.jwt.claim.sub', '', true);
 
 select results_eq(
   $$select count(*)::bigint from public.jobs$$,

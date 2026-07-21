@@ -13,6 +13,10 @@ values
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
 
+-- Create the thread in its own statement first: rows inserted by the RPC
+-- inside the same INSERT statement are not visible to the messages RLS
+-- with-check subquery (statement snapshot), which made the seed fail.
+select public.create_or_get_thread('20000000-0000-0000-0000-000000000002');
 select lives_ok(
   $$insert into public.messages (id, thread_id, sender_id, content)
     select '99000000-0000-0000-0000-000000000001',

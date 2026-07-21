@@ -65,9 +65,12 @@ select ok(
 
 -- Talent cannot self-verify
 select set_config('request.jwt.claim.sub', '50000000-0000-0000-0000-000000000002', true);
+-- now() is transaction-stable: the seeded verified_at above is the same
+-- value, which would make the identity trigger see no change. Use a
+-- clearly distinct timestamp so the write is a real modification.
 select throws_ok(
   $$update public.profiles
-    set verified_at = now()
+    set verified_at = now() + interval '1 day'
     where id = '50000000-0000-0000-0000-000000000002'$$,
   '42501',
   null,

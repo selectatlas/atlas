@@ -86,6 +86,9 @@ select lives_ok(
 -- and their own non-pre-reply application must never regress.
 select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000003', true);
 select public.mark_application_replied('bbbbbbbb-0000-0000-0000-000000000001');
+-- Assert as postgres: RLS hides other talents' rows from the caller, so the
+-- guard can only be observed with RLS bypassed.
+reset role;
 select results_eq(
   $$select status from public.applications where id = 'cccccccc-0000-0000-0000-000000000001'$$,
   array['sent'::text],
@@ -96,6 +99,7 @@ select results_eq(
   array['shortlisted'::text],
   'the RPC never regresses a shortlisted application'
 );
+set local role authenticated;
 
 -- The applicant advances their own application, idempotently.
 select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', true);
