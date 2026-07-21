@@ -24,8 +24,16 @@ test.describe('production response surface', () => {
 
     expect(headers['content-security-policy']).toContain("default-src 'self'")
     expect(headers['content-security-policy']).toContain("frame-ancestors 'none'")
-    // The CSP allowlist must include the Supabase origin the app calls
-    const supabaseOrigin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co').origin
+    // The CSP allowlist must include the Supabase origin the app calls.
+    // Resolve it the same way playwright.config.ts does: the test runner
+    // gets the stack URL as API_URL, not NEXT_PUBLIC_SUPABASE_URL (which
+    // only exists in the build step's env).
+    const supabaseOrigin = new URL(
+      process.env.NEXT_PUBLIC_SUPABASE_URL ??
+        process.env.SUPABASE_TEST_URL ??
+        process.env.API_URL ??
+        'http://127.0.0.1:55321',
+    ).origin
     expect(headers['content-security-policy']).toContain(supabaseOrigin)
     expect(headers['x-content-type-options']).toBe('nosniff')
     expect(headers['x-frame-options']).toBe('DENY')

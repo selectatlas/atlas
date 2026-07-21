@@ -64,7 +64,7 @@ test.describe('messaging center', () => {
 
     // The hirer's view now shows Seen under their last message.
     await page.goto(`/messages/${thread_id}`)
-    await expect(page.getByText('Can you make the shoot?')).toBeVisible()
+    await expect(page.getByText('Can you make the shoot?', { exact: true })).toBeVisible()
     await expect(page.getByText('Seen', { exact: true })).toBeVisible()
   })
 
@@ -107,10 +107,10 @@ test.describe('messaging center', () => {
     const { thread_id } = (await outreachResponse.json()) as { thread_id: string }
 
     await page.goto(`/messages/${thread_id}`)
-    await expect(page.getByText('Are you free for a shoot in May?')).toBeVisible()
+    await expect(page.getByText('Are you free for a shoot in May?', { exact: true })).toBeVisible()
 
     // Open the message actions menu (hover-revealed) and start a reply.
-    await page.getByText('Are you free for a shoot in May?').hover()
+    await page.getByText('Are you free for a shoot in May?', { exact: true }).hover()
     await page.getByRole('button', { name: 'Message actions' }).click()
     await page.getByRole('button', { name: 'Reply' }).click()
 
@@ -141,7 +141,7 @@ test.describe('messaging center', () => {
     })
     const { thread_id } = (await outreachResponse.json()) as { thread_id: string }
     await page.goto(`/messages/${thread_id}`)
-    await expect(page.getByText('Sending over the brief now')).toBeVisible()
+    await expect(page.getByText('Sending over the brief now', { exact: true })).toBeVisible()
 
     // The talent reacts in a second session.
     const talentContext = await browser.newContext()
@@ -204,7 +204,13 @@ test.describe('messaging center', () => {
 
     await page.goto(`/messages/${thread_id}`)
     await page.getByRole('button', { name: 'Conversation actions' }).click()
+    // Archiving is optimistic with an async PATCH; navigating before the
+    // response lands cancels the request and nothing persists.
+    const archivePersisted = page.waitForResponse(
+      response => response.url().includes(`/api/messages/threads/${thread_id}`) && response.request().method() === 'PATCH',
+    )
     await page.getByRole('menuitem', { name: 'Archive conversation' }).click()
+    await archivePersisted
 
     // Gone from Open, present under Archived.
     await page.goto('/messages')

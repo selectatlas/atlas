@@ -48,7 +48,12 @@ const fetchPublicJob = cache(async (id: string): Promise<PublicJob | null> => {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const job = await fetchPublicJob(id)
-  if (!job) return { title: 'Job not found' }
+  // notFound() here, not just a fallback title: metadata resolves before the
+  // body streams, so this is the last point where the response can still
+  // carry a real 404 status. Deciding in the page body is too late - the 200
+  // status line has already been flushed and closed/removed jobs would read
+  // as live pages to crawlers.
+  if (!job) notFound()
 
   const description = job.description.replace(/\s+/g, ' ').trim().slice(0, 155)
   const cover = resolveCoverUrl(job.cover_url)

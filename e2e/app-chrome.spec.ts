@@ -18,8 +18,12 @@ test.describe('app chrome', () => {
     await login(page, user.email)
 
     await page.goto('/home')
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+KeyK' : 'Control+KeyK')
-    await expect(page.getByRole('dialog')).toBeVisible()
+    // The shortcut listener attaches on hydration, which can lag the load
+    // event - retry the keypress until the palette responds.
+    await expect(async () => {
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+KeyK' : 'Control+KeyK')
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 15_000 })
     await expect(page.getByPlaceholder('Search pages or talent…')).toBeVisible()
   })
 
