@@ -56,6 +56,7 @@ Query → LLM parses to structured intent (category, skills, location, availabil
 
 ## Guidelines
 
+- **UX/interaction patterns:** check `DESIGN.md` (repo root) before designing or reworking any surface — it is the governing pattern contract. Visual tokens live in `docs/design.md`.
 - Server Components by default; `'use client'` only for interactivity, pushed to the leaves. Mutations via server actions.
 - Follow the one-module-one-test pattern in `src/lib/`: new domain logic gets a colocated `*.test.ts`.
 - Lint runs with `--max-warnings 0` — warnings fail CI.
