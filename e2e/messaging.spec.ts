@@ -117,10 +117,16 @@ test.describe('messaging center', () => {
     // Composer shows the quote strip; send the reply.
     await expect(page.getByText(/Replying to/)).toBeVisible()
     await page.getByRole('textbox', { name: 'Message' }).fill('Yes - May works for me.')
+    // getByText also matches the textarea's own value in the accessibility
+    // tree, so it cannot synchronise on the send - wait for the POST itself.
+    const sendDone = page.waitForResponse(
+      response => response.url().includes(`/api/messages/threads/${thread_id}`) && response.request().method() === 'POST',
+    )
     await page.getByRole('button', { name: 'Send message' }).click()
+    expect((await sendDone).status()).toBe(200)
 
     // The sent bubble renders with the quoted original above it.
-    await expect(page.getByText('Yes - May works for me.')).toBeVisible()
+    await expect(page.locator('[data-message-id]').getByText('Yes - May works for me.')).toBeVisible()
     const { data: replies, error: replyError } = await admin
       .from('messages')
       .select('id, reply_to_id, content')
@@ -149,7 +155,7 @@ test.describe('messaging center', () => {
     const talentPage = await talentContext.newPage()
     await login(talentPage, talent.email)
     await talentPage.goto(`/messages/${thread_id}`)
-    await talentPage.getByText('Sending over the brief now').hover()
+    await talentPage.locator('[data-message-id]').getByText('Sending over the brief now').hover()
     await talentPage.getByRole('button', { name: 'Message actions' }).click()
     await talentPage.getByRole('button', { name: 'React with 👍' }).click()
     await expect(talentPage.getByRole('button', { name: /👍 1/ })).toBeVisible()

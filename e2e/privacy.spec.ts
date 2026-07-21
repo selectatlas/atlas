@@ -131,7 +131,8 @@ test.describe('public job browsing', () => {
     // (vercel/next.js#76474), so the enforceable public contract is:
     // not-found UI, a noindex directive, and zero job content leaking.
     await expect(page.getByText('Page not found')).toBeVisible()
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+    // Next can emit the robots tag twice (streamed + resolved metadata).
+    await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute('content', /noindex/)
     expect(await page.content()).not.toContain('Should never render publicly')
   })
 
