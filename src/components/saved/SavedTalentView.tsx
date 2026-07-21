@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Bookmark, Heart } from 'lucide-react'
 import { PageShell } from '@/components/layout/PageShell'
 import { Card } from '@/components/ui/card'
+import { BroadcastDialog } from '@/components/saved/BroadcastDialog'
 import { SavedTalentRow } from '@/components/saved/SavedTalentRow'
 import { ShortlistTable, type ShortlistJobOption } from '@/components/saved/ShortlistTable'
 import type { Profile, TalentSkill } from '@/types'
@@ -75,6 +76,12 @@ export function SavedTalentView({ activeTab, shortlisted, liked, jobs = [] }: Sa
         </div>
       ) : (
         <>
+          {activeTab === 'shortlisted' && (
+            <div className="flex justify-end">
+              <BroadcastDialog recipientCount={shortlisted.length} />
+            </div>
+          )}
+
           {/* Card list: the mobile default, and the only Liked-tab layout. */}
           <div className={`space-y-2 card-stagger ${activeTab === 'shortlisted' ? 'md:hidden' : ''}`}>
             {rows.map(row => {

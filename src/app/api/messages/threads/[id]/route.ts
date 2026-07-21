@@ -58,10 +58,21 @@ export async function GET(_request: Request, { params }: RouteParams) {
   // Get messages (newest last, limited)
   const { data: messages } = await supabase
     .from('messages')
-    .select('id, content, kind, sender_id, created_at')
+    .select('id, content, kind, sender_id, created_at, reply_to_id')
     .eq('thread_id', threadId)
     .order('created_at', { ascending: true })
     .limit(100)
+
+  // Reactions for the loaded window, flat — the client groups per message.
+  const messageIds = (messages ?? []).map(m => m.id as string)
+  let reactions: Array<{ message_id: string; profile_id: string; emoji: string }> = []
+  if (messageIds.length > 0) {
+    const { data: reactionRows } = await supabase
+      .from('message_reactions')
+      .select('message_id, profile_id, emoji')
+      .in('message_id', messageIds)
+    reactions = (reactionRows ?? []) as typeof reactions
+  }
 
   // Mark as read
   const readAt = new Date().toISOString()
@@ -97,6 +108,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       application_status: applicationStatus,
     },
     messages: messages ?? [],
+    reactions,
   })
 }
 
@@ -113,6 +125,11 @@ export async function POST(request: Request, { params }: RouteParams) {
   const content = cleanString(parsedBody.body.content, 5000)
   if (!content) return badRequest('content is required (max 5000 characters)')
 
+  const replyToId = parsedBody.body.reply_to_id ?? null
+  if (replyToId !== null && !isUuid(replyToId)) {
+    return badRequest('reply_to_id must be a uuid')
+  }
+
   const limited = await enforceRateLimit(`messages-send:${user.id}`, 60, 30)
   if (limited) return limited
 
@@ -126,10 +143,22 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   if (!participant) return Response.json({ error: 'Not a participant' }, { status: 403 })
 
+  // A quoted message must belong to this thread; RLS already limits
+  // visibility, so a cross-thread or foreign id simply won't resolve.
+  if (replyToId) {
+    const { data: quoted } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('id', replyToId)
+      .eq('thread_id', threadId)
+      .maybeSingle()
+    if (!quoted) return badRequest('reply_to_id must reference a message in this thread')
+  }
+
   const { data: message, error } = await supabase
     .from('messages')
-    .insert({ thread_id: threadId, sender_id: user.id, content })
-    .select('id, content, kind, sender_id, created_at')
+    .insert({ thread_id: threadId, sender_id: user.id, content, reply_to_id: replyToId })
+    .select('id, content, kind, sender_id, created_at, reply_to_id')
     .single()
 
   if (error || !message) {

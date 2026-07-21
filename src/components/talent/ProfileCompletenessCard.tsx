@@ -90,6 +90,13 @@ export function ProfileCompletenessCard({ profile, attributes, editHref }: Profi
         <Button variant="outline" size="sm" className="mt-4 w-full rounded-xl sm:w-auto" onClick={() => setOpen(true)}>
           View full checklist
         </Button>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Adding photos? Read the{' '}
+          <Link href="/guides/photo-guidance" className="font-medium text-primary underline underline-offset-2 hover:text-primary/80">
+            Photo guide
+          </Link>{' '}
+          so nothing gets flagged in review.
+        </p>
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -10,6 +10,9 @@ import { ShortlistButton } from "@/components/talent/ShortlistButton";
 import { VerifiedBadge } from "@/components/talent/VerifiedBadge";
 import { TalentLevelBadge } from "@/components/talent/TalentLevelBadge";
 import type { TalentLevel } from "@/lib/talent-level";
+import { hasCardBadges, type TalentCardBadges } from "@/lib/talent-card-badges";
+import { TalentCardMedia } from "@/components/talent/TalentCardMedia";
+import { MessageNowButton } from "@/components/talent/MessageNowButton";
 
 interface TalentCardProps {
   profile: Profile & { talent_skills: TalentSkill[] };
@@ -19,6 +22,9 @@ interface TalentCardProps {
   views?: number;
   likes?: number;
   level?: TalentLevel;
+  badges?: TalentCardBadges;
+  images?: string[];
+  onMessage?: () => void;
 }
 
 const proficiencyVariant: Record<string, "default" | "secondary" | "outline"> =
@@ -47,6 +53,9 @@ export function TalentCard({
   views,
   likes,
   level,
+  badges,
+  images,
+  onMessage,
 }: TalentCardProps) {
   const topSkills = profile.talent_skills.slice(0, 3);
   const primaryCategory = profile.talent_skills[0]?.category;
@@ -55,21 +64,10 @@ export function TalentCard({
   const cardContent = (
     <Card className="group gap-0 overflow-hidden border border-border/80 pt-0 shadow-none transition-[border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-primary/35">
       <div className="relative">
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          {profile.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt={profile.full_name}
-              fill
-              className="object-cover object-top transition-transform duration-[var(--duration-base)] ease-[var(--ease-out)] group-hover:scale-[1.03]"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-4xl font-semibold text-muted-foreground/30">
-              {nameInitial(profile.full_name)}
-            </div>
-          )}
-        </div>
+        <TalentCardMedia
+          images={images ?? (profile.avatar_url ? [profile.avatar_url] : [])}
+          name={profile.full_name}
+        />
 
         {matchScore !== undefined && (
           <div className="absolute right-3 top-3 rounded-full bg-brand-lime px-2.5 py-1 text-xs font-bold text-black">
@@ -83,7 +81,10 @@ export function TalentCard({
           </div>
         )}
 
-        <div className="absolute bottom-3 right-3 opacity-100 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out)] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+        <div className="absolute bottom-3 right-3 flex items-center gap-1.5 opacity-100 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out)] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+          {onMessage && (
+            <MessageNowButton name={profile.full_name} onMessage={onMessage} />
+          )}
           <ShortlistButton
             talentId={profile.id}
             className="bg-background/90 shadow-sm backdrop-blur-sm hover:bg-background"
@@ -137,6 +138,17 @@ export function TalentCard({
                 {reason}
               </span>
             ))}
+          </div>
+        )}
+
+        {hasCardBadges(badges) && (
+          <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Capabilities">
+            {badges.spact && (
+              <Badge variant="secondary" className="text-[11px]">SPAC</Badge>
+            )}
+            {badges.stuntRegistered && (
+              <Badge variant="secondary" className="text-[11px]">Stunt registered</Badge>
+            )}
           </div>
         )}
 

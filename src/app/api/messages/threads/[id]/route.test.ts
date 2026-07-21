@@ -128,17 +128,28 @@ function makePostClient({
   isParticipant = true,
   origin,
   originLookupThrows = false,
+  quotedInThread = true,
 }: {
   user: { id: string } | null
   isParticipant?: boolean
   origin?: { origin_outreach_id: string | null; origin_job_id: string | null } | null
   originLookupThrows?: boolean
+  quotedInThread?: boolean
 }) {
   const outreachIn = vi.fn().mockResolvedValue({ error: null })
   const outreachEqTalent = vi.fn(() => ({ in: outreachIn }))
   const outreachEqId = vi.fn(() => ({ eq: outreachEqTalent }))
   const outreachUpdate = vi.fn(() => ({ eq: outreachEqId }))
   const rpc = vi.fn().mockResolvedValue({ data: null, error: null })
+  const messageInsert = vi.fn(() => ({
+    select: () => ({
+      single: () =>
+        Promise.resolve({
+          data: { id: 'm1', content: 'hi', kind: 'text', sender_id: user?.id, created_at: new Date().toISOString() },
+          error: null,
+        }),
+    }),
+  }))
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
     rpc,
@@ -157,13 +168,14 @@ function makePostClient({
       }
       if (table === 'messages') {
         return {
-          insert: () => ({
-            select: () => ({
-              single: () =>
-                Promise.resolve({
-                  data: { id: 'm1', content: 'hi', kind: 'text', sender_id: user?.id, created_at: new Date().toISOString() },
-                  error: null,
-                }),
+          insert: messageInsert,
+          // reply_to_id same-thread validation lookup
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: () =>
+                  Promise.resolve({ data: quotedInThread ? { id: 'quoted-1' } : null }),
+              }),
             }),
           }),
         }
@@ -185,14 +197,15 @@ function makePostClient({
     _outreachUpdate: outreachUpdate,
     _outreachEqId: outreachEqId,
     _outreachEqTalent: outreachEqTalent,
+    _messageInsert: messageInsert,
   }
 }
 
-function makePostRequest(content = 'Thanks, I would love to chat!') {
+function makePostRequest(content = 'Thanks, I would love to chat!', extra: object = {}) {
   return new Request(`http://localhost/api/messages/threads/${THREAD_ID}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, ...extra }),
   })
 }
 
@@ -244,5 +257,49 @@ describe('POST /api/messages/threads/[id] reply status transitions', () => {
     mockCreateClient.mockResolvedValue(client)
     const res = await POST(makePostRequest(), routeParams)
     expect(res.status).toBe(401)
+  })
+})
+
+const REPLY_TO_ID = '44444444-4444-4444-8444-444444444444'
+
+describe('POST /api/messages/threads/[id] reply_to_id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockEnforceRateLimit.mockResolvedValue(null)
+  })
+
+  it('passes a valid reply_to_id through to the insert', async () => {
+    const client = makePostClient({ user: { id: 'talent-1' } })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makePostRequest('Replying', { reply_to_id: REPLY_TO_ID }), routeParams)
+    expect(res.status).toBe(201)
+    expect(client._messageInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ reply_to_id: REPLY_TO_ID }),
+    )
+  })
+
+  it('inserts null reply_to_id when omitted', async () => {
+    const client = makePostClient({ user: { id: 'talent-1' } })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makePostRequest(), routeParams)
+    expect(res.status).toBe(201)
+    expect(client._messageInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ reply_to_id: null }),
+    )
+  })
+
+  it('rejects a non-uuid reply_to_id', async () => {
+    const client = makePostClient({ user: { id: 'talent-1' } })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makePostRequest('Replying', { reply_to_id: 'nope' }), routeParams)
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects a reply_to_id outside this thread', async () => {
+    const client = makePostClient({ user: { id: 'talent-1' }, quotedInThread: false })
+    mockCreateClient.mockResolvedValue(client)
+    const res = await POST(makePostRequest('Replying', { reply_to_id: REPLY_TO_ID }), routeParams)
+    expect(res.status).toBe(400)
+    expect(client._messageInsert).not.toHaveBeenCalled()
   })
 })

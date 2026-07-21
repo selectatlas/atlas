@@ -4,19 +4,21 @@ import { useCallback, useEffect, useRef } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import type { ThreadMessage } from '@/lib/messages-view'
+import type { ReactionEvent } from '@/lib/reactions'
 
 type ThreadChannelHandlers = {
   onInsert: (message: ThreadMessage) => void
   onTyping: (profileId: string) => void
   onRead: (profileId: string, lastReadAt: string) => void
+  onReaction: (event: ReactionEvent) => void
 }
 
 const TYPING_THROTTLE_MS = 2000
 
 /**
- * One realtime channel per open thread carrying three signals:
- * postgres INSERTs (new messages), and best-effort `typing` / `read`
- * broadcasts. Correctness never depends on the broadcasts - read state is
+ * One realtime channel per open thread carrying postgres INSERTs (new
+ * messages) plus best-effort `typing` / `read` / `reaction` broadcasts.
+ * Correctness never depends on the broadcasts - read and reaction state are
  * always seeded from the thread GET.
  */
 export function useThreadChannel(
@@ -61,6 +63,16 @@ export function useThreadChannel(
         const { profile_id, last_read_at } = payload as { profile_id?: string; last_read_at?: string }
         if (profile_id && last_read_at && profile_id !== userId) {
           handlersRef.current.onRead(profile_id, last_read_at)
+        }
+      })
+      .on('broadcast', { event: 'reaction' }, ({ payload }) => {
+        const { message_id, profile_id, emoji } = payload as {
+          message_id?: string
+          profile_id?: string
+          emoji?: string | null
+        }
+        if (message_id && profile_id && profile_id !== userId) {
+          handlersRef.current.onReaction({ message_id, profile_id, emoji: emoji ?? null })
         }
       })
       .subscribe(status => {
@@ -111,5 +123,17 @@ export function useThreadChannel(
     [userId],
   )
 
-  return { sendTyping, sendRead }
+  const sendReaction = useCallback(
+    (event: Omit<ReactionEvent, 'profile_id'>) => {
+      if (!userId) return
+      void channelRef.current?.send({
+        type: 'broadcast',
+        event: 'reaction',
+        payload: { ...event, profile_id: userId },
+      })
+    },
+    [userId],
+  )
+
+  return { sendTyping, sendRead, sendReaction }
 }

@@ -27,6 +27,7 @@ import { SavedSearchesSection } from '@/components/search/SavedSearchesSection'
 import { SpotlightCard } from '@/components/monetization/SpotlightCard'
 import { ProfileCompletenessCard } from '@/components/talent/ProfileCompletenessCard'
 import { nameInitial } from '@/lib/display'
+import { logEvent } from '@/lib/log'
 import type { Profile, TalentSkill, Credit, PortfolioItem, ApplicationStatus, OutreachStatus, Category } from '@/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -286,16 +287,25 @@ async function HirerDashboard({ userId, supabase }: { userId: string; supabase: 
 }
 
 async function TalentDashboard({ userId, supabase }: { userId: string; supabase: SupabaseClient }) {
-  const [profileResult, creditsResult, portfolioResult, attributesResult, appsResult, outreachResult, recentThreads, statsResult] = await Promise.all([
+  const [profileResult, creditsResult, portfolioResult, attributesResult, appsResult, outreachResult, recentThreads, statsResult, appsCountResult, outreachCountResult] = await Promise.all([
     supabase.from('profiles').select(PUBLIC_PROFILE_WITH_SKILLS).eq('id', userId).single(),
     supabase.from('credits').select('*').eq('profile_id', userId),
     supabase.from('portfolio_items').select('*').eq('profile_id', userId),
     supabase.from('talent_profiles').select('birth_year, gender, height_cm, rate_min, rate_max, rate_unit, rate_currency, languages, nationalities, available_now, public_attributes').eq('profile_id', userId).maybeSingle(),
-    supabase.from('applications').select('id, status, created_at, jobs!job_id(title, category, location)').eq('talent_id', userId).order('created_at', { ascending: false }).limit(5),
+    supabase.from('applications').select('id, status, created_at, jobs(title, category, location)').eq('talent_id', userId).order('created_at', { ascending: false }).limit(5),
     supabase.from('outreach').select('id, message, status, created_at, hirer_id, profiles!hirer_id(full_name)').eq('talent_id', userId).order('created_at', { ascending: false }).limit(5),
     getRecentThreads(supabase, userId),
     supabase.from('talent_stats').select('views_count, likes_count, shortlist_count').eq('profile_id', userId).maybeSingle(),
+    supabase.from('applications').select('id', { count: 'exact', head: true }).eq('talent_id', userId),
+    supabase.from('outreach').select('id', { count: 'exact', head: true }).eq('talent_id', userId),
   ])
+
+  // These queries previously failed silently into empty arrays - a broken
+  // embed hint made the whole "Recent applications" section vanish with no
+  // trace. Log failures so the next regression is visible.
+  for (const [name, result] of [['applications', appsResult], ['outreach', outreachResult], ['profile', profileResult]] as const) {
+    if (result.error) logEvent('error', 'talent_dashboard_query_failed', { query: name, code: result.error.code })
+  }
 
   const baseProfile = profileResult.data as unknown as (Profile & { talent_skills: TalentSkill[] }) | null
   const profile = baseProfile
@@ -368,8 +378,8 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard value={applications.length} label="Applications" />
-        <StatCard value={outreachItems.length} label="Inbound outreach" />
+        <StatCard value={appsCountResult.count ?? applications.length} label="Applications" href="/applications" />
+        <StatCard value={outreachCountResult.count ?? outreachItems.length} label="Inbound outreach" />
         <StatCard value={recentThreads.length} label="Open threads" />
         <StatCard value={interestStats.views_count} label="Profile views" />
         <StatCard value={interestStats.likes_count} label="Likes" />
@@ -417,7 +427,10 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
 
       {applications.length > 0 && (
         <div>
-          <h2 className="mb-3 text-sm font-semibold">Recent applications</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Recent applications</h2>
+            <Link href="/applications" className="text-xs font-medium text-primary hover:underline">View all</Link>
+          </div>
           <div className="space-y-2">
             {applications.map(app => (
               <Card key={app.id} className="border border-border/80 p-4 shadow-none">

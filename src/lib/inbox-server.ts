@@ -72,6 +72,36 @@ export async function fetchInboxForUser(
   let unreadOutreach = 0
   let unreadSavedSearches = 0
 
+  if (accountType === 'talent') {
+    // Status changes on the talent's own applications since they last
+    // acknowledged them (see mark_application_statuses_seen in 027).
+    // talent_seen_status is null until the first acknowledgement, so brand
+    // new 'sent' rows don't self-notify; the trigger-stamped status_changed_at
+    // guards the same way.
+    const { data: changed } = await supabase
+      .from('applications')
+      .select('id, status, created_at, status_changed_at, talent_seen_status, jobs(title)')
+      .eq('talent_id', userId)
+      .not('status_changed_at', 'is', null)
+      .order('status_changed_at', { ascending: false })
+      .limit(20)
+
+    for (const app of changed ?? []) {
+      if (app.talent_seen_status === app.status) continue
+      unreadApplications += 1
+      const job = app.jobs as unknown as { title: string } | null
+      notifications.push({
+        id: `application-${app.id as string}`,
+        kind: 'application',
+        title: `Application ${app.status === 'responded' ? 'replied to' : String(app.status)}`,
+        body: job?.title ?? 'One of your applications moved forward',
+        href: '/applications',
+        createdAt: (app.status_changed_at ?? app.created_at) as string,
+        unread: true,
+      })
+    }
+  }
+
   if (accountType === 'hirer') {
     const { data: jobs } = await supabase.from('jobs').select('id').eq('hirer_id', userId)
     const jobIds = (jobs ?? []).map(job => job.id as string)

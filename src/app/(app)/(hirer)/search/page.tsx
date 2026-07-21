@@ -431,7 +431,7 @@ function SearchPageContent() {
 
           {viewMode === 'grid' && (
             <div className="grid grid-cols-1 gap-4 card-stagger sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {displayResults.map(({ profile, match_score, match_reasons }) => (
+              {displayResults.map(({ profile, match_score, match_reasons, badges, images }) => (
                 <TalentCard
                   key={profile.id}
                   profile={profile}
@@ -441,6 +441,9 @@ function SearchPageContent() {
                   views={talentStats[profile.id]?.views}
                   likes={talentStats[profile.id]?.likes}
                   level={talentStats[profile.id]?.level}
+                  badges={badges}
+                  images={images}
+                  onMessage={() => setOutreachTalent(profile)}
                 />
               ))}
             </div>

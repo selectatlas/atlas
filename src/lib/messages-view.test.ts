@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  findQuotedMessage,
   isSeen,
   lastOwnMessageId,
   groupMessagesByDay,
@@ -89,6 +90,26 @@ describe('formatThreadTime', () => {
   it('shows a short date beyond 48 hours', () => {
     const now = new Date('2026-01-10T12:00:00.000Z')
     expect(formatThreadTime('2026-01-01T09:30:00.000Z', now)).toContain('Jan')
+  })
+})
+
+describe('findQuotedMessage', () => {
+  const messages = [
+    msg('1', 'me', '2026-01-01T10:00:00.000Z'),
+    msg('2', 'other', '2026-01-01T11:00:00.000Z'),
+  ]
+
+  it('resolves a quoted message from the loaded window', () => {
+    expect(findQuotedMessage(messages, '2')?.id).toBe('2')
+  })
+
+  it('returns null when the quoted message is outside the window', () => {
+    expect(findQuotedMessage(messages, 'missing')).toBeNull()
+  })
+
+  it('returns null without a reply_to_id', () => {
+    expect(findQuotedMessage(messages, null)).toBeNull()
+    expect(findQuotedMessage(messages, undefined)).toBeNull()
   })
 })
 

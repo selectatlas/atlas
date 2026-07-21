@@ -1,4 +1,5 @@
 import type { ThreadMessage } from '@/lib/messages-view'
+import type { MessageReaction } from '@/lib/reactions'
 
 export type ThreadListItem = {
   id: string
@@ -39,6 +40,7 @@ export type ThreadDetail = {
   other: ThreadOther | null
   origin: ThreadOrigin
   messages: ThreadMessage[]
+  reactions?: MessageReaction[]
 }
 
 // Fired whenever a thread's list-relevant state changes (archive, new thread)

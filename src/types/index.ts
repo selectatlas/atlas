@@ -52,6 +52,7 @@ export interface Profile {
   verified_categories?: Category[]
   suspended_at?: string | null
   suspension_reason?: string | null
+  membership_tier?: 'free' | 'gold' | 'platinum'
   created_at: string
 }
 
@@ -139,6 +140,8 @@ export interface TalentSearchResult {
   profile: Profile & { talent_skills: TalentSkill[] }
   match_score: number
   match_reasons?: string[]
+  badges?: { spact: boolean; stuntRegistered: boolean }
+  images?: string[]
 }
 
 export interface TalentProfileAttributes {

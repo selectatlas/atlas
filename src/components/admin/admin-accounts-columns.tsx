@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { MEMBERSHIP_TIERS, TIER_LABELS, type MembershipTier } from '@/lib/membership'
 import type { AccountType, Category } from '@/types'
 
 export type AccountRole = AccountType | 'admin'
@@ -32,6 +33,7 @@ export type AdminAccountRow = {
   suspension_reason: string | null
   verified_at: string | null
   verified_categories: Category[] | null
+  membership_tier: MembershipTier | null
   created_at: string
   platform_admin_role: string | null
   display_role: AccountRole
@@ -45,6 +47,7 @@ type AdminAccountColumnHandlers = {
   onDeleteRequest: (account: AdminAccountRow) => void
   onVerifyRequest: (account: AdminAccountRow) => void
   onUnverify: (account: AdminAccountRow) => void
+  onTierChange: (account: AdminAccountRow, tier: MembershipTier) => void
 }
 
 export function useAdminAccountColumns({
@@ -55,6 +58,7 @@ export function useAdminAccountColumns({
   onDeleteRequest,
   onVerifyRequest,
   onUnverify,
+  onTierChange,
 }: AdminAccountColumnHandlers) {
   const router = useRouter()
 
@@ -189,6 +193,22 @@ export function useAdminAccountColumns({
                     Remove verification
                   </DropdownMenuItem>
                 ) : null}
+                {account.account_type === 'talent' ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Membership tier</DropdownMenuLabel>
+                    {MEMBERSHIP_TIERS.map(tier => (
+                      <DropdownMenuItem
+                        key={tier}
+                        disabled={(account.membership_tier ?? 'free') === tier}
+                        onClick={() => onTierChange(account, tier)}
+                      >
+                        {TIER_LABELS[tier]}
+                        {(account.membership_tier ?? 'free') === tier ? ' (current)' : ''}
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                ) : null}
                 {!isAdmin && !account.suspended_at ? (
                   <DropdownMenuItem onClick={() => onSuspendRequest(account)}>
                     Suspend account
@@ -213,5 +233,5 @@ export function useAdminAccountColumns({
         )
       },
     },
-  ], [busyId, onDeleteRequest, onRestore, onRoleChange, onSuspendRequest, onUnverify, onVerifyRequest, router])
+  ], [busyId, onDeleteRequest, onRestore, onRoleChange, onSuspendRequest, onTierChange, onUnverify, onVerifyRequest, router])
 }

@@ -7,6 +7,9 @@ import { enforceRateLimit, enforceAiQuota } from '@/lib/rate-limit'
 import { logEvent } from '@/lib/log'
 import { filtersToDatabase, parseSearchFilterObject, type SearchFilters } from '@/lib/search-filters'
 import { rankingSimilarity } from '@/lib/matching'
+import { cardBadgesFromAttributes } from '@/lib/talent-card-badges'
+import { buildCardImages } from '@/lib/talent-card-media'
+import { cardPreviewImageCap } from '@/lib/membership'
 
 function normalise(value: string | null | undefined) {
   return (value ?? '').toLowerCase().trim()
@@ -147,7 +150,44 @@ export async function POST(request: Request) {
         rankingSimilarity(a.similarity, a.profile.verified_at as string | null),
     )
     .slice(0, 12)
-    .map(result => ({ profile: result.profile, match_score: result.match_score, match_reasons: result.match_reasons }))
 
-  return Response.json({ results, parsed, filters: effectiveFilters })
+  // Card-level extras (badges + carousel images) for the final page only (max 12 ids).
+  const resultIds = results.map(result => result.profile.id as string)
+  const [{ data: attributeRows }, { data: portfolioRows }] = await Promise.all([
+    serviceClient
+      .from('talent_profiles')
+      .select('profile_id, public_attributes')
+      .in('profile_id', resultIds),
+    serviceClient
+      .from('portfolio_items')
+      .select('profile_id, url, thumbnail_url')
+      .eq('type', 'image')
+      .in('profile_id', resultIds)
+      .order('sort_order', { ascending: true }),
+  ])
+  const badgeMap = new Map((attributeRows ?? []).map(row => [
+    row.profile_id as string,
+    cardBadgesFromAttributes(row.public_attributes as Record<string, unknown>),
+  ]))
+  const portfolioByProfile = new Map<string, string[]>()
+  for (const row of portfolioRows ?? []) {
+    const urls = portfolioByProfile.get(row.profile_id as string) ?? []
+    urls.push((row.thumbnail_url ?? row.url) as string)
+    portfolioByProfile.set(row.profile_id as string, urls)
+  }
+
+  const payload = results.map(result => ({
+    profile: result.profile,
+    match_score: result.match_score,
+    match_reasons: result.match_reasons,
+    badges: badgeMap.get(result.profile.id as string),
+    // Preview count is tier-gated; enforced server-side.
+    images: buildCardImages(
+      result.profile.avatar_url as string | null,
+      portfolioByProfile.get(result.profile.id as string) ?? [],
+      cardPreviewImageCap((result.profile as { membership_tier?: string }).membership_tier),
+    ),
+  }))
+
+  return Response.json({ results: payload, parsed, filters: effectiveFilters })
 }

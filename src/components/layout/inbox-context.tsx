@@ -101,6 +101,7 @@ export function InboxProvider({ children }: { children: ReactNode }) {
   const navBadges = useMemo(
     () => ({
       '/messages': summary.unreadMessages,
+      '/applications': summary.unreadApplications,
       '/notifications': summary.totalUnread,
     }),
     [summary],

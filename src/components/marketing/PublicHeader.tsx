@@ -12,6 +12,9 @@ export function PublicHeader() {
           atlas<span className="text-muted-foreground">.select</span>
         </Link>
         <div className="flex items-center gap-2">
+          <Button render={<Link href="/jobs" />} variant="ghost" className="rounded-xl text-sm font-medium">
+            Jobs
+          </Button>
           <Button render={<Link href="/login" />} variant="ghost" className="rounded-xl text-sm font-medium">
             Sign in
           </Button>

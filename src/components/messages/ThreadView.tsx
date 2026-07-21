@@ -16,12 +16,19 @@ import { ContextRail } from '@/components/messages/ContextRail'
 import { useThreadChannel } from '@/components/messages/use-thread-channel'
 import { emitThreadsChanged, type ThreadDetail } from '@/components/messages/types'
 import {
+  findQuotedMessage,
   groupMessagesByDay,
   isSeen,
   lastOwnMessageId,
   type ThreadMessage,
 } from '@/lib/messages-view'
 import { isSystemMessageKind } from '@/lib/system-messages'
+import {
+  aggregateReactions,
+  applyReactionEvent,
+  myReactionFor,
+  type MessageReaction,
+} from '@/lib/reactions'
 
 const TYPING_CLEAR_MS = 3500
 const LOADING_SHELL = { breadcrumbsLoading: true }
@@ -32,6 +39,8 @@ export function ThreadView({ threadId }: { threadId: string }) {
 
   const [detail, setDetail] = useState<ThreadDetail | null>(null)
   const [messages, setMessages] = useState<ThreadMessage[]>([])
+  const [reactions, setReactions] = useState<MessageReaction[]>([])
+  const [replyTo, setReplyTo] = useState<ThreadMessage | null>(null)
   const [otherLastReadAt, setOtherLastReadAt] = useState<string | null>(null)
   const [otherTyping, setOtherTyping] = useState(false)
   const [archived, setArchived] = useState(false)
@@ -42,7 +51,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const typingTimerRef = useRef<number | undefined>(undefined)
 
-  const { sendTyping, sendRead } = useThreadChannel(threadId, userId, {
+  const { sendTyping, sendRead, sendReaction } = useThreadChannel(threadId, userId, {
     onInsert: message => {
       setMessages(prev => (prev.some(m => m.id === message.id) ? prev : [...prev, message]))
       setOtherTyping(false)
@@ -54,6 +63,9 @@ export function ThreadView({ threadId }: { threadId: string }) {
     },
     onRead: (_profileId, lastReadAt) => {
       setOtherLastReadAt(lastReadAt)
+    },
+    onReaction: event => {
+      setReactions(prev => applyReactionEvent(prev, event))
     },
   })
 
@@ -67,6 +79,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
       const data = (await res.json()) as ThreadDetail
       setDetail(data)
       setMessages(data.messages ?? [])
+      setReactions(data.reactions ?? [])
       setArchived(data.archived)
       setOtherLastReadAt(data.other?.last_read_at ?? null)
       // The GET marked the thread read; tell the other side so their "Seen"
@@ -104,7 +117,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
         const response = await fetch(`/api/messages/threads/${threadId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content }),
+          body: JSON.stringify({ content, reply_to_id: replyTo?.id ?? null }),
         })
         if (!response.ok) {
           const data = await response.json().catch(() => ({}))
@@ -116,13 +129,50 @@ export function ThreadView({ threadId }: { threadId: string }) {
             prev.some(m => m.id === data.message!.id) ? prev : [...prev, data.message!],
           )
         }
+        setReplyTo(null)
         return null
       } catch {
         return 'Message could not be sent'
       }
     },
-    [threadId],
+    [threadId, replyTo],
   )
+
+  const handleReact = useCallback(
+    async (messageId: string, emoji: string | null) => {
+      if (!userId) return
+      const previous = reactions
+      setReactions(prev =>
+        applyReactionEvent(prev, { message_id: messageId, profile_id: userId, emoji }),
+      )
+      try {
+        const response = await fetch(`/api/messages/threads/${threadId}/reactions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message_id: messageId, emoji }),
+        })
+        if (!response.ok) throw new Error('reaction failed')
+        sendReaction({ message_id: messageId, emoji })
+      } catch {
+        setReactions(previous)
+      }
+    },
+    [threadId, userId, reactions, sendReaction],
+  )
+
+  const senderName = useCallback(
+    (senderId: string) =>
+      senderId === userId ? 'You' : detail?.other?.full_name ?? 'Them',
+    [userId, detail?.other?.full_name],
+  )
+
+  const handleQuoteClick = useCallback((messageId: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('ring-2', 'ring-primary/60')
+    window.setTimeout(() => el.classList.remove('ring-2', 'ring-primary/60'), 1200)
+  }, [])
 
   const handleToggleArchive = useCallback(async () => {
     const next = !archived
@@ -211,23 +261,34 @@ export function ThreadView({ threadId }: { threadId: string }) {
             dayGroups.map(group => (
               <div key={group.dayKey} className="space-y-2">
                 <DayDivider label={group.label} />
-                {group.messages.map(message =>
-                  isSystemMessageKind(message.kind) ? (
-                    <SystemMessageCard
-                      key={message.id}
-                      message={message}
-                      kind={message.kind}
-                      jobId={detail.origin.job_id}
-                    />
-                  ) : (
+                {group.messages.map(message => {
+                  if (isSystemMessageKind(message.kind)) {
+                    return (
+                      <SystemMessageCard
+                        key={message.id}
+                        message={message}
+                        kind={message.kind}
+                        jobId={detail.origin.job_id}
+                      />
+                    )
+                  }
+                  const quoted = findQuotedMessage(messages, message.reply_to_id)
+                  return (
                     <MessageBubble
                       key={message.id}
                       message={message}
                       isMine={message.sender_id === userId}
                       seen={message.id === seenMessageId}
+                      quoted={quoted}
+                      quotedSenderName={quoted ? senderName(quoted.sender_id) : ''}
+                      reactionPills={aggregateReactions(reactions, message.id, userId)}
+                      myReaction={myReactionFor(reactions, message.id, userId)}
+                      onReact={emoji => void handleReact(message.id, emoji)}
+                      onReply={() => setReplyTo(message)}
+                      onQuoteClick={handleQuoteClick}
                     />
-                  ),
-                )}
+                  )
+                })}
               </div>
             ))
           )}
@@ -235,7 +296,14 @@ export function ThreadView({ threadId }: { threadId: string }) {
           <div ref={bottomRef} />
         </div>
 
-        <MessageComposer threadId={threadId} onSend={handleSend} onTyping={sendTyping} />
+        <MessageComposer
+          threadId={threadId}
+          onSend={handleSend}
+          onTyping={sendTyping}
+          replyTo={replyTo}
+          replyToName={replyTo ? senderName(replyTo.sender_id) : undefined}
+          onCancelReply={() => setReplyTo(null)}
+        />
       </div>
 
       {railOpen && (

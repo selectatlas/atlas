@@ -2,6 +2,7 @@ import { requirePlatformAdmin, grantPlatformAdmin, revokePlatformAdmin, countPla
 import { deleteAuthUser } from '@/lib/user-deletion'
 import { parseJsonBody, cleanOptionalString, badRequest, isUuid } from '@/lib/validation'
 import { logEvent } from '@/lib/log'
+import { isMembershipTier } from '@/lib/membership'
 import type { AccountType, Category } from '@/types'
 
 type AccountRole = AccountType | 'admin'
@@ -22,8 +23,8 @@ export async function PATCH(
   if (!parsedBody.ok) return parsedBody.response
 
   const { action } = parsedBody.body
-  if (action !== 'suspend' && action !== 'unsuspend' && action !== 'set_role' && action !== 'set_account_type' && action !== 'set_verification') {
-    return badRequest('action must be suspend, unsuspend, set_role, set_account_type, or set_verification')
+  if (action !== 'suspend' && action !== 'unsuspend' && action !== 'set_role' && action !== 'set_account_type' && action !== 'set_verification' && action !== 'set_membership_tier') {
+    return badRequest('action must be suspend, unsuspend, set_role, set_account_type, set_verification, or set_membership_tier')
   }
 
   const { data: target } = await auth.service
@@ -33,6 +34,37 @@ export async function PATCH(
     .maybeSingle()
 
   if (!target) return Response.json({ error: 'Not found' }, { status: 404 })
+
+  if (action === 'set_membership_tier') {
+    if (target.account_type !== 'talent') {
+      return badRequest('Only talent profiles have a membership tier')
+    }
+
+    const tier = parsedBody.body.tier
+    if (!isMembershipTier(tier)) {
+      return badRequest('tier must be free, gold, or platinum')
+    }
+
+    const { data: profile, error } = await auth.service
+      .from('profiles')
+      .update({ membership_tier: tier })
+      .eq('id', id)
+      .select('id, membership_tier')
+      .single()
+
+    if (error || !profile) {
+      logEvent('error', 'admin_membership_tier_change_failed', { target_id: id, code: error?.code ?? null })
+      return Response.json({ error: 'Update failed' }, { status: 500 })
+    }
+
+    logEvent('info', 'admin_membership_tier_changed', {
+      target_id: id,
+      tier,
+      admin_id: auth.userId,
+    })
+
+    return Response.json({ profile })
+  }
 
   if (action === 'set_verification') {
     if (target.account_type !== 'talent') {

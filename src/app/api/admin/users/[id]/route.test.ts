@@ -330,6 +330,103 @@ describe('PATCH /api/admin/users/[id] set_verification', () => {
   })
 })
 
+describe('PATCH /api/admin/users/[id] set_membership_tier', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function makeTierService(target: { id: string; account_type: string; email: string } | null) {
+    const updateCalls: Array<Record<string, unknown>> = []
+    const service = {
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: () => Promise.resolve({ data: target, error: null }),
+              }),
+            }),
+            update: (patch: Record<string, unknown>) => {
+              updateCalls.push(patch)
+              return {
+                eq: () => ({
+                  select: () => ({
+                    single: () => Promise.resolve({
+                      data: { id: USER_ID, membership_tier: patch.membership_tier },
+                      error: null,
+                    }),
+                  }),
+                }),
+              }
+            },
+          }
+        }
+        return {}
+      }),
+    }
+    return { service, updateCalls }
+  }
+
+  function patchRequest(body: Record<string, unknown>) {
+    return new Request('http://localhost/api/admin/users/x', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it('sets a talent membership tier', async () => {
+    const { service, updateCalls } = makeTierService({ id: USER_ID, account_type: 'talent', email: 'user@test.com' })
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: true, userId: 'admin-1', role: 'owner', service })
+
+    const res = await PATCH(
+      patchRequest({ action: 'set_membership_tier', tier: 'gold' }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+
+    expect(res.status).toBe(200)
+    expect(updateCalls).toHaveLength(1)
+    expect(updateCalls[0].membership_tier).toBe('gold')
+  })
+
+  it('rejects unknown tiers', async () => {
+    const { service, updateCalls } = makeTierService({ id: USER_ID, account_type: 'talent', email: 'user@test.com' })
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: true, userId: 'admin-1', role: 'owner', service })
+
+    const res = await PATCH(
+      patchRequest({ action: 'set_membership_tier', tier: 'diamond' }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+
+    expect(res.status).toBe(400)
+    expect(updateCalls).toHaveLength(0)
+  })
+
+  it('rejects tiers on hirer accounts', async () => {
+    const { service, updateCalls } = makeTierService({ id: USER_ID, account_type: 'hirer', email: 'user@test.com' })
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: true, userId: 'admin-1', role: 'owner', service })
+
+    const res = await PATCH(
+      patchRequest({ action: 'set_membership_tier', tier: 'gold' }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+
+    expect(res.status).toBe(400)
+    expect(updateCalls).toHaveLength(0)
+  })
+
+  it('requires platform admin auth', async () => {
+    mockRequirePlatformAdmin.mockResolvedValue({ ok: false, response: Response.json({ error: 'Unauthorized' }, { status: 401 }) })
+
+    const res = await PATCH(
+      patchRequest({ action: 'set_membership_tier', tier: 'gold' }),
+      { params: Promise.resolve({ id: USER_ID }) },
+    )
+
+    expect(res.status).toBe(401)
+  })
+})
+
 describe('DELETE /api/admin/users/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()

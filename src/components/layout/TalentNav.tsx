@@ -7,6 +7,7 @@ import { useAppShell } from './app-shell-context'
 const links = [
   { href: '/home', label: 'Home' },
   { href: '/discover', label: 'Discover' },
+  { href: '/applications', label: 'Applications' },
   { href: '/messages', label: 'Messages' },
 ]
 

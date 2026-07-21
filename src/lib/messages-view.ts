@@ -6,6 +6,17 @@ export type ThreadMessage = {
   sender_id: string
   created_at: string
   kind?: string | null
+  reply_to_id?: string | null
+}
+
+// Resolves a quoted message from the already-loaded window. Returns null when
+// the quoted message falls outside it (the UI shows a generic fallback).
+export function findQuotedMessage(
+  messages: ThreadMessage[],
+  replyToId: string | null | undefined,
+): ThreadMessage | null {
+  if (!replyToId) return null
+  return messages.find(m => m.id === replyToId) ?? null
 }
 
 // Inbox and conversation-list snippet for the latest message. System

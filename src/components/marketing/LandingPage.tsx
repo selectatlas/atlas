@@ -86,6 +86,7 @@ export function LandingPage() {
           </Link>
 
           <nav className="landing-nav" aria-label="Main navigation">
+            <Link href="/jobs">Jobs</Link>
             <a href="#how-it-works">How it works</a>
             <a href="#for-hirers">For hirers</a>
             <a href="#for-talent">For talent</a>

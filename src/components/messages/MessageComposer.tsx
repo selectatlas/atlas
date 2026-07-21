@@ -1,9 +1,11 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { Loader2, SendHorizonal, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Loader2, Reply, SendHorizonal, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { quotedSnippet } from '@/lib/reactions'
+import type { ThreadMessage } from '@/lib/messages-view'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,17 +28,27 @@ export function MessageComposer({
   onSend,
   onTyping,
   disabled,
+  replyTo,
+  replyToName,
+  onCancelReply,
 }: {
   threadId: string
   onSend: (content: string) => Promise<string | null>
   onTyping: () => void
   disabled?: boolean
+  replyTo?: ThreadMessage | null
+  replyToName?: string
+  onCancelReply?: () => void
 }) {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [assisting, setAssisting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (replyTo) textareaRef.current?.focus()
+  }, [replyTo])
 
   async function handleSend() {
     const content = input.trim()
@@ -84,6 +96,25 @@ export function MessageComposer({
     <div className="shrink-0 border-t border-border/80 bg-background px-4 py-3">
       {error && (
         <p className="mb-2 text-xs text-muted-foreground" role="alert">{error}</p>
+      )}
+      {replyTo && (
+        <div className="mb-2 flex items-center gap-2 rounded-lg border-l-2 border-primary/60 bg-muted/60 px-3 py-1.5">
+          <Reply className="size-3.5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1 text-xs">
+            <span className="block font-medium">Replying to {replyToName ?? 'message'}</span>
+            <span className="block truncate text-muted-foreground">
+              {quotedSnippet(replyTo.content, 90)}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onCancelReply}
+            aria-label="Cancel reply"
+            className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
       )}
       <form
         onSubmit={e => { e.preventDefault(); void handleSend() }}

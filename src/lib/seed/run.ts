@@ -41,6 +41,10 @@ function filterData(profile: (typeof SEED_PROFILES)[number]) {
   } else if (category === 'actor') {
     publicAttributes.acting_medium = profile.skills.some(skill => /voice/i.test(skill.skill)) ? ['screen_acting', 'voice_acting'] : ['screen_acting']
     publicAttributes.spact = profile.skills.some(skill => /stunt|combat|martial|boxing/i.test(skill.skill))
+    // Stunt-registered subset so the card badges have demo coverage.
+    if (publicAttributes.spact) {
+      publicAttributes.stunt_register = profile.skills.some(skill => /stunt/i.test(skill.skill))
+    }
   } else if (category === 'photographer_videographer') {
     const photography = profile.skills.filter(skill => /photograph/i.test(skill.skill)).map(skill => {
       const value = slug(skill.skill.replace(/ photography$/i, ''))

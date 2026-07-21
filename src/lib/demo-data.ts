@@ -1,6 +1,8 @@
 import type { Credit, Job, PortfolioItem, Profile, TalentProfileAttributes, TalentReview, TalentSensitivePreferences, TalentSkill } from '@/types'
 import type { SearchFilters, SearchFilterValue } from '@/lib/search-filters'
 import { FILTER_BY_KEY } from '@/lib/filter-taxonomy'
+import { cardBadgesFromAttributes } from '@/lib/talent-card-badges'
+import { buildCardImages } from '@/lib/talent-card-media'
 
 export type DemoJob = Job & { hirer?: { full_name: string } | null }
 export const DEMO_APPLICATIONS_STORAGE_KEY = 'atlas_demo_applications'
@@ -312,11 +314,11 @@ const demoAttribute = (overrides: Partial<DemoTalentAttributes> = {}): DemoTalen
 
 export const DEMO_TALENT_ATTRIBUTES: Record<string, DemoTalentAttributes> = {
   'demo-talent': demoAttribute({ birth_year: 1993, gender: 'female', height_cm: 165, rate_min: 180, rate_max: 300, languages: ['english', 'hindi'], available_now: true, response_time_hours: 2, public_attributes: { overseas_hire: true, own_transport: ['car'], passport: ['uk'], dance_skill_level: ['advanced_or_professional'], experienced_choreographer: true, dance_experience: ['music_videos', 'live_performance', 'choreography'] } }),
-  'demo-talent-2': demoAttribute({ birth_year: 1990, gender: 'female', height_cm: 170, languages: ['english', 'urdu'], available_now: true, response_time_hours: 3, public_attributes: { overseas_hire: true, dance_skill_level: ['advanced_or_professional'], experienced_choreographer: true } }),
+  'demo-talent-2': demoAttribute({ birth_year: 1990, gender: 'female', height_cm: 170, languages: ['english', 'urdu'], available_now: true, response_time_hours: 3, public_attributes: { overseas_hire: true, dance_skill_level: ['advanced_or_professional'], experienced_choreographer: true, dance_styles: ['bhangra', 'bollywood'], singing_styles: ['pop', 'backing_singer'], sports: ['yoga', 'pilates'], measurement_shoe_size: '5 UK' } }),
   'demo-talent-3': demoAttribute({ birth_year: 1998, gender: 'female', height_cm: 162, languages: ['english', 'gujarati'], public_attributes: { dance_skill_level: ['advanced_or_professional'], dance_experience: ['stage', 'music_videos'] } }),
   'demo-talent-4': demoAttribute({ birth_year: 1991, gender: 'female', height_cm: 174, available_now: true, response_time_hours: 4, public_attributes: { acting_medium: ['screen_acting', 'voice_acting'], acting_technique: ['meisner_technique'], actor_type: ['character_actor'], spact: false, accents: ['cockney'] }, sensitive_preferences: { kissing_scene: true, smoking_scene: false, nudity: false, implied_nudity: true, partial_clothing: true } }),
   'demo-talent-5': demoAttribute({ birth_year: 1996, gender: 'female', public_attributes: { overseas_hire: true, own_transport: ['car'] } }),
-  'demo-talent-6': demoAttribute({ birth_year: 1989, gender: 'male', height_cm: 182, languages: ['english', 'hindi'], available_now: true, public_attributes: { acting_medium: ['screen_acting'], spact: true, spact_types: ['martial_artist'], stunt_register: false, stunt_disciplines: ['martial_arts'] }, sensitive_preferences: { kissing_scene: true, smoking_scene: true, nudity: false, implied_nudity: true, partial_clothing: true } }),
+  'demo-talent-6': demoAttribute({ birth_year: 1989, gender: 'male', height_cm: 182, languages: ['english', 'hindi'], available_now: true, public_attributes: { acting_medium: ['screen_acting'], spact: true, spact_types: ['martial_artist'], stunt_register: true, stunt_register_number: 'SR-20841', stunt_disciplines: ['martial_arts'], body_type: ['athletic'], hair_length: ['short'], facial_hair: ['stubble'], handedness: ['right_handed'], tattoos: false, piercings: false }, sensitive_preferences: { kissing_scene: true, smoking_scene: true, nudity: false, implied_nudity: true, partial_clothing: true } }),
   'demo-talent-7': demoAttribute({ birth_year: 1994, gender: 'female', height_cm: 168, available_now: true, public_attributes: { dance_skill_level: ['advanced_or_professional'], experienced_choreographer: false, dance_experience: ['live_performance', 'teaching'] } }),
   'demo-talent-8': demoAttribute({ birth_year: 1992, gender: 'male', rate_min: 450, rate_max: 900, available_now: true, public_attributes: { photography_camera_format: ['full_frame'], photography_equipment: ['sony', 'leica'], videography_equipment: ['sony', 'blackmagic'], netflix_approved_camera: true, photography_types: ['fashion', 'editorial', 'portrait'], videography_types: ['commercial', 'cinematic'], delivery_time: ['14_days'], overseas_hire: true } }),
 }
@@ -439,7 +441,19 @@ export function searchDemoTalent(query: string, filters: SearchFilters = {}) {
         profile.talent_skills.length > 0 ? `${profile.talent_skills.length} skills listed` : null,
       ].filter((reason): reason is string => Boolean(reason)).slice(0, 3)
 
-      return { profile, match_score: matchScore, match_reasons: matchReasons }
+      const attributes = DEMO_TALENT_ATTRIBUTES[profile.id]
+      return {
+        profile,
+        match_score: matchScore,
+        match_reasons: matchReasons,
+        badges: cardBadgesFromAttributes(attributes?.public_attributes ?? null),
+        images: buildCardImages(
+          profile.avatar_url,
+          ('portfolio_items' in profile ? (profile as typeof DEMO_PROFILE).portfolio_items : [])
+            .filter(item => item.type === 'image')
+            .map(item => item.thumbnail_url ?? item.url),
+        ),
+      }
     })
     .sort((a, b) => b.match_score - a.match_score)
 }

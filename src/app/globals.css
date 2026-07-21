@@ -2775,7 +2775,14 @@
     min-height: 4rem;
   }
 
+  /* Section anchors are noise on small screens, but the Jobs route link
+     must survive: phones are the primary demo device. */
   .landing-nav {
+    gap: 0;
+    margin-right: 0.75rem;
+  }
+
+  .landing-nav a[href^='#'] {
     display: none;
   }
 

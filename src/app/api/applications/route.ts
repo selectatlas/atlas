@@ -51,6 +51,9 @@ export async function POST(request: Request) {
 
   // Keep existing deployments working until the optional note migration is applied.
   if (error?.code === '42703' && trimmedNote) {
+    // The note is silently dropped on this path - log it so a stale schema
+    // is visible instead of quietly eating user input.
+    logEvent('warn', 'application_note_dropped_missing_column', { user_id: user.id })
     const fallback = await supabase
       .from('applications')
       .insert({ job_id, talent_id: user.id, status: 'sent' })

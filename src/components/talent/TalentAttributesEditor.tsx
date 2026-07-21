@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { ShieldCheck } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -28,6 +29,105 @@ function listFromInput(value: string) {
 function displayList(values: string[], definition: TalentFilterDefinition) {
   const labels = new Map(definition.options?.map(option => [option.value, option.label]) ?? [])
   return values.map(value => labels.get(value) ?? humanise(value)).join(', ')
+}
+
+const CHECKBOX_PREVIEW_COUNT = 8
+
+function customSlug(input: string) {
+  return input.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+}
+
+function MultiSelectField({ definition, selected, onChange }: {
+  definition: TalentFilterDefinition
+  selected: string[]
+  onChange: (next: string[]) => void
+}) {
+  const options = definition.options ?? []
+  const [showAll, setShowAll] = useState(false)
+  const [customInput, setCustomInput] = useState('')
+
+  const knownValues = new Set(options.map(option => option.value))
+  const customSelected = selected.filter(value => !knownValues.has(value))
+  const previewCount = definition.topOptions ?? CHECKBOX_PREVIEW_COUNT
+  const collapsed = !showAll && options.length > previewCount
+  // Keep any checked option visible even when the list is collapsed.
+  const visibleOptions = collapsed
+    ? options.filter((option, index) => index < previewCount || selected.includes(option.value))
+    : options
+
+  function toggle(optionValue: string, checked: boolean) {
+    onChange(checked ? [...selected, optionValue] : selected.filter(value => value !== optionValue))
+  }
+
+  function addCustom() {
+    const slug = customSlug(customInput)
+    if (!slug || selected.includes(slug)) { setCustomInput(''); return }
+    onChange([...selected, slug])
+    setCustomInput('')
+  }
+
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-xs font-medium text-muted-foreground">{definition.label}</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {visibleOptions.map(option => (
+          <label key={option.value} className="flex min-h-9 items-center gap-2 rounded-lg border border-border/80 bg-background px-3 text-xs">
+            <input
+              type="checkbox"
+              checked={selected.includes(option.value)}
+              onChange={event => toggle(option.value, event.target.checked)}
+              className="size-4 shrink-0 accent-primary"
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+      {options.length > previewCount && (
+        <button
+          type="button"
+          onClick={() => setShowAll(previous => !previous)}
+          className="cursor-pointer text-xs font-medium text-primary hover:underline"
+        >
+          {showAll ? 'Show fewer' : `Show all ${options.length}`}
+        </button>
+      )}
+      {customSelected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {customSelected.map(value => (
+            <span key={value} className="inline-flex items-center gap-1 rounded-full bg-secondary/70 px-2 py-1 text-[11px] font-medium text-secondary-foreground">
+              {humanise(value)}
+              <button
+                type="button"
+                aria-label={`Remove ${humanise(value)}`}
+                onClick={() => onChange(selected.filter(item => item !== value))}
+                className="cursor-pointer text-muted-foreground hover:text-foreground"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {definition.allowCustom && (
+        <div className="flex gap-2">
+          <Input
+            value={customInput}
+            onChange={event => setCustomInput(event.target.value)}
+            onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addCustom() } }}
+            placeholder={`Add your own ${definition.label.toLowerCase()}`}
+            className="h-8 text-xs"
+          />
+          <button
+            type="button"
+            onClick={addCustom}
+            className="h-8 shrink-0 cursor-pointer rounded-lg border border-border/80 px-3 text-xs font-medium hover:bg-muted"
+          >
+            Add
+          </button>
+        </div>
+      )}
+    </fieldset>
+  )
 }
 
 export function TalentAttributesEditor({ category, value, onChange }: TalentAttributesEditorProps) {
@@ -86,34 +186,27 @@ export function TalentAttributesEditor({ category, value, onChange }: TalentAttr
 
     if (definition.kind === 'multi') {
       const selected = Array.isArray(current) ? current as string[] : []
-      if (definition.allowCustom || (definition.options?.length ?? 0) > 12 || !definition.options) {
+      // Options always render as checkboxes (client feedback 20 Jul 2026,
+      // p.47: "check box and have type option" - never comma-separated text
+      // when a predefined list exists). Free-form text only when there is no
+      // option list at all.
+      if (!definition.options || definition.options.length === 0) {
         return (
           <Field key={definition.key} label={`${definition.label} (comma separated)`}>
             <Input
               value={displayList(selected, definition)}
               onChange={event => updateAttribute(definition, listFromInput(event.target.value))}
-              placeholder={definition.options?.slice(0, 3).map(option => option.label).join(', ')}
             />
           </Field>
         )
       }
       return (
-        <fieldset key={definition.key} className="space-y-2">
-          <legend className="text-xs font-medium text-muted-foreground">{definition.label}</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {definition.options.map(option => (
-              <label key={option.value} className="flex min-h-9 items-center gap-2 rounded-lg border border-border/80 bg-background px-3 text-xs">
-                <input
-                  type="checkbox"
-                  checked={selected.includes(option.value)}
-                  onChange={event => updateAttribute(definition, event.target.checked ? [...selected, option.value] : selected.filter(value => value !== option.value))}
-                  className="size-4 accent-primary"
-                />
-                {option.label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <MultiSelectField
+          key={definition.key}
+          definition={definition}
+          selected={selected}
+          onChange={next => updateAttribute(definition, next)}
+        />
       )
     }
 

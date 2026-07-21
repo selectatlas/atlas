@@ -95,6 +95,102 @@ test.describe('messaging center', () => {
     expect(participants?.map(p => p.profile_id).sort()).toEqual([hirer.id, talent.id].sort())
   })
 
+  test('replying quotes the original message', async ({ page }) => {
+    const admin = adminClient()
+    const hirer = await seedUser(admin, 'hirer', 'reply-hirer')
+    const talent = await seedUser(admin, 'talent', 'reply-talent')
+
+    await login(page, hirer.email)
+    const outreachResponse = await page.request.post('/api/outreach', {
+      data: { talent_id: talent.id, action: 'send', message: 'Are you free for a shoot in May?' },
+    })
+    const { thread_id } = (await outreachResponse.json()) as { thread_id: string }
+
+    await page.goto(`/messages/${thread_id}`)
+    await expect(page.getByText('Are you free for a shoot in May?')).toBeVisible()
+
+    // Open the message actions menu (hover-revealed) and start a reply.
+    await page.getByText('Are you free for a shoot in May?').hover()
+    await page.getByRole('button', { name: 'Message actions' }).click()
+    await page.getByRole('button', { name: 'Reply' }).click()
+
+    // Composer shows the quote strip; send the reply.
+    await expect(page.getByText(/Replying to/)).toBeVisible()
+    await page.getByRole('textbox', { name: 'Message' }).fill('Yes - May works for me.')
+    await page.getByRole('button', { name: 'Send message' }).click()
+
+    // The sent bubble renders with the quoted original above it.
+    await expect(page.getByText('Yes - May works for me.')).toBeVisible()
+    const { data: reply } = await admin
+      .from('messages')
+      .select('reply_to_id')
+      .eq('thread_id', thread_id)
+      .eq('content', 'Yes - May works for me.')
+      .single()
+    expect(reply?.reply_to_id).toBeTruthy()
+  })
+
+  test('reactions appear live for the other participant', async ({ browser, page }) => {
+    const admin = adminClient()
+    const hirer = await seedUser(admin, 'hirer', 'react-hirer')
+    const talent = await seedUser(admin, 'talent', 'react-talent')
+
+    await login(page, hirer.email)
+    const outreachResponse = await page.request.post('/api/outreach', {
+      data: { talent_id: talent.id, action: 'send', message: 'Sending over the brief now' },
+    })
+    const { thread_id } = (await outreachResponse.json()) as { thread_id: string }
+    await page.goto(`/messages/${thread_id}`)
+    await expect(page.getByText('Sending over the brief now')).toBeVisible()
+
+    // The talent reacts in a second session.
+    const talentContext = await browser.newContext()
+    const talentPage = await talentContext.newPage()
+    await login(talentPage, talent.email)
+    await talentPage.goto(`/messages/${thread_id}`)
+    await talentPage.getByText('Sending over the brief now').hover()
+    await talentPage.getByRole('button', { name: 'Message actions' }).click()
+    await talentPage.getByRole('button', { name: 'React with 👍' }).click()
+    await expect(talentPage.getByRole('button', { name: /👍/ })).toBeVisible()
+
+    // The hirer sees the pill arrive live via the thread channel broadcast.
+    await expect(page.getByRole('button', { name: /👍/ })).toBeVisible()
+    await talentContext.close()
+  })
+
+  test('broadcast messages every shortlisted talent', async ({ page }) => {
+    const admin = adminClient()
+    const hirer = await seedUser(admin, 'hirer', 'cast-hirer')
+    const talentA = await seedUser(admin, 'talent', 'cast-talent-a')
+    const talentB = await seedUser(admin, 'talent', 'cast-talent-b')
+
+    await admin.from('shortlists').insert([
+      { hirer_id: hirer.id, talent_id: talentA.id },
+      { hirer_id: hirer.id, talent_id: talentB.id },
+    ])
+
+    await login(page, hirer.email)
+    await page.goto('/shortlists')
+    await page.getByRole('button', { name: /Message all \(2\)/ }).click()
+    await page
+      .getByRole('textbox', { name: 'Broadcast message' })
+      .fill('Casting call: new campaign next month!')
+    await page.getByRole('button', { name: /Send to 2 people/ }).click()
+
+    // Lands in messages with both new conversations present.
+    await page.waitForURL('/messages')
+    await expect(page.getByRole('link', { name: /E2E cast-talent-a/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /E2E cast-talent-b/ })).toBeVisible()
+
+    // Both talents got the same message in their own 1:1 thread.
+    const { data: sent } = await admin
+      .from('messages')
+      .select('id, thread_id')
+      .eq('content', 'Casting call: new campaign next month!')
+    expect(sent?.length).toBe(2)
+    expect(new Set(sent?.map(m => m.thread_id)).size).toBe(2)
+  })
+
   test('archiving moves a conversation to the Archived tab', async ({ page }) => {
     const admin = adminClient()
     const hirer = await seedUser(admin, 'hirer', 'archive-hirer')

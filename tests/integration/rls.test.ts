@@ -330,6 +330,90 @@ describe.skipIf(!stackUp)('Row-level security (real database)', () => {
     })
   })
 
+  describe('message reactions and replies', () => {
+    let messageId: string
+
+    beforeAll(async () => {
+      const { data } = await hirer.client
+        .from('messages')
+        .insert({ thread_id: threadId, sender_id: hirer.id, content: 'React to this' })
+        .select('id')
+        .single()
+      messageId = data!.id as string
+    })
+
+    it('a participant can react to a message and the other side can read it', async () => {
+      const { error } = await talent.client
+        .from('message_reactions')
+        .insert({ message_id: messageId, profile_id: talent.id, emoji: '👍' })
+      expect(error).toBeNull()
+
+      const { data: seen } = await hirer.client
+        .from('message_reactions')
+        .select('emoji')
+        .eq('message_id', messageId)
+      expect(seen).toHaveLength(1)
+    })
+
+    it('a participant cannot react as someone else', async () => {
+      const { error } = await talent.client
+        .from('message_reactions')
+        .insert({ message_id: messageId, profile_id: hirer.id, emoji: '❤️' })
+      expect(error).not.toBeNull()
+    })
+
+    it('an emoji outside the allowed set is rejected', async () => {
+      const { error } = await hirer.client
+        .from('message_reactions')
+        .insert({ message_id: messageId, profile_id: hirer.id, emoji: '🔥' })
+      expect(error).not.toBeNull()
+    })
+
+    it('a non-participant can neither see nor add reactions', async () => {
+      const { data } = await talent2.client
+        .from('message_reactions')
+        .select('emoji')
+        .eq('message_id', messageId)
+      expect(data ?? []).toHaveLength(0)
+
+      const { error } = await talent2.client
+        .from('message_reactions')
+        .insert({ message_id: messageId, profile_id: talent2.id, emoji: '👍' })
+      expect(error).not.toBeNull()
+    })
+
+    it('a participant can change and remove their own reaction', async () => {
+      const { error: updateError } = await talent.client
+        .from('message_reactions')
+        .update({ emoji: '🎉' })
+        .eq('message_id', messageId)
+        .eq('profile_id', talent.id)
+      expect(updateError).toBeNull()
+
+      const { error: deleteError } = await talent.client
+        .from('message_reactions')
+        .delete()
+        .eq('message_id', messageId)
+        .eq('profile_id', talent.id)
+      expect(deleteError).toBeNull()
+    })
+
+    it('a reply must reference a message; the sender can quote in-thread', async () => {
+      const { data: reply, error } = await hirer.client
+        .from('messages')
+        .insert({
+          thread_id: threadId,
+          sender_id: hirer.id,
+          content: 'Quoting myself',
+          reply_to_id: messageId,
+        })
+        .select('reply_to_id')
+        .single()
+      expect(error).toBeNull()
+      expect(reply?.reply_to_id).toBe(messageId)
+    })
+  })
+
   describe('jobs and applications', () => {
     it('a hirer can create their own job and everyone authenticated can see it', async () => {
       const { data, error } = await hirer.client

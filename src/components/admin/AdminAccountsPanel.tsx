@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/ui/data-table'
 import { CATEGORY_LABELS } from '@/lib/skills'
+import type { MembershipTier } from '@/lib/membership'
 import type { Category } from '@/types'
 import {
   Select,
@@ -154,6 +155,27 @@ export function AdminAccountsPanel() {
     }
   }, [load])
 
+  const setMembershipTier = useCallback(async (account: AdminAccountRow, tier: MembershipTier) => {
+    setBusyId(account.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/users/${account.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_membership_tier', tier }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? 'Tier update failed')
+      }
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update membership tier.')
+    } finally {
+      setBusyId(null)
+    }
+  }, [load])
+
   const setVerification = useCallback(async (account: AdminAccountRow, verified: boolean, categories: Category[]) => {
     setBusyId(account.id)
     setError(null)
@@ -251,6 +273,7 @@ export function AdminAccountsPanel() {
       setVerifyCategories([])
     },
     onUnverify: account => { void setVerification(account, false, []) },
+    onTierChange: (account, tier) => { void setMembershipTier(account, tier) },
   })
 
   const toolbar = (
