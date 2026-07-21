@@ -121,13 +121,14 @@ test.describe('messaging center', () => {
 
     // The sent bubble renders with the quoted original above it.
     await expect(page.getByText('Yes - May works for me.')).toBeVisible()
-    const { data: reply } = await admin
+    const { data: replies, error: replyError } = await admin
       .from('messages')
-      .select('reply_to_id')
+      .select('id, reply_to_id, content')
       .eq('thread_id', thread_id)
       .eq('content', 'Yes - May works for me.')
-      .single()
-    expect(reply?.reply_to_id).toBeTruthy()
+    expect(replyError).toBeNull()
+    expect(replies, `expected exactly one reply row, got: ${JSON.stringify(replies)}`).toHaveLength(1)
+    expect(replies?.[0]?.reply_to_id).toBeTruthy()
   })
 
   test('reactions appear live for the other participant', async ({ browser, page }) => {
@@ -151,10 +152,10 @@ test.describe('messaging center', () => {
     await talentPage.getByText('Sending over the brief now').hover()
     await talentPage.getByRole('button', { name: 'Message actions' }).click()
     await talentPage.getByRole('button', { name: 'React with 👍' }).click()
-    await expect(talentPage.getByRole('button', { name: /👍/ })).toBeVisible()
+    await expect(talentPage.getByRole('button', { name: /👍 1/ })).toBeVisible()
 
     // The hirer sees the pill arrive live via the thread channel broadcast.
-    await expect(page.getByRole('button', { name: /👍/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /👍 1/ })).toBeVisible()
     await talentContext.close()
   })
 

@@ -21,6 +21,13 @@ import type { Job } from '@/types'
 // removed, and unknown jobs are invisible through public_open_jobs, so they
 // all resolve to notFound() automatically.
 export const revalidate = 300
+// force-static is load-bearing, not an optimisation: the Supabase fetch
+// defaults to no-store, which silently made this route dynamic. Dynamic
+// routes stream their metadata for browser user agents, so notFound()
+// could no longer set a real 404 status - closed and removed jobs
+// answered 200 with a not-found body. Static rendering restores the ISR
+// design above AND blocking metadata, making the 404 genuine.
+export const dynamic = 'force-static'
 
 export async function generateStaticParams() {
   // Build nothing up front; every job renders on first request and is cached.
@@ -48,12 +55,12 @@ const fetchPublicJob = cache(async (id: string): Promise<PublicJob | null> => {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const job = await fetchPublicJob(id)
-  // notFound() here, not just a fallback title: metadata resolves before the
-  // body streams, so this is the last point where the response can still
-  // carry a real 404 status. Deciding in the page body is too late - the 200
-  // status line has already been flushed and closed/removed jobs would read
-  // as live pages to crawlers.
-  if (!job) notFound()
+  // Next 16 cannot put a 404 status on an on-demand ISR render (the
+  // not-found boundary is served and cached with 200 - vercel/next.js
+  // #76474, still open at 16.2.10; verified empirically against this
+  // route). noindex is the enforceable crawler contract instead: missing,
+  // closed, and removed jobs must never be indexed as live pages.
+  if (!job) return { title: 'Job not found', robots: { index: false } }
 
   const description = job.description.replace(/\s+/g, ' ').trim().slice(0, 155)
   const cover = resolveCoverUrl(job.cover_url)

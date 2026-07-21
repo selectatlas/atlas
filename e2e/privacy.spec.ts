@@ -126,8 +126,13 @@ test.describe('public job browsing', () => {
       .select('id')
       .single()
 
-    const response = await page.goto(`/jobs/${job!.id}`)
-    expect(response?.status()).toBe(404)
+    await page.goto(`/jobs/${job!.id}`)
+    // Next 16 serves on-demand ISR not-found renders with a 200 status
+    // (vercel/next.js#76474), so the enforceable public contract is:
+    // not-found UI, a noindex directive, and zero job content leaking.
+    await expect(page.getByText('Page not found')).toBeVisible()
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+    expect(await page.content()).not.toContain('Should never render publicly')
   })
 
   test('public jobs pages are indexable while my-jobs stays noindexed', async ({ page }) => {
