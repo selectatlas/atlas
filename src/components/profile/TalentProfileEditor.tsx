@@ -34,12 +34,29 @@ type TalentWithExtras = Profile & {
   portfolio_items: PortfolioItem[]
 }
 
+// The fields this form's Save actually writes. Skills, credits, portfolio and
+// cover all persist themselves on change, so they must not count towards
+// dirty state - otherwise Save would sit enabled with nothing to commit.
+const SAVED_FIELDS = [
+  'full_name', 'headline', 'city', 'country', 'bio', 'rates', 'availability', 'showreel_url',
+] as const
+
+// Save also PATCHes casting details, which live in their own card further down
+// the page, so both have to feed dirty state or editing casting details would
+// leave Save disabled with no way to commit it.
+function snapshot(profile: Profile, attributes: TalentAttributesPayload): string {
+  return JSON.stringify([SAVED_FIELDS.map(field => profile[field] ?? ''), attributes])
+}
+
 export function TalentProfileEditor() {
   const [profile, setProfile] = useState<TalentWithExtras | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Snapshot of what is currently persisted; Save stays disabled until the
+  // form diverges from it (DESIGN.md - "Save placement").
+  const [baseline, setBaseline] = useState<string | null>(null)
   const [talentAttributes, setTalentAttributes] = useState<TalentAttributesPayload>(EMPTY_TALENT_ATTRIBUTES)
   const [levelMetrics, setLevelMetrics] = useState<TalentLevelMetrics | null>(null)
   const embedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -106,13 +123,17 @@ export function TalentProfileEditor() {
       supabase.from('outreach').select('status').eq('talent_id', user.id).neq('status', 'draft'),
     ])
 
-    setProfile({
+    const loaded = {
       ...(data as Omit<Profile, 'email'> & { talent_skills: TalentSkill[] }),
       email: user.email ?? '',
       credits: (credits ?? []) as Credit[],
       portfolio_items: (portfolioItems ?? []) as PortfolioItem[],
-    })
-    if (attributesResponse?.attributes) setTalentAttributes(attributesResponse.attributes as TalentAttributesPayload)
+    }
+    setProfile(loaded)
+    const loadedAttributes = (attributesResponse?.attributes as TalentAttributesPayload | undefined)
+      ?? EMPTY_TALENT_ATTRIBUTES
+    if (attributesResponse?.attributes) setTalentAttributes(loadedAttributes)
+    setBaseline(snapshot(loaded, loadedAttributes))
 
     const contacted = (outreachRows ?? []) as Array<{ status: string }>
     setLevelMetrics(buildTalentLevelMetrics({
@@ -136,6 +157,7 @@ export function TalentProfileEditor() {
     setError(null)
 
     if (isLocalDemoMode()) {
+      setBaseline(snapshot(profile, talentAttributes))
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
       setSaving(false)
@@ -173,6 +195,7 @@ export function TalentProfileEditor() {
       await fetch('/api/embed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profile_id: profile.id }) })
     } catch { console.warn('Embedding regeneration failed') }
 
+    setBaseline(snapshot(profile, talentAttributes))
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     setSaving(false)
@@ -193,18 +216,27 @@ export function TalentProfileEditor() {
 
   if (!profile) return null
 
+  const isDirty = baseline !== null && snapshot(profile, talentAttributes) !== baseline
+
   return (
-    <div className="space-y-6 pb-32">
+    <div className="space-y-6 pb-12">
       <PageShell
         title="My profile"
         actions={
-          <Link
-            href={`/talent/${profile.id}`}
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'rounded-xl')}
-          >
-            <Eye className="size-4" />
-            Preview public profile
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/talent/${profile.id}`}
+              className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'rounded-xl')}
+            >
+              <Eye className="size-4" />
+              Preview public profile
+            </Link>
+            {/* Page-level rather than per-card: this one Save commits both the
+                personal-info card and the casting-details card further down. */}
+            <Button size="sm" onClick={saveProfile} disabled={saving || !isDirty}>
+              {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save profile'}
+            </Button>
+          </div>
         }
       />
 
@@ -309,15 +341,6 @@ export function TalentProfileEditor() {
         <p className="text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">{error}</p>
       )}
 
-      <div className="fixed bottom-20 left-0 right-0 px-4 max-w-2xl mx-auto md:bottom-8">
-        <Button
-          onClick={saveProfile}
-          disabled={saving}
-          className="w-full bg-accent text-accent-foreground hover:bg-accent/80 h-12 rounded-2xl font-semibold shadow-sm"
-        >
-          {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Profile'}
-        </Button>
-      </div>
     </div>
   )
 }

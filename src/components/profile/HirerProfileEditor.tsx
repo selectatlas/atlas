@@ -30,16 +30,29 @@ const DEMO_HIRER_PROFILE: Profile = {
   created_at: new Date().toISOString(),
 }
 
+// The fields this form actually writes. Dirty state is computed from these
+// alone, so an avatar upload (which saves itself immediately) does not leave
+// Save looking enabled with nothing to commit.
+const SAVED_FIELDS = ['full_name', 'headline', 'city', 'country', 'bio'] as const
+
+function snapshot(profile: Profile): string {
+  return JSON.stringify(SAVED_FIELDS.map(field => profile[field] ?? ''))
+}
+
 export function HirerProfileEditor() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Snapshot of what is currently persisted; Save stays disabled until the
+  // form diverges from it (DESIGN.md - "Save placement").
+  const [baseline, setBaseline] = useState<string | null>(null)
 
   const loadProfile = useCallback(async () => {
     if (isLocalDemoMode()) {
       setProfile(DEMO_HIRER_PROFILE)
+      setBaseline(snapshot(DEMO_HIRER_PROFILE))
       setLoading(false)
       return
     }
@@ -63,10 +76,12 @@ export function HirerProfileEditor() {
       return
     }
 
-    setProfile({
+    const loaded: Profile = {
       ...(data as Omit<Profile, 'email'>),
       email: user.email ?? '',
-    })
+    }
+    setProfile(loaded)
+    setBaseline(snapshot(loaded))
     setLoading(false)
   }, [])
 
@@ -85,6 +100,7 @@ export function HirerProfileEditor() {
     setError(null)
 
     if (isLocalDemoMode()) {
+      setBaseline(snapshot(profile))
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
       setSaving(false)
@@ -109,6 +125,7 @@ export function HirerProfileEditor() {
       return
     }
 
+    setBaseline(snapshot(profile))
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     setSaving(false)
@@ -125,11 +142,18 @@ export function HirerProfileEditor() {
 
   if (!profile) return null
 
+  const isDirty = baseline !== null && snapshot(profile) !== baseline
+
   return (
-    <div className="space-y-6 pb-32">
+    <div className="space-y-6 pb-12">
       <PageShell
         title="My profile"
         description="This is how your name and details appear on jobs and outreach."
+        actions={
+          <Button size="sm" onClick={saveProfile} disabled={saving || !isDirty}>
+            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save profile'}
+          </Button>
+        }
       />
 
       <div className="flex items-center gap-4">
@@ -199,15 +223,6 @@ export function HirerProfileEditor() {
         </p>
       )}
 
-      <div className="fixed bottom-20 left-0 right-0 mx-auto max-w-2xl px-4 md:bottom-8">
-        <Button
-          onClick={saveProfile}
-          disabled={saving}
-          className="h-12 w-full rounded-2xl bg-accent font-semibold text-accent-foreground shadow-sm hover:bg-accent/80"
-        >
-          {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Profile'}
-        </Button>
-      </div>
     </div>
   )
 }
