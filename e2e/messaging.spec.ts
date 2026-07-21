@@ -123,7 +123,7 @@ test.describe('messaging center', () => {
       response => response.url().includes(`/api/messages/threads/${thread_id}`) && response.request().method() === 'POST',
     )
     await page.getByRole('button', { name: 'Send message' }).click()
-    expect((await sendDone).status()).toBe(200)
+    expect((await sendDone).status()).toBe(201)
 
     // The sent bubble renders with the quoted original above it.
     await expect(page.locator('[data-message-id]').getByText('Yes - May works for me.')).toBeVisible()
