@@ -44,6 +44,7 @@ Query → LLM parses to structured intent (category, skills, location, availabil
 - `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY` are **server-only**. Never prefix with `NEXT_PUBLIC_`, never import into client components. CI greps built client bundles for their values (`scripts/check-client-bundles.mjs`) and fails if found.
 - All OpenAI calls run in route handlers or server actions — no AI keys reach the browser.
 - RLS on all user data. Mocked unit tests are NOT evidence auth/tenant isolation works; only integration + pgTAP tests are.
+- **Every migration that creates a table must declare its grants explicitly** (see `030_baseline_table_grants.sql`). Local stacks have no default privileges, so a table without explicit grants works on hosted but fails pgTAP/CI with "permission denied". RLS bounds rows; grants bound verbs.
 - New env vars: document in `.env.example` and register in the startup validation (`src/instrumentation.ts` / `src/lib/env.ts`).
 
 ## Never edit
