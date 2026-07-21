@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { nameInitial } from '@/lib/display'
+import { Button } from '@/components/ui/button'
 
 interface TalentCardMediaProps {
   images: string[]
@@ -45,22 +46,28 @@ export function TalentCardMedia({ images, name }: TalentCardMediaProps) {
 
       {count > 1 && (
         <>
-          <button
-            type="button"
-            aria-label="Previous photo"
-            onClick={step(-1)}
-            className="absolute left-2 top-1/2 z-10 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur-sm transition-opacity duration-[var(--duration-fast)] hover:bg-background sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="Next photo"
-            onClick={step(1)}
-            className="absolute right-2 top-1/2 z-10 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur-sm transition-opacity duration-[var(--duration-fast)] hover:bg-background sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-          >
-            <ChevronRight className="size-4" />
-          </button>
+          <span className="absolute left-2 top-1/2 z-10 -translate-y-1/2 transition-opacity duration-[var(--duration-fast)] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Previous photo"
+              onClick={step(-1)}
+              className="cursor-pointer rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur-sm hover:bg-background"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+          </span>
+          <span className="absolute right-2 top-1/2 z-10 -translate-y-1/2 transition-opacity duration-[var(--duration-fast)] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Next photo"
+              onClick={step(1)}
+              className="cursor-pointer rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur-sm hover:bg-background"
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </span>
           <div
             className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1"
             role="status"

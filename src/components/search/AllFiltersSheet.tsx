@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { filtersForCategory } from '@/lib/filter-taxonomy'
@@ -55,12 +55,12 @@ export function AllFiltersSheet({ open, onOpenChange, filters, onApply, previewC
   }
 
   return (
-    <Dialog open={open} onOpenChange={next => {
+    <Sheet open={open} onOpenChange={next => {
       if (next) setDraft(filters)
       onOpenChange(next)
     }}>
-      <DialogContent className="!inset-y-0 !left-auto !right-0 !top-0 !h-dvh !max-w-xl !translate-x-0 !translate-y-0 !grid-rows-[auto_minmax(0,1fr)_auto] !rounded-none !p-0 sm:!max-w-xl" showCloseButton={false}>
-        <DialogHeader className="flex-row items-center justify-between border-b border-border px-5 py-4"><DialogTitle className="text-lg">All filters</DialogTitle><Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Close</Button></DialogHeader>
+      <SheetContent className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl" showCloseButton={false}>
+        <SheetHeader className="flex-row items-center justify-between border-b border-border px-5 py-4"><SheetTitle className="text-lg">All filters</SheetTitle><Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Close</Button></SheetHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <div className="space-y-4">
             {sections.map(section => {
@@ -90,12 +90,12 @@ export function AllFiltersSheet({ open, onOpenChange, filters, onApply, previewC
             })}
           </div>
         </div>
-        <div className="flex items-center gap-3 border-t border-border bg-background p-4">
+        <SheetFooter className="flex-row items-center gap-3 border-t border-border bg-background p-4">
           <Button type="button" variant="outline" onClick={() => updateDraft({})}>Reset</Button>
           <Button type="button" className="flex-1 tabular-nums" onClick={() => { onApply(draft); onOpenChange(false) }}>Show results{count !== null ? ` (${count})` : ''}</Button>
-        </div>
+        </SheetFooter>
         <span className="sr-only">{activeFilterCount(draft)} active filters</span>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { SearchX, Sparkles } from 'lucide-react'
+import { Pencil, RefreshCw, SearchX, Sparkles } from 'lucide-react'
 import { TalentCard, TalentListItem } from '@/components/talent/TalentCard'
 import { SearchHeader } from '@/components/search/SearchHeader'
 import { SearchSuggestionChips } from '@/components/search/SearchSuggestionChips'
@@ -11,6 +11,9 @@ import { SwipeStack } from '@/components/talent/SwipeStack'
 import { OutreachModal } from '@/components/outreach/OutreachModal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { parsedIntentChips } from '@/lib/search-intent'
+import type { ParsedQuery } from '@/lib/openai'
 import { isActiveLocalDemoMode } from '@/lib/demo-mode'
 import { searchDemoTalent } from '@/lib/demo-data'
 import { serializeSearchFilters, type SearchFilters } from '@/lib/search-filters'
@@ -50,11 +53,13 @@ function SearchPageContent() {
   const [searching, setSearching] = useState(false)
   const [searchTime, setSearchTime] = useState<number | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [parsedIntent, setParsedIntent] = useState<ParsedQuery | null>(null)
   const [deepSearching, setDeepSearching] = useState(false)
   const [deepStatus, setDeepStatus] = useState<string | null>(null)
   const [agentSummary, setAgentSummary] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const aiAbortRef = useRef<AbortController | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [outreachTalent, setOutreachTalent] = useState<(Profile & { talent_skills: TalentSkill[] }) | null>(null)
@@ -158,7 +163,7 @@ function SearchPageContent() {
 
   const runAiSearch = useCallback(async (q: string) => {
     aiAbortRef.current?.abort()
-    if (!q.trim()) { setAiResults(null); setSearchTime(null); setSearching(false); return }
+    if (!q.trim()) { setAiResults(null); setSearchTime(null); setParsedIntent(null); setSearching(false); return }
     const controller = new AbortController()
     aiAbortRef.current = controller
     setSearching(true)
@@ -167,6 +172,7 @@ function SearchPageContent() {
 
     if (isLocalDemo) {
       setAiResults(searchDemoTalent(q, filters))
+      setParsedIntent(null)
       setSearchTime(Date.now() - t0)
       setSearching(false)
       return
@@ -183,10 +189,12 @@ function SearchPageContent() {
       if (data.error) {
         setAiResults(null)
         setSearchTime(null)
+        setParsedIntent(null)
         setAiError(data.error)
       } else {
         const results = data.results ?? []
         setAiResults(results)
+        setParsedIntent((data.parsed as ParsedQuery | undefined) ?? null)
         const elapsed = Date.now() - t0
         setSearchTime(elapsed)
         posthog.capture('ai_search_performed', {
@@ -271,6 +279,8 @@ function SearchPageContent() {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAgentSummary(null)
+    // Stale parse must clear when the query changes (covered by the disable above).
+    setParsedIntent(null)
     if (!query.trim()) { setAiResults(null); setSearchTime(null); return }
     debounceRef.current = setTimeout(() => runAiSearch(query), 500)
     return () => {
@@ -285,6 +295,7 @@ function SearchPageContent() {
   // the structured `available_now` field that is intentionally not public.
   const displayResults = (isAiMode ? (aiResults ?? []) : allTalent).filter(r => !passed.has(r.profile.id))
   const loadingResults = searching || deepSearching || (!isAiMode && browseLoading)
+  const intentChips = parsedIntent ? parsedIntentChips(parsedIntent) : []
 
   const previewCount = useCallback(async (previewFilters: SearchFilters) => {
     const params = serializeSearchFilters(previewFilters)
@@ -317,7 +328,7 @@ function SearchPageContent() {
       <SearchHeader
         query={query}
         onQueryChange={setQuery}
-        onClearQuery={() => { setQuery(''); setAiResults(null) }}
+        onClearQuery={() => { setQuery(''); setAiResults(null); setParsedIntent(null) }}
         searching={searching}
         isAiMode={isAiMode}
         filters={filters}
@@ -331,7 +342,32 @@ function SearchPageContent() {
         hasResults={displayResults.length > 0}
         aiResultCount={aiResults?.length ?? 0}
         searchTime={searchTime}
+        inputRef={searchInputRef}
       />
+
+      {isAiMode && !searching && !deepSearching && !agentSummary && intentChips.length > 0 && (
+        <section aria-label="AI-parsed search intent" className="rounded-xl border border-border/80 bg-muted/40 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 shrink-0 text-primary" />
+            <span className="text-xs font-medium text-muted-foreground">AI · Understood</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="ml-auto text-muted-foreground hover:text-foreground"
+              onClick={() => searchInputRef.current?.focus()}
+            >
+              <Pencil className="size-3" />
+              Edit
+            </Button>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {intentChips.map(chip => (
+              <Badge key={chip} variant="secondary">{chip}</Badge>
+            ))}
+          </div>
+        </section>
+      )}
 
       {isAiMode && !isLocalDemo && (
         <div className="flex flex-wrap items-center gap-3">
@@ -354,10 +390,24 @@ function SearchPageContent() {
       )}
 
       {isAiMode && agentSummary && !deepSearching && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-muted/40 px-4 py-3 text-sm">
-          <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p>{agentSummary}</p>
-        </div>
+        <section aria-label="AI deep-search summary" className="rounded-xl border border-border/80 bg-muted/40 px-4 py-3 text-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 shrink-0 text-primary" />
+            <span className="text-xs font-medium text-muted-foreground">AI summary</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="ml-auto text-muted-foreground hover:text-foreground"
+              onClick={runDeepSearch}
+              disabled={deepSearching || searching}
+            >
+              <RefreshCw className="size-3" />
+              Regenerate
+            </Button>
+          </div>
+          <p className="mt-1.5">{agentSummary}</p>
+        </section>
       )}
 
       {aiError && (

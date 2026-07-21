@@ -7,11 +7,11 @@ import type { Profile, TalentSkill } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface OutreachModalProps {
@@ -148,14 +148,14 @@ export function OutreachModal({ talent, job = null, onClose, onSent }: OutreachM
   }
 
   return (
-    <Dialog open={!!talent} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{job ? 'Invite to job' : 'Contact talent'}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={!!talent} onOpenChange={(open) => { if (!open) onClose() }}>
+      <SheetContent side="right" className="w-[85vw] gap-0 sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>{job ? 'Invite to job' : 'Contact talent'}</SheetTitle>
+        </SheetHeader>
 
         {talent && (
-          <div className="space-y-4">
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
             {/* Talent header */}
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12 rounded-xl">
@@ -233,7 +233,7 @@ export function OutreachModal({ talent, job = null, onClose, onSent }: OutreachM
             </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

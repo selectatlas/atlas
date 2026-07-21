@@ -2,14 +2,15 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import type { Profile, TalentSkill } from '@/types'
+import type { Profile, TalentSkill, TalentSearchResult } from '@/types'
 import { nameInitial } from '@/lib/display'
 import { CATEGORY_LABELS } from '@/lib/skills'
 import { useReducedMotion } from '@/lib/use-reduced-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Check, Eye, MapPin, Undo2, X } from 'lucide-react'
 
-type TalentResult = { profile: Profile & { talent_skills: TalentSkill[] }; match_score: number }
+type TalentResult = TalentSearchResult
 
 interface LastAction {
   type: 'contact' | 'pass'
@@ -194,9 +195,9 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
           size="icon-lg"
           onClick={() => { setLastAction({ type: 'pass', talentId: current.profile.id, talent: current.profile }); onPass(current.profile.id); advance() }}
           aria-label="Pass"
-          className="size-14 rounded-full bg-muted text-xl text-muted-foreground shadow-sm hover:text-foreground"
+          className="size-14 rounded-full bg-muted text-muted-foreground shadow-sm hover:text-foreground"
         >
-          ✕
+          <X className="size-6" />
         </Button>
         {lastAction && (
           <Button
@@ -208,9 +209,7 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
             title="Undo last action"
             className="size-10 rounded-full border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-            </svg>
+            <Undo2 className="size-4" />
           </Button>
         )}
         <Button
@@ -221,19 +220,16 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
           aria-label="View profile"
           className="size-10 rounded-full bg-card text-muted-foreground hover:text-foreground"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-          </svg>
+          <Eye className="size-4" />
         </Button>
         <Button
           type="button"
           size="icon-lg"
           onClick={() => { setLastAction({ type: 'contact', talentId: current.profile.id, talent: current.profile }); onContact(current.profile); advance() }}
           aria-label="Contact"
-          className="size-14 rounded-full bg-accent text-xl text-accent-foreground shadow-sm hover:bg-accent/80"
+          className="size-14 rounded-full bg-accent text-accent-foreground shadow-sm hover:bg-accent/80"
         >
-          ✓
+          <Check className="size-6" />
         </Button>
       </div>
 
@@ -246,7 +242,7 @@ export function SwipeStack({ results, onContact, onPass, onUndo, onViewProfile }
 }
 
 function CardContent({ result }: { result: TalentResult }) {
-  const { profile, match_score } = result
+  const { profile, match_score, match_reasons } = result
   const skills = profile.talent_skills.slice(0, 4)
 
   return (
@@ -282,10 +278,7 @@ function CardContent({ result }: { result: TalentResult }) {
 
         {(profile.city || profile.country) && (
           <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-4">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-            </svg>
+            <MapPin className="size-3.5" />
             {[profile.city, profile.country].filter(Boolean).join(', ')}
             {profile.rates && <span className="ml-2">{profile.rates}</span>}
           </div>
@@ -306,11 +299,29 @@ function CardContent({ result }: { result: TalentResult }) {
         )}
 
         {match_score > 0 && (
-          <div className="mt-3 pt-3 border-t flex items-center justify-between">
-            <span className="text-muted-foreground text-xs">AI match score</span>
-            <span className="bg-accent text-accent-foreground text-xs font-bold px-2.5 py-1 rounded-full">
-              {match_score}%
-            </span>
+          <div className="mt-3 pt-3 border-t">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-xs">AI match score</span>
+              <span className="bg-brand-lime text-black text-xs font-bold px-2.5 py-1 rounded-full">
+                {match_score}% match
+              </span>
+            </div>
+            {match_reasons && match_reasons.length > 0 && (
+              <div
+                className="mt-2 flex flex-wrap gap-1.5"
+                aria-label="Why this talent matches"
+              >
+                {match_reasons.slice(0, 3).map(reason => (
+                  <Badge
+                    key={reason}
+                    variant="secondary"
+                    className="max-w-full text-[11px]"
+                  >
+                    <span className="truncate">{reason}</span>
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

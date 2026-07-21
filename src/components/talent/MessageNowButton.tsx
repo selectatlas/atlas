@@ -1,6 +1,7 @@
 'use client'
 
 import { MessageSquare } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 // "Message now" straight from the card (client feedback 20 Jul 2026, after
 // the Collabstr reference) - opens the existing outreach flow without
@@ -8,8 +9,9 @@ import { MessageSquare } from 'lucide-react'
 // server-rendered card grids (e.g. SimilarTalent) simply omit it.
 export function MessageNowButton({ name, onMessage }: { name: string; onMessage: () => void }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon"
       aria-label={`Message ${name}`}
       onClick={event => {
         // The whole card is a link - the button must not navigate.
@@ -17,9 +19,9 @@ export function MessageNowButton({ name, onMessage }: { name: string; onMessage:
         event.stopPropagation()
         onMessage()
       }}
-      className="flex size-8 cursor-pointer items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur-sm transition-colors duration-[var(--duration-fast)] hover:bg-background"
+      className="cursor-pointer rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur-sm duration-[var(--duration-fast)] hover:bg-background"
     >
       <MessageSquare className="size-4" />
-    </button>
+    </Button>
   )
 }

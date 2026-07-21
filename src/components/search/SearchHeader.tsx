@@ -1,16 +1,22 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, type Ref } from 'react'
 import { Grid2X2, List, MoveHorizontal, Sparkles, X } from 'lucide-react'
 import { FilterBar } from '@/components/search/FilterBar'
 import { SaveSearchButton } from '@/components/search/SaveSearchButton'
 import { SearchSuggestionChips } from '@/components/search/SearchSuggestionChips'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { SearchFilters } from '@/lib/search-filters'
 
 type ViewMode = 'swipe' | 'grid' | 'list'
 type SortMode = 'newest' | 'available'
+
+const SORT_OPTIONS: Record<SortMode, string> = {
+  newest: 'Newest',
+  available: 'Available first',
+}
 
 interface SearchHeaderProps {
   query: string
@@ -29,6 +35,8 @@ interface SearchHeaderProps {
   hasResults: boolean
   aiResultCount: number
   searchTime: number | null
+  /** Lets the page focus the query input (parsed-intent artefact "Edit" action). */
+  inputRef?: Ref<HTMLInputElement>
 }
 
 export function SearchHeader({
@@ -36,7 +44,7 @@ export function SearchHeader({
   filters, onFiltersChange, previewCount,
   browseResultCount,
   viewMode, sortMode, onViewModeChange, onSortModeChange, hasResults,
-  aiResultCount, searchTime,
+  aiResultCount, searchTime, inputRef,
 }: SearchHeaderProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -93,6 +101,7 @@ export function SearchHeader({
             )}
           </div>
           <Input
+            ref={inputRef}
             type="text"
             value={query}
             onChange={e => onQueryChange(e.target.value)}
@@ -145,15 +154,20 @@ export function SearchHeader({
             </span>
             <div className="flex items-center gap-2">
               {!isAiMode && (
-                <select
-                  aria-label="Sort talent"
+                <Select
+                  items={SORT_OPTIONS}
                   value={sortMode}
-                  onChange={e => onSortModeChange(e.target.value as SortMode)}
-                  className="h-8 cursor-pointer appearance-none rounded-lg border border-border bg-background px-2.5 text-xs text-foreground outline-none transition-[border-color,box-shadow] focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  onValueChange={value => onSortModeChange((value ?? 'newest') as SortMode)}
                 >
-                  <option value="newest">Newest</option>
-                  <option value="available">Available first</option>
-                </select>
+                  <SelectTrigger aria-label="Sort talent" className="bg-background text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(SORT_OPTIONS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
               <div className="flex gap-0.5 rounded-lg bg-muted p-1" role="group" aria-label="View mode">
                 {(['grid', 'list', 'swipe'] as ViewMode[]).map(mode => (

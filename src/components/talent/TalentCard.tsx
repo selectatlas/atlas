@@ -87,7 +87,7 @@ export function TalentCard({
           )}
           <ShortlistButton
             talentId={profile.id}
-            className="bg-background/90 shadow-sm backdrop-blur-sm hover:bg-background"
+            className="rounded-full bg-background/90 shadow-sm backdrop-blur-sm hover:bg-background"
           />
         </div>
       </div>
@@ -131,12 +131,13 @@ export function TalentCard({
             aria-label="Why this talent matches"
           >
             {matchReasons.map((reason) => (
-              <span
+              <Badge
                 key={reason}
-                className="inline-flex max-w-full items-center truncate rounded-full bg-secondary/70 px-2 py-1 text-[10px] font-medium text-secondary-foreground"
+                variant="secondary"
+                className="max-w-full text-[11px]"
               >
-                {reason}
-              </span>
+                <span className="truncate">{reason}</span>
+              </Badge>
             ))}
           </div>
         )}
@@ -188,8 +189,8 @@ export function TalentCard({
               )}
             </div>
             {profile.availability && (
-              <span className="inline-flex max-w-[50%] items-center gap-1 truncate text-emerald-600 dark:text-emerald-400">
-                <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+              <span className="inline-flex max-w-[50%] items-center gap-1 truncate text-success">
+                <span className="size-1.5 shrink-0 rounded-full bg-success" />
                 <span className="truncate">{profile.availability}</span>
               </span>
             )}
@@ -250,7 +251,7 @@ export function TalentListItem({
             <TalentLevelBadge level={level} />
             {matchScore !== undefined && (
               <span className="shrink-0 rounded-full bg-brand-lime px-1.5 py-0.5 text-[10px] font-bold text-black">
-                {matchScore}%
+                {matchScore}% match
               </span>
             )}
           </div>
@@ -263,12 +264,13 @@ export function TalentListItem({
               aria-label="Why this talent matches"
             >
               {matchReasons.slice(0, 2).map((reason) => (
-                <span
+                <Badge
                   key={reason}
-                  className="truncate rounded-full bg-secondary/70 px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground"
+                  variant="secondary"
+                  className="max-w-full px-1.5 text-[10px]"
                 >
-                  {reason}
-                </span>
+                  <span className="truncate">{reason}</span>
+                </Badge>
               ))}
             </div>
           )}
@@ -292,7 +294,7 @@ export function TalentListItem({
         <div className="hidden w-24 shrink-0 text-right text-xs font-medium text-foreground/75 sm:block">
           {profile.rates?.split("/")[0].trim() || "Rate on request"}
         </div>
-        <div className="hidden w-24 shrink-0 text-right text-[11px] text-emerald-600 dark:text-emerald-400 sm:block">
+        <div className="hidden w-24 shrink-0 text-right text-[11px] text-success sm:block">
           {profile.availability || "—"}
         </div>
         <div className="shrink-0 opacity-100 sm:opacity-0 sm:transition-opacity sm:duration-[var(--duration-fast)] sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">

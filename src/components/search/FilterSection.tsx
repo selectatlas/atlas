@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { TalentFilterDefinition } from '@/lib/filter-taxonomy'
 import type { NumericRange, SearchFilters, SearchFilterValue } from '@/lib/search-filters'
 
@@ -70,13 +71,28 @@ export function FilterSection({ definition, filters, onChange, compact = false }
   }
 
   if (definition.kind === 'single') {
+    const items = [
+      { value: null, label: 'Any' },
+      ...(definition.options ?? []).map(option => ({ value: option.value, label: option.label })),
+    ]
     return (
       <div className="space-y-2">
         {!compact && <p className="text-sm font-medium">{definition.label}</p>}
-        <select value={typeof value === 'string' ? value : ''} onChange={event => update(event.target.value || undefined)} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30">
-          <option value="">Any</option>
-          {definition.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
+        <Select
+          items={items}
+          value={typeof value === 'string' && value !== '' ? value : null}
+          onValueChange={next => update(typeof next === 'string' ? next : undefined)}
+        >
+          <SelectTrigger aria-label={definition.label} className="h-9 w-full bg-background">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={null}>Any</SelectItem>
+            {definition.options?.map(option => (
+              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     )
   }
