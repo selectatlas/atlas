@@ -2,28 +2,26 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import posthog from 'posthog-js'
 import type { LucideIcon } from 'lucide-react'
 import {
   ArrowRight,
   ArrowUpRight,
-  CalendarDays,
   Check,
   FileText,
-  MapPin,
   Plus,
   Search,
-  Send,
-  SlidersHorizontal,
   Sparkles,
   Users,
 } from 'lucide-react'
 import Hero from '@/components/Hero'
-import { landingFaq, showcaseTalent } from '@/components/marketing/landing-data'
+import { landingFaq } from '@/components/marketing/landing-data'
+import { TalentCarousel } from '@/components/marketing/TalentCarousel'
 
 const briefExamples: Array<{
   category: string
   brief: string
-  visual: 'search' | 'casting' | 'campaign' | 'availability' | 'photo_video'
+  visual: 'search' | 'casting' | 'campaign'
 }> = [
   {
     category: 'Commercial casting',
@@ -39,16 +37,6 @@ const briefExamples: Array<{
     category: 'Creator campaigns',
     brief: 'Lifestyle creators with strong on-camera hosting and an engaged audience.',
     visual: 'campaign',
-  },
-  {
-    category: 'Events & live performance',
-    brief: 'A Bhangra troupe available for a two-night corporate show in Manchester.',
-    visual: 'availability',
-  },
-  {
-    category: 'Photography & video',
-    brief: 'A photographer-videographer with music-video credits available for a three-day shoot next month.',
-    visual: 'photo_video',
   },
 ]
 
@@ -76,6 +64,11 @@ const steps: Array<{ number: string; title: string; description: string; image: 
   },
 ]
 
+function captureLandingCta(location: string) {
+  if (!process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN) return
+  posthog.capture('landing_cta_clicked', { location })
+}
+
 export function LandingPage() {
   return (
     <main className="landing-page" aria-label="Atlas landing page">
@@ -94,7 +87,7 @@ export function LandingPage() {
 
           <div className="landing-header__actions">
             <Link href="/login" className="landing-header__login">Sign in</Link>
-            <Link href="/signup" className="landing-button landing-button--small landing-button--dark">
+            <Link href="/signup" className="landing-button landing-button--small landing-button--dark" onClick={() => captureLandingCta('header')}>
               Try Atlas
               <ArrowUpRight aria-hidden="true" />
             </Link>
@@ -108,44 +101,6 @@ export function LandingPage() {
         <span>For casting directors</span><i aria-hidden="true" />
         <span>For producers</span><i aria-hidden="true" />
         <span>For creative teams</span>
-      </section>
-
-      <section className="landing-section" id="talent-roster" aria-label="Meet the talent">
-        <div className="landing-section__heading">
-          <p className="landing-eyebrow">The roster</p>
-          <h2>The kind of talent Atlas surfaces.</h2>
-          <p>A preview from the Atlas demo roster - every card carries the specifics hirers actually search for.</p>
-        </div>
-
-        <div className="landing-roster">
-          {showcaseTalent.map(talent => (
-            <article className="landing-roster__card" key={talent.name}>
-              <div className="landing-roster__photo">
-                <Image src={talent.image} alt={`${talent.name}, ${talent.role}`} fill sizes="(max-width: 780px) 50vw, 25vw" />
-                <span>{talent.category}</span>
-              </div>
-              <div className="landing-roster__body">
-                <h3>{talent.name}</h3>
-                <p className="landing-roster__role">{talent.role}</p>
-                <p className="landing-roster__meta">
-                  <MapPin aria-hidden="true" />
-                  {talent.city} · {talent.availability}
-                </p>
-                <div className="landing-roster__skills">
-                  {talent.skills.map(skill => (
-                    <span key={skill}>{skill}</span>
-                  ))}
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <div className="landing-roster__cta">
-          <Link href="/signup" className="landing-text-link">
-            Search the full roster <ArrowRight aria-hidden="true" />
-          </Link>
-        </div>
       </section>
 
       <section className="landing-section landing-section--soft" id="how-it-works">
@@ -172,9 +127,24 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-section" id="product" aria-label="What Atlas does">
+      <section className="landing-section" id="talent-roster" aria-label="Meet the talent">
         <div className="landing-section__heading">
-          <p className="landing-eyebrow">The product</p>
+          <p className="landing-eyebrow">The roster</p>
+          <h2>The kind of talent Atlas surfaces.</h2>
+          <p>A moving preview of eight profiles from the seeded demo roster, with the details hirers actually search for.</p>
+        </div>
+
+        <TalentCarousel />
+
+        <div className="landing-roster__cta">
+          <Link href="/signup?source=roster" className="landing-text-link" onClick={() => captureLandingCta('roster')}>
+            Search the full roster <ArrowRight aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
+
+      <section className="landing-section landing-section--soft" id="product" aria-label="What Atlas does">
+        <div className="landing-section__heading">
           <h2>A better brief produces a better shortlist.</h2>
           <p>Atlas turns the details people usually lose in a spreadsheet into a ranked, explainable next step.</p>
         </div>
@@ -228,76 +198,11 @@ export function LandingPage() {
             </div>
           </article>
 
-          <article className="landing-bento__cell">
-            <div className="landing-bento__copy">
-              <h3>Availability in context</h3>
-              <p>See who can actually make the date.</p>
-            </div>
-            <div className="landing-bento__visual" aria-hidden="true">
-              <p className="landing-bento-availability__label text-xs uppercase tracking-wide text-muted-foreground">Example UI</p>
-              <div className="landing-bento-availability">
-                <span className="landing-bento-availability__label">Availability</span>
-                <p className="text-sm">Available December · London · Travel on request</p>
-                <small>Shown from each talent&apos;s profile availability field</small>
-              </div>
-            </div>
-          </article>
+        </div>
 
-          <article className="landing-bento__cell landing-bento__cell--wide">
-            <div className="landing-bento__copy">
-              <h3>Shortlist without the handoff</h3>
-              <p>Move from discovery to a considered first message in one flow.</p>
-            </div>
-            <div className="landing-bento__visual" aria-hidden="true">
-              <div className="landing-bento-flow">
-                <div className="landing-bento-flow__stage">
-                  <span>Discover</span>
-                  <div className="landing-bento-flow__faces">
-                    <span className="landing-mini-avatar"><Image src="/hero/03.jpg" alt="" fill sizes="32px" /></span>
-                    <span className="landing-mini-avatar"><Image src="/hero/07.jpg" alt="" fill sizes="32px" /></span>
-                    <span className="landing-mini-avatar"><Image src="/hero/09.jpg" alt="" fill sizes="32px" /></span>
-                    <span className="landing-mini-avatar"><Image src="/hero/11.jpg" alt="" fill sizes="32px" /></span>
-                  </div>
-                </div>
-                <ArrowRight className="landing-bento-flow__arrow" aria-hidden="true" />
-                <div className="landing-bento-flow__stage">
-                  <span>Shortlist</span>
-                  <div className="landing-bento-flow__faces">
-                    <span className="landing-mini-avatar"><Image src="/hero/03.jpg" alt="" fill sizes="32px" /></span>
-                    <span className="landing-mini-avatar"><Image src="/hero/09.jpg" alt="" fill sizes="32px" /></span>
-                  </div>
-                </div>
-                <ArrowRight className="landing-bento-flow__arrow" aria-hidden="true" />
-                <div className="landing-bento-flow__stage landing-bento-flow__stage--message">
-                  <span>Reach out</span>
-                  <p>“Hi Maya - we’re casting a two-day commercial shoot in March and your movement work stood out…”</p>
-                </div>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section className="landing-outcomes" aria-label="What Atlas is built to do">
-        <div className="landing-outcome">
-          <h3>Specific in, specific out</h3>
-          <p>Search by the details that make a brief specific - language, movement, look, availability.</p>
-        </div>
-        <div className="landing-outcome">
-          <h3>Explainable matches</h3>
-          <p>See why each person surfaced when Atlas has structured signals; weaker hits may show a generic reason.</p>
-        </div>
-        <div className="landing-outcome">
-          <h3>One connected flow</h3>
-          <p>Keep discovery, shortlisting, and outreach together instead of scattered across tools.</p>
-        </div>
-      </section>
-
-      <section className="landing-section landing-section--soft" id="use-cases" aria-label="Real briefs Atlas handles">
-        <div className="landing-section__heading">
-          <p className="landing-eyebrow">Built for real briefs</p>
+        <div className="landing-section__heading landing-section__heading--subsection" id="use-cases">
           <h2>If you can say it, you can search it.</h2>
-          <p>Every project starts with a sentence. These are the kinds Atlas is built for.</p>
+          <p>Three grounded examples show how a plain-language brief becomes useful search evidence.</p>
         </div>
 
         <div className="landing-briefs">
@@ -343,22 +248,6 @@ export function LandingPage() {
                   </div>
                 )}
 
-                {example.visual === 'availability' && (
-                  <div className="landing-brief-card__availability">
-                    <div><CalendarDays /><span>Manchester · March</span></div>
-                    <p><i /> Available for both show dates · Bhangra troupe</p>
-                  </div>
-                )}
-
-                {example.visual === 'photo_video' && (
-                  <div className="landing-brief-card__crew">
-                    <div className="landing-brief-card__crew-filter"><SlidersHorizontal /><span>Photographer</span><span>Music videos</span><span>Next month</span></div>
-                    <div className="landing-brief-card__crew-map">
-                      <MapPin /><i /><i /><i /><i />
-                    </div>
-                    <div className="landing-brief-card__crew-footer"><span>Photographer &amp; videographer category</span><Send /></div>
-                  </div>
-                )}
               </div>
               <div className="landing-brief-card__copy">
                 <span>{example.category}</span>
@@ -380,7 +269,7 @@ export function LandingPage() {
               <li><Check aria-hidden="true" />Natural-language search plus familiar filters</li>
               <li><Check aria-hidden="true" />Shortlist and reach out in one focused flow</li>
             </ul>
-            <Link href="/signup" className="landing-text-link">Start a search <ArrowRight aria-hidden="true" /></Link>
+            <Link href="/signup?source=hirer-section" className="landing-text-link" onClick={() => captureLandingCta('hirer_section')}>Start a search <ArrowRight aria-hidden="true" /></Link>
           </div>
           <div className="landing-audience__visual" aria-hidden="true">
             <div className="landing-mini-window">
@@ -389,9 +278,9 @@ export function LandingPage() {
                 <span>3 strong matches</span>
               </div>
               <div className="landing-mini-brief"><span className="landing-mini-brief__icon"><Search /></span><span>Hindi-speaking performer<br /><b>in London · available December</b></span></div>
-              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--lime"><Image src="/hero/01.jpg" alt="" fill sizes="32px" /></span><span><b>Priya Singh</b><small>Example · Bollywood</small></span><strong>—</strong></div>
-              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--lavender"><Image src="/hero/12.jpg" alt="" fill sizes="32px" /></span><span><b>Aisha Khan</b><small>Example · Bhangra</small></span><strong>—</strong></div>
-              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--indigo"><Image src="/hero/02.jpg" alt="" fill sizes="32px" /></span><span><b>Ravi Mehta</b><small>Example · Movement</small></span><strong>—</strong></div>
+              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--lime"><Image src="/hero/01.jpg" alt="" fill sizes="32px" /></span><span><b>Priya Singh</b><small>Example · Bollywood</small></span><strong>Preview</strong></div>
+              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--lavender"><Image src="/hero/12.jpg" alt="" fill sizes="32px" /></span><span><b>Aisha Khan</b><small>Example · Bhangra</small></span><strong>Preview</strong></div>
+              <div className="landing-mini-row"><span className="landing-mini-avatar landing-result__avatar--indigo"><Image src="/hero/02.jpg" alt="" fill sizes="32px" /></span><span><b>Ravi Mehta</b><small>Example · Movement</small></span><strong>Preview</strong></div>
             </div>
           </div>
         </article>
@@ -415,14 +304,13 @@ export function LandingPage() {
               <li><Check aria-hidden="true" />Make relevant opportunities easier to find</li>
               <li><Check aria-hidden="true" />Keep your work and availability in one place</li>
             </ul>
-            <Link href="/signup" className="landing-text-link">Create your profile <ArrowRight aria-hidden="true" /></Link>
+            <Link href="/signup?source=talent-section" className="landing-text-link" onClick={() => captureLandingCta('talent_section')}>Create your profile <ArrowRight aria-hidden="true" /></Link>
           </div>
         </article>
       </section>
 
       <section className="landing-section landing-section--soft" id="faq" aria-label="Frequently asked questions">
         <div className="landing-section__heading">
-          <p className="landing-eyebrow">FAQ</p>
           <h2>Questions, answered.</h2>
         </div>
 
@@ -445,8 +333,8 @@ export function LandingPage() {
           <p>Start with a plain-language search and see where it takes you.</p>
         </div>
         <div className="landing-final-cta__actions">
-          <Link href="/signup" className="landing-button landing-button--light">Start finding talent <ArrowUpRight aria-hidden="true" /></Link>
-          <Link href="/login" className="landing-button landing-button--outline-light">Sign in <ArrowRight aria-hidden="true" /></Link>
+          <Link href="/signup?source=final-cta" className="landing-button landing-button--light" onClick={() => captureLandingCta('final_primary')}>Start finding talent <ArrowUpRight aria-hidden="true" /></Link>
+          <Link href="/login" className="landing-button landing-button--outline-light" onClick={() => captureLandingCta('final_signin')}>Sign in <ArrowRight aria-hidden="true" /></Link>
         </div>
       </section>
 

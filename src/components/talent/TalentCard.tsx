@@ -25,6 +25,7 @@ interface TalentCardProps {
   badges?: TalentCardBadges;
   images?: string[];
   onMessage?: () => void;
+  priority?: boolean;
 }
 
 const proficiencyVariant: Record<string, "default" | "secondary" | "outline"> =
@@ -56,6 +57,7 @@ export function TalentCard({
   badges,
   images,
   onMessage,
+  priority,
 }: TalentCardProps) {
   const topSkills = profile.talent_skills.slice(0, 3);
   const primaryCategory = profile.talent_skills[0]?.category;
@@ -100,6 +102,7 @@ export function TalentCard({
         images={images ?? (profile.avatar_url ? [profile.avatar_url] : [])}
         name={profile.full_name}
         overlay={mediaOverlay}
+        priority={priority}
       />
 
       <CardContent className="p-4">

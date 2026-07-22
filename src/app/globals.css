@@ -559,6 +559,14 @@
   gap: 14px;
 }
 
+.hero .hero-search__label {
+  align-self: flex-start;
+  margin-left: 22px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .hero .hero-search__row {
   display: flex;
   align-items: center;
@@ -568,6 +576,11 @@
   border-radius: 999px;
   background: #fff;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
+}
+
+.hero .hero-search__row:focus-within {
+  border-color: var(--brand-indigo);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-indigo) 24%, transparent), 0 14px 40px color-mix(in oklch, var(--ink) 8%, transparent);
 }
 
 .hero .hero-search__icon {
@@ -665,6 +678,140 @@
   text-underline-offset: 3px;
 }
 
+.hero .hero-preview {
+  display: grid;
+  width: min(100%, 720px);
+  gap: 14px;
+  border: 1px solid color-mix(in oklch, var(--ink) 14%, transparent);
+  border-radius: var(--ds-radius-xl);
+  background: color-mix(in oklch, var(--paper) 94%, transparent);
+  padding: 18px;
+  text-align: left;
+  box-shadow: 0 18px 48px color-mix(in oklch, var(--ink) 10%, transparent);
+}
+
+.hero .hero-preview__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hero .hero-preview__heading span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hero .hero-preview__heading p,
+.hero .hero-preview__empty p,
+.hero .hero-preview__empty span {
+  margin: 0;
+}
+
+.hero .hero-preview__heading p {
+  color: color-mix(in oklch, var(--ink) 72%, transparent);
+  font-size: 12px;
+}
+
+.hero .hero-preview__results {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hero .hero-preview__result {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid color-mix(in oklch, var(--ink) 10%, transparent);
+  border-radius: var(--ds-radius-lg);
+  background: var(--paper);
+  padding: 10px;
+}
+
+.hero .hero-preview__result > img {
+  width: 52px;
+  height: 58px;
+  border-radius: var(--ds-radius-md);
+  object-fit: cover;
+}
+
+.hero .hero-preview__result h2,
+.hero .hero-preview__result p,
+.hero .hero-preview__result ul {
+  margin: 0;
+}
+
+.hero .hero-preview__result h2 {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.hero .hero-preview__result p {
+  margin-top: 3px;
+  overflow: hidden;
+  color: color-mix(in oklch, var(--ink) 68%, transparent);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero .hero-preview__result ul {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.hero .hero-preview__result li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: color-mix(in oklch, var(--ink) 78%, transparent);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.hero .hero-preview__result li svg {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+}
+
+.hero .hero-preview__empty {
+  display: grid;
+  gap: 4px;
+  border-radius: var(--ds-radius-lg);
+  background: var(--paper);
+  padding: 16px;
+  color: var(--ink);
+}
+
+.hero .hero-preview__empty p {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.hero .hero-preview__empty span {
+  color: color-mix(in oklch, var(--ink) 70%, transparent);
+  font-size: 12px;
+}
+
+.hero .hero-preview__cta {
+  justify-self: end;
+  height: 44px;
+  padding: 0 20px;
+  font-size: 14px;
+}
+
 @media (max-width: 680px) {
   .hero {
     --tile-veil: 0.18;
@@ -693,6 +840,28 @@
     align-items: flex-start;
     gap: 6px;
   }
+
+  .hero .content {
+    gap: 20px;
+    padding: 2rem 1rem 4.75rem;
+  }
+
+  .hero .hero-preview {
+    padding: 14px;
+  }
+
+  .hero .hero-preview__heading {
+    display: grid;
+    gap: 3px;
+  }
+
+  .hero .hero-preview__results {
+    grid-template-columns: 1fr;
+  }
+
+  .hero .hero-preview__cta {
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -705,6 +874,10 @@
 .landing-page a {
   color: inherit;
   text-decoration: none;
+}
+
+.landing-page [id] {
+  scroll-margin-top: 5rem;
 }
 
 .landing-page a:active,
@@ -738,6 +911,10 @@
   font-size: 1.18rem;
   font-weight: 750;
   letter-spacing: -0.06em;
+}
+
+.landing-header .landing-brand {
+  min-height: 44px;
 }
 
 .landing-brand b {
@@ -1345,7 +1522,7 @@
 }
 
 .landing-section {
-  padding: clamp(5.5rem, 10vw, 9rem) 1rem;
+  padding: clamp(4.5rem, 8vw, 7rem) 1rem;
 }
 
 .landing-section--soft {
@@ -1376,10 +1553,14 @@
   line-height: 1.65;
 }
 
+.landing-section__heading--subsection {
+  margin-top: clamp(4.5rem, 8vw, 6.5rem);
+}
+
 .landing-steps {
   display: grid;
   width: min(100%, 1040px);
-  margin: 4.5rem auto 0;
+  margin: 3.5rem auto 0;
   gap: 1px;
   grid-template-columns: repeat(3, 1fr);
   background: var(--landing-line);
@@ -1444,7 +1625,7 @@
 .landing-bento {
   display: grid;
   width: min(100%, 1040px);
-  margin: 4.5rem auto 0;
+  margin: 3.5rem auto 0;
   gap: 1rem;
   grid-template-columns: repeat(12, 1fr);
 }
@@ -1755,7 +1936,7 @@
 .landing-briefs {
   display: grid;
   width: min(100%, 1040px);
-  margin: 4.5rem auto 0;
+  margin: 3.5rem auto 0;
   gap: 1rem;
   grid-template-columns: repeat(6, 1fr);
 }
@@ -2145,12 +2326,12 @@
 
 .landing-audience {
   display: grid;
-  min-height: 33rem;
+  min-height: 28rem;
   align-items: center;
-  gap: clamp(2.5rem, 7vw, 7rem);
+  gap: clamp(2.5rem, 5vw, 5rem);
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   border-bottom: 1px solid var(--landing-line);
-  padding: clamp(4.5rem, 8vw, 7.5rem) 0;
+  padding: clamp(3.5rem, 6vw, 5rem) 0;
 }
 
 .landing-audience:last-child {
@@ -2221,7 +2402,7 @@
 
 .landing-audience__visual {
   display: flex;
-  min-height: 26rem;
+  min-height: 22rem;
   align-items: center;
   justify-content: center;
   border-radius: var(--ds-radius-xl);
@@ -2524,12 +2705,83 @@
 
 /* Talent roster showcase */
 
-.landing-roster {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
+.landing-roster-carousel {
   width: min(100% - 2rem, 1180px);
-  margin: 0 auto;
+  margin: 3.5rem auto 0;
+}
+
+.landing-roster-carousel__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.landing-roster-carousel__controls p {
+  margin: 0;
+  color: var(--landing-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.landing-roster-carousel__controls > div {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.landing-roster-carousel__controls button {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--landing-line);
+  border-radius: var(--ds-radius-full);
+  background: var(--landing-paper);
+  color: var(--landing-ink);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.landing-roster-carousel__controls button:focus-visible,
+.landing-roster__item:focus-visible {
+  outline: 3px solid var(--landing-indigo);
+  outline-offset: 3px;
+}
+
+.landing-roster-carousel__controls button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.landing-roster-carousel__viewport {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  touch-action: pan-x pan-y;
+}
+
+.landing-roster-carousel__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.landing-roster-carousel__track,
+.landing-roster-carousel__group {
+  display: flex;
+  width: max-content;
+  gap: 1rem;
+}
+
+.landing-roster-carousel__track {
+  padding: 0.25rem 0.25rem 1.5rem;
+}
+
+.landing-roster__item {
+  display: block;
+  width: clamp(15rem, 23vw, 17.5rem);
+  flex: 0 0 auto;
+  border-radius: var(--ds-radius-lg);
 }
 
 .landing-roster__card {
@@ -2539,6 +2791,8 @@
   border: 1px solid var(--landing-line);
   border-radius: var(--ds-radius-lg);
   background: var(--landing-paper);
+  height: 100%;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
 }
 
 .landing-roster__photo {
@@ -2619,9 +2873,11 @@
   margin-top: 2rem;
 }
 
-@media (max-width: 920px) {
-  .landing-roster {
-    grid-template-columns: repeat(2, 1fr);
+@media (hover: hover) and (pointer: fine) {
+  .landing-roster__item:hover .landing-roster__card {
+    border-color: color-mix(in oklch, var(--landing-indigo) 40%, var(--landing-line));
+    box-shadow: 0 1rem 2rem color-mix(in oklch, var(--landing-ink) 8%, transparent);
+    transform: translateY(-3px);
   }
 }
 
@@ -2921,6 +3177,50 @@
   }
 }
 
+@media (max-width: 480px) {
+  .landing-header {
+    background: var(--landing-paper);
+    backdrop-filter: none;
+  }
+
+  .landing-header__inner {
+    width: calc(100% - 1rem);
+    gap: 0.75rem;
+  }
+
+  .landing-nav,
+  .landing-header__login {
+    display: none;
+  }
+
+  .landing-brand {
+    color: var(--landing-ink);
+    font-size: 1.08rem;
+  }
+
+  .landing-button--small {
+    min-width: 7.75rem;
+    padding: 0 1rem;
+  }
+
+  .landing-roster-carousel {
+    width: 100%;
+  }
+
+  .landing-roster-carousel__controls {
+    padding: 0 0.25rem;
+  }
+
+  .landing-roster-carousel__controls p {
+    max-width: 8rem;
+    line-height: 1.35;
+  }
+
+  .landing-roster__item {
+    width: 78vw;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-hero__content,
   .landing-preview,
@@ -2928,5 +3228,48 @@
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  .landing-roster-carousel__controls > div {
+    display: none;
+  }
+
+  .landing-roster-carousel__viewport {
+    overflow: visible;
+  }
+
+  .landing-roster-carousel__track,
+  .landing-roster-carousel__group {
+    width: auto;
+  }
+
+  .landing-roster-carousel__track {
+    display: block;
+    padding-inline: 0;
+  }
+
+  .landing-roster-carousel__group:first-child {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .landing-roster-carousel__duplicate {
+    display: none;
+  }
+
+  .landing-roster__item {
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 920px) {
+  .landing-roster-carousel__group:first-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 520px) {
+  .landing-roster-carousel__group:first-child {
+    grid-template-columns: 1fr;
   }
 }

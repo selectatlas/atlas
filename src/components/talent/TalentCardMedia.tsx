@@ -14,6 +14,9 @@ interface TalentCardMediaProps {
    * and above the tap zones so overlay buttons stay clickable.
    */
   overlay?: ReactNode
+  /** Skip lazy-loading and hint the browser's preload scanner - reserve for
+   * the first few above-the-fold cards (usually the grid's LCP element). */
+  priority?: boolean
 }
 
 // Card image area with an inline carousel (client feedback 20 Jul 2026):
@@ -23,7 +26,7 @@ interface TalentCardMediaProps {
 // (the phone gesture - investors demo on phones), or tapping a thumbnail
 // jumps straight to that image. Only the active image is fetched at card
 // size; the strip requests 72px thumbnails, so a 48-card grid stays cheap.
-export function TalentCardMedia({ images, name, overlay }: TalentCardMediaProps) {
+export function TalentCardMedia({ images, name, overlay, priority }: TalentCardMediaProps) {
   const [index, setIndex] = useState(0)
   const count = images.length
   const current = images[Math.min(index, Math.max(0, count - 1))]
@@ -53,6 +56,9 @@ export function TalentCardMedia({ images, name, overlay }: TalentCardMediaProps)
             src={current}
             alt={count > 1 ? `${name}, photo ${index + 1} of ${count}` : name}
             fill
+            priority={priority}
+            loading={priority ? undefined : 'lazy'}
+            quality={70}
             className="object-cover object-top transition-transform duration-[var(--duration-slow)] ease-[var(--ease-out)] group-hover:scale-[1.03]"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
           />

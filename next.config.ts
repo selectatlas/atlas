@@ -69,6 +69,9 @@ const nextConfig: NextConfig = {
     // Hero tiles and other static assets never change in place; keep
     // optimized variants cached instead of re-transforming per visit.
     minimumCacheTTL: 2678400,
+    // 70 is the talent-card carousel's explicit quality (smaller payload for
+    // grids of 48 cards); 75 is next/image's own default for everything else.
+    qualities: [70, 75],
     remotePatterns: [
       // Supabase storage (avatars/covers/portfolio). Hostname derived from the project URL.
       ...(supabaseOrigin.startsWith('https://')

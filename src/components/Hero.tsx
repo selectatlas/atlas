@@ -1,9 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
-import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { Check, Search } from "lucide-react";
+import posthog from "posthog-js";
+import { showcaseTalent, type ShowcaseTalent } from "@/components/marketing/landing-data";
+import { findLandingPreviewMatches, type LandingPreviewMatch } from "@/lib/landing-preview";
 
 const RINGS = [
   { r: 36, n: 10, dir: 1, dur: 160 },
@@ -95,12 +98,45 @@ const EXAMPLE_BRIEFS: Array<{ label: string; query: string }> = [
 export default function Hero() {
   const rings = buildRings();
   const [query, setQuery] = useState("");
+  const [previewMatches, setPreviewMatches] = useState<LandingPreviewMatch<ShowcaseTalent>[] | null>(null);
+  // Render the lighter two-ring version on the server so mobile never pays
+  // for the outer 17 portraits before the viewport check hydrates.
+  const [isCompact, setIsCompact] = useState(true);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 680px)");
+    const update = () => setIsCompact(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  const captureLandingEvent = (event: string, properties?: Record<string, string | number>) => {
+    if (!process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN) return;
+    posthog.capture(event, properties);
+  };
+
+  const submitPreview = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedQuery = query.trim();
+    const matches = findLandingPreviewMatches(trimmedQuery, showcaseTalent);
+    setPreviewMatches(matches);
+    captureLandingEvent("landing_hero_search_submitted", {
+      result_count: matches.length,
+      query_source: "visitor_input",
+    });
+    if (matches.length > 0) {
+      captureLandingEvent("landing_search_preview_shown", { result_count: matches.length });
+    }
+  };
+
+  const signupHref = `/signup?source=landing-preview&q=${encodeURIComponent(query.trim())}`;
 
   return (
     <section className="hero" id="top" aria-labelledby="hero-title">
       <div className="stage" aria-hidden="true">
         <div className="ring-center">
-          {rings.map((ring, ringIndex) => (
+          {rings.slice(0, isCompact ? 2 : rings.length).map((ring, ringIndex) => (
             <div
               className="ring"
               key={ringIndex}
@@ -126,7 +162,7 @@ export default function Hero() {
                     })}
                   >
                     <div className="spin">
-                      <Image className="tile" src={tile.src} alt="" width={92} height={106} sizes="92px" loading="eager" />
+                      <Image className="tile" src={tile.src} alt="" width={92} height={106} sizes="92px" loading={ringIndex === 2 ? "lazy" : "eager"} />
                     </div>
                   </div>
                 </div>
@@ -151,20 +187,25 @@ export default function Hero() {
 
         <form
           className="hero-search"
-          action="/signup"
-          method="get"
+          onSubmit={submitPreview}
           role="search"
           aria-label="Describe the talent you need"
         >
+          <label className="hero-search__label" htmlFor="landing-talent-brief">
+            Describe the talent you need
+          </label>
           <div className="hero-search__row">
             <Search className="hero-search__icon" aria-hidden="true" />
             <input
+              id="landing-talent-brief"
               type="text"
               name="q"
               value={query}
-              onChange={event => setQuery(event.target.value)}
-              placeholder="Try: a Hindi-speaking dancer in London, free this December"
-              aria-label="Describe the talent you need"
+              onChange={event => {
+                setQuery(event.target.value);
+                setPreviewMatches(null);
+              }}
+              placeholder={isCompact ? "Describe the talent you need…" : "Try: Hindi-speaking dancer · London · December"}
               autoComplete="off"
             />
             <button type="submit" className="btn btn-primary hero-search__submit">
@@ -176,13 +217,56 @@ export default function Hero() {
               <button
                 type="button"
                 key={example.label}
-                onClick={() => setQuery(example.query)}
+                onClick={() => {
+                  setQuery(example.query);
+                  setPreviewMatches(null);
+                  captureLandingEvent("landing_example_brief_clicked", { example: example.label });
+                }}
               >
                 {example.label}
               </button>
             ))}
           </div>
         </form>
+
+        {previewMatches !== null && (
+          <section className="hero-preview" aria-live="polite" aria-label="Demo roster search preview">
+            <div className="hero-preview__heading">
+              <span>Demo preview</span>
+              <p>From eight seeded Atlas profiles. Full AI search starts after signup.</p>
+            </div>
+
+            {previewMatches.length > 0 ? (
+              <div className="hero-preview__results">
+                {previewMatches.map(({ talent, reasons }) => (
+                  <article className="hero-preview__result" key={talent.name}>
+                    <Image src={talent.image} alt="" width={52} height={58} />
+                    <div>
+                      <h2>{talent.name}</h2>
+                      <p>{talent.role} · {talent.city}</p>
+                      <ul aria-label={`Why ${talent.name} matched`}>
+                        {reasons.map(reason => <li key={reason}><Check aria-hidden="true" />{reason}</li>)}
+                      </ul>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="hero-preview__empty">
+                <p>{query.trim() ? "That brief is outside this small demo roster." : "Add a few details to the brief, then try again."}</p>
+                <span>Try one of the example briefs above, or create an account for the full search.</span>
+              </div>
+            )}
+
+            <a
+              className="btn btn-primary hero-preview__cta"
+              href={signupHref}
+              onClick={() => captureLandingEvent("landing_cta_clicked", { location: "search_preview" })}
+            >
+              Search the full roster
+            </a>
+          </section>
+        )}
 
         <ul className="hero-proof" aria-label="Why Atlas">
           <li>
