@@ -240,9 +240,10 @@ export function TalentProfileEditor() {
         }
       />
 
-      <ProfileCompletenessCard profile={profile} attributes={talentAttributes} />
-
-      {levelMetrics && <TalentLevelPanel metrics={levelMetrics} />}
+      <div className={cn('grid gap-6', levelMetrics && 'lg:grid-cols-2')}>
+        <ProfileCompletenessCard profile={profile} attributes={talentAttributes} />
+        {levelMetrics && <TalentLevelPanel metrics={levelMetrics} />}
+      </div>
 
       <div className="flex items-center gap-4">
         <PhotoUpload

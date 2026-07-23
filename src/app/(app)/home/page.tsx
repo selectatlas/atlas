@@ -392,7 +392,10 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
           </div>
         </Card>
       ) : profile && (
-        <ProfileCompletenessCard profile={profile} attributes={talentAttributes} editHref="/profile" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ProfileCompletenessCard profile={profile} attributes={talentAttributes} editHref="/profile" />
+          <SpotlightCard />
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 card-stagger">
@@ -410,7 +413,9 @@ async function TalentDashboard({ userId, supabase }: { userId: string; supabase:
         <QuickAction href="/profile" icon={UserRound} title="Edit profile" description="Update skills, portfolio, and availability." />
       </div>
 
-      <SpotlightCard />
+      {/* Spotlight normally sits beside the completeness card above; this keeps
+          it on the page while the profile is still in onboarding. */}
+      {(!profile || needsOnboarding(profile)) && <SpotlightCard />}
 
       <ThreadList threads={recentThreads} />
 

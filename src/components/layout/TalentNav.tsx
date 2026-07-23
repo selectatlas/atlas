@@ -9,15 +9,17 @@ const links = [
   { href: '/discover', label: 'Discover' },
   { href: '/applications', label: 'Applications' },
   { href: '/messages', label: 'Messages' },
+  { href: '/profile', label: 'Profile' },
 ]
 
+// The mobile bottom bar caps at 5 tabs, so for platform admins the Admin
+// link is desktop-sidebar-only on the talent shell.
 const adminLinks = [
   { href: '/admin', label: 'Admin' },
 ]
 
 const bottomLinks = [
   { href: '/settings', label: 'Settings' },
-  { href: '/profile', label: 'Profile' },
 ]
 
 export function TalentNav() {
